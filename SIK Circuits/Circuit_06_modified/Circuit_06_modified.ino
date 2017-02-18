@@ -15,14 +15,12 @@ void loop() {
   analogWrite(ledPin, lightLevel);
 }
 
-void manualTune()
-{
+void manualTune() {
   lightLevel = map(lightLevel, 300, 800, 0, 255);
   lightLevel = constrain(lightLevel, 0, 255);
 } 
 
-void autoTune()
-{
+void autoTune() {
   if (lightLevel < low) { low = lightLevel; }
   if (lightLevel > high) { high = lightLevel; }
  
