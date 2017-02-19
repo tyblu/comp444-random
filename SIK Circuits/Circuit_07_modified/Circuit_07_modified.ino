@@ -1,17 +1,9 @@
-//#include <TimerOne.h>
-
-//const int period = 1000;
 const int temperaturePin = 0;
 const int ledPins[] = {9,10,11};
-//float vLow = 5, vHigh = 0;
-
 float voltage;
 
 void setup(){
   Serial.begin(9600);
-  
-  //initialize();
-  //attachInterrupt(printStuff, period);
   
   int i;
   for (i = 0; i < 3; i++) {
