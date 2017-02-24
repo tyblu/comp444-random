@@ -13,7 +13,7 @@ void loop()
   int keyNum, freq;
   char str[18];
   
-  for (keyNum = 1; keyNum < 88; keyNum++) {
+  for (keyNum = 1; keyNum <= 88; keyNum++) {
     freq = (int)( 440 * pow( (float)2, (float)(keyNum-49)/(float)12 ) );
     tone(buzzerPin, freq, tempo*10);
     delay(tempo*10);       // wait for tone to finish
