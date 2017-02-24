@@ -2,20 +2,15 @@
 const int relayPin = 2;	    // use this pin to drive the transistor
 const int timeDelayMin = 1, timeDelayMax = 250; // min and max delays for testing
 
-void setup()
-{
+void setup() {
   pinMode(relayPin, OUTPUT);  // set pin as an output
-  
   Serial.begin(9600);
 }
 
-
-void loop()                    
-{
-//  serialDelay();
-  showDelays();
+void loop() {
+  serialDelay();
+//  showDelays();
 } 
-
 
 // Cycles through various delays for display and testing
 void showDelays() {

@@ -48,13 +48,10 @@ void motorAcceleration() {
   }
 }
 
-
-// This function will let you type a speed into the serial
-// monitor window. Open the serial monitor using the magnifying-
-// glass icon at the top right of the Arduino window. Then
-// type your desired speed into the small text entry bar at the
-// top of the window and click "Send" or press return. The motor
-// will then operate at that speed. The valid range is 0 to 255.
+// This function will let you type a speed into the serial monitor window. Open the serial
+// monitor using the magnifying-glass icon at the top right of the Arduino window. Then
+// type your desired speed into the small text entry bar at the top of the window and click
+// "Send" or press return. The motor will then operate at that speed. (Valid range 0-255.)
 void serialSpeed() {
   int speed;
   
