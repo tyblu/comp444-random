@@ -1,6 +1,6 @@
 const int motorPin = 9;
-const int speedLimits[] = {34, 255, 255};    // Motor stall/min speed, start speed, max speed
-const int timeStart = 15;                    // Time to get motor moving from rest with start speed voltage
+const int speedLimits[] = {34, 255, 255};  // Motor stall/min speed, start speed, max speed
+const int timeStart = 15;  // Time to get motor moving from rest with start speed voltage
 
 void setup() {
   pinMode(motorPin, OUTPUT);
@@ -15,7 +15,7 @@ void loop() {
 // Jump-starts the motor and sets it at any speed. 
 void motorGo(int speedGoal) {
   
-  if (speedGoal < 35) {
+  if (speedGoal <= speedLimits[0]) {
     speedGoal = 0;
   }
   else {
