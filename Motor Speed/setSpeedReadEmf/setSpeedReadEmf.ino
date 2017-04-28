@@ -24,7 +24,7 @@ const int runTime = 500 - delayTime; // run time [ms]
 // measure low rpm and voltage to get rpm0 and volt0
 // measure high rpm and voltage to get rpm1, volt1
 // k = ( rpm1 - rpm0 ) / ( volt1 - volt0 )
-const float emfToRpmK = ( 6120 - 2400 ) / ( 3.0 - 1.2 );
+const float emfToRpmK = ( 6120 - 2400 ) / ( 3.0 - 1.2 ); // about 2066rpm/V
 
 struct rpmStruct {
   int current;
@@ -55,7 +55,7 @@ void loop() {
     .maximum = 0,
     .start = 9999,
   };
-  char lcdText[2][16];
+  char lcdText[2][16] = { { ' ' } }; // 16x2 spaces
   float vAnalog = 0.0, vEmf = 0.0;
 
   int n = 0, rampDir = 1;
@@ -68,29 +68,27 @@ void loop() {
       
       // pause, measure back-emf, un-pause
       vAnalog = pauseAndMeasure( motorPin, n*255/10, emfPin, delayTimeStabilize, delayTime );
-//      char debug[16]; sprintf( debug, "n:%dvA0:%f5%+d", n, vAnalog, rampDir );  // debugging
-//      lcd.setCursor(0,0); lcd.print(debug); delay(1000);                        // debugging
       
       // get emf and rpm
       vEmf = 5.0 - vAnalog; // emf = supply voltage - measurement
       
-      rpmOld = rpm;   // save last rpm value before overwriting
+      rpm.old = rpm.current;   // save last rpm value before overwriting
       
-      rpm = vEmf * emfToRpmK; // get speed
+      rpm.current = vEmf * emfToRpmK; // get speed
       
-      rpmLogic( rpm, rpmOld, rpmMin, rpmMax, rpmStart ); // set rpmMin, rpmMax, rpmStart
+      rpmLogic( rpm ); // set rpmMin, rpmMax, rpmStart
       
       printAllTheThings( lcdText, vEmf, rpm );  // print to LCD
       
       n += rampDir;
     }
     rampDir *= -1;  // change ramp direction
-    n += rampDir;
+    n += rampDir;   // bump index so loop can go again
   }
 
   // wait and tell user that program is restarting in 5-4-3...
 //  printRestartMsgs( 6000 );
-  lcd.clear(); lcd.setCursor(0,0); lcd.print("RESTARTING"); // debug line
+  lcd.clear(); lcd.print("RESTARTING"); // debug line
 }
 
 // sets motor speed to a certain value, then waits a bit
@@ -122,43 +120,45 @@ float pauseAndMeasure( int mPin, int mSpeed, int emfPin, int tStab, int tDelay )
 }
 
 // logic to set rpmMin, rpmMax, rpmStart
-void rpmLogic( int &rpm, int &rpmOld, int &rpmMin, int &rpmMax, int &rpmStart ) {
+void rpmLogic( struct rpmStruct &rpm ){
+//void rpmLogic( int &rpm, int &rpmOld, int &rpmMin, int &rpmMax, int &rpmStart ) {
 
   int rpmChange;  // by how much did the speed change?
-  rpmChange = rpm - rpmOld;
+  rpmChange = rpm.current - rpm.old;
 
-  if ( rpmOld < rpmStart && rpmChange > 100 ) {  // just started, lower start rpm
-    rpmStart = rpmOld;
+  if ( rpm.old < rpm.start && rpmChange > 100 ) {  // just started, lower start rpm
+    rpm.start = rpm.current;
   }
-  if ( rpm > 100 && rpm < rpmMin ) {             // running, lower min rpm
-    rpmMin = rpm;
+  if ( rpm.current > 100 && rpm.current < rpm.minimum ) {             // running, lower min rpm
+    rpm.minimum = rpm.current;
   }
-  if ( rpm > rpmMax ) {                          // higher max rpm
-    rpmMax = rpm;
+  if ( rpm.current > rpm.maximum ) {                          // higher max rpm
+    rpm.maximum = rpm.current;
   }
 }
 
 
 // print to LCD
-void printAllTheThings( char (&str0)[16], 
-                        char (&str1)[16], 
-                        float &emf, 
-                        int &rpm, 
-                        int &rpmOld, 
-                        int &rpmMin, 
-                        int &rpmMax, 
-                        int &rpmStart ) {
+void printAllTheThings( char (&lcdText)[2][16], float &emf, struct rpmStruct &rpm ) {
+//void printAllTheThings( char (&str0)[16], 
+//                        char (&str1)[16], 
+//                        float &emf, 
+//                        int &rpm, 
+//                        int &rpmOld, 
+//                        int &rpmMin, 
+//                        int &rpmMax, 
+//                        int &rpmStart ) {
 
   char sTemp[] = "                ";  // initialize to maximum size
 
   int rpmChange;
-  rpmChange = rpm - rpmOld;
+  rpmChange = rpm.current - rpm.old;
   
   lcd.clear();
   
   lcd.setCursor(0,0);           // 1st line [0000rpm 0.00000V]
-  sprintf( str0, "%5drpm, %5fV", rpm, emf );
-  lcd.print( str0 );
+  sprintf( lcdText[0], "%5drpm, %5fV", rpm.current, emf );
+//  lcd.print( str0 );
 //  sTemp = intToChar( sTemp, rpm )
 //  insertSubstrAtIndex( str0, 16, sTemp, 4, 0 );
 //  sTemp = "rpm,";
@@ -172,13 +172,23 @@ void printAllTheThings( char (&str0)[16],
 ////  lcd.print("rpm,");
 ////  lcd.print(emf,4);
 ////  lcd.print("V");
-  
-  lcd.setCursor(0,1);           // 2nd line [0.0,0.0,0.0,+0.0]
-  printInKRpm( rpmMin, 1 );  // (min, max, start, change rpm/1000)
-  printInKRpm( rpmMax, 1 );
-  printInKRpm( rpmStart, 1 );
-  rpmChange > 0 ? lcd.print("+") : lcd.print("-");
-  printInKRpm( abs( rpmChange ), 0 );
+
+  sprintf( lcdText[1], "%1d.%1d,%1d.%1d,%1d.%1d,%+1d.%1d",
+    intMSBs( rpm.minimum, 1 ),
+    intMSBs( rpm.minimum - intMSBs( rpm.minimum, 1 ), 1 ),
+    intMSBs( rpm.maximum, 1 ),
+    intMSBs( rpm.maximum - intMSBs( rpm.maximum, 1 ), 1 ),
+    intMSBs( rpm.start, 1 ),
+    intMSBs( rpm.start - intMSBs( rpm.start, 1 ), 1 ),
+    intMSBs( rpmChange, 1 ),
+    intMSBs( rpmChange - intMSBs( rpmChange, 1 ), 1 )
+  );
+//  lcd.setCursor(0,1);           // 2nd line [0.0,0.0,0.0,+0.0]
+//  printInKRpm( rpmMin, 1 );  // (min, max, start, change rpm/1000)
+//  printInKRpm( rpmMax, 1 );
+//  printInKRpm( rpmStart, 1 );
+//  rpmChange > 0 ? lcd.print("+") : lcd.print("-");
+//  printInKRpm( abs( rpmChange ), 0 );
 }
 
 // helper for printAllTheThings()
@@ -255,5 +265,29 @@ void insertSubstrAtIndex( char (&str)[64], int strLen, char (&subStr)[64], int s
   while ( index < strLen && i < subStrLen) {
     str[index++] = subStr[i++];
   }
+}
+
+void updateLCD( char (&txt)[2][16] ) {
+  lcd.clear();
+  lcd.leftToRight();
+  lcd.print( txt[0] );
+  lcd.setCursor( 1,0 );
+  lcd.print( txt[1] );
+}
+
+int intMSBs( int num , int sigDigs) {
+  while ( num > powInt( 10, sigDigs ) ) {
+    num /= 10;
+  }
+  return num;
+}
+
+int powInt( int base, int power) {
+  if ( power < 0 ) { return 0; }
+  int result = 1;
+  while ( power-- > 0 ) {
+    result *= base;
+  }
+  return result;
 }
 
