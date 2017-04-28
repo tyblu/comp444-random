@@ -26,6 +26,13 @@ const int runTime = 500 - delayTime; // run time [ms]
 // k = ( rpm1 - rpm0 ) / ( volt1 - volt0 )
 const float emfToRpmK = ( 6120 - 2400 ) / ( 3.0 - 1.2 );
 
+struct rpmStruct {
+  int current;
+  int old;
+  int minimum;
+  int maximum;
+  int start;
+};
 
 void setup() {
   pinMode(motorPin, OUTPUT);  // set up the pin as an OUTPUT
@@ -41,13 +48,17 @@ void setup() {
 void loop() {
 
   // initialize variables once
-  
-  float vAnalog, vEmf;
-  int rpm = 0, rpmOld = 0;
-  int rpmMin = 9999, rpmMax = 0, rpmStart = 9999;
-  int rampDir = 1;
+  struct rpmStruct rpm = {
+    .current = 0,
+    .old = 0,
+    .minimum = 9999,
+    .maximum = 0,
+    .start = 9999,
+  };
+  char lcdText[2][16];
+  float vAnalog = 0.0, vEmf = 0.0;
 
-  int n = 0;
+  int n = 0, rampDir = 1;
   while ( true ) {
     
     // ramp speed up and measure at each of 10 steps
@@ -57,6 +68,8 @@ void loop() {
       
       // pause, measure back-emf, un-pause
       vAnalog = pauseAndMeasure( motorPin, n*255/10, emfPin, delayTimeStabilize, delayTime );
+//      char debug[16]; sprintf( debug, "n:%dvA0:%f5%+d", n, vAnalog, rampDir );  // debugging
+//      lcd.setCursor(0,0); lcd.print(debug); delay(1000);                        // debugging
       
       // get emf and rpm
       vEmf = 5.0 - vAnalog; // emf = supply voltage - measurement
@@ -67,7 +80,7 @@ void loop() {
       
       rpmLogic( rpm, rpmOld, rpmMin, rpmMax, rpmStart ); // set rpmMin, rpmMax, rpmStart
       
-      printAllTheThings( vEmf, rpm, rpmOld, rpmMin, rpmMax, rpmStart );  // print to LCD
+      printAllTheThings( lcdText, vEmf, rpm );  // print to LCD
       
       n += rampDir;
     }
@@ -88,20 +101,24 @@ void motorRunAndWait( int mPin, int mSpeed, int tDelay ) {
 
 // pauses motor driver, measures emf-related value, restarts motor
 float pauseAndMeasure( int mPin, int mSpeed, int emfPin, int tStab, int tDelay ) {
-  float vAnalog = 0.0;
+  int vMeasured;
+  float vAnalog;
 
   analogWrite(mPin, LOW); // cut current to motor
   delay(tStab); // wait for emf to stabilize
 
   int t; // take measurement every 1ms and average them all
   for ( t=0 ; t <= tDelay ; t++ ) {
-    vAnalog += analogRead(emfPin) / tDelay;
+//    lcd.clear(); lcd.setCursor(0,0); lcd.print(analogRead(emfPin)); delay(1000);// debugging
+    vMeasured = analogRead(emfPin);
+    vAnalog = 5 * vMeasured / 1024;
     delay(1);
   }
-  
+//  char debug[16]; sprintf( debug, "n:%dvA0:%f5%+d", n, vAnalog, rampDir );  // debugging
+//  lcd.setCursor(0,0); lcd.print(debug); delay(1000);                        // debugging
   analogWrite(mPin, mSpeed);  // continue driving motor
   
-  return constrain( map( vAnalog, 0, 255, 0, 5 ), 0, 5 );
+  return vAnalog;
 }
 
 // logic to set rpmMin, rpmMax, rpmStart
@@ -123,10 +140,15 @@ void rpmLogic( int &rpm, int &rpmOld, int &rpmMin, int &rpmMax, int &rpmStart ) 
 
 
 // print to LCD
-void printAllTheThings( float &emf, int &rpm, int &rpmOld, int &rpmMin, int &rpmMax, int &rpmStart ) {
+void printAllTheThings( char (&str0)[16], 
+                        char (&str1)[16], 
+                        float &emf, 
+                        int &rpm, 
+                        int &rpmOld, 
+                        int &rpmMin, 
+                        int &rpmMax, 
+                        int &rpmStart ) {
 
-  char str0[] = "                ";   // initialize to maximum size
-  char str1[] = "                ";   // initialize to maximum size
   char sTemp[] = "                ";  // initialize to maximum size
 
   int rpmChange;
