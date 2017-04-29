@@ -3,77 +3,142 @@
  * example #7: TEMPERATURE SENSOR, and example #15: LIQUID CRYSTAL 
  * DISPLAY (LCD)
  * 
- * Set motor speed from serial monitor. Put motor driving transistor
- * in high impedance (motorPin set to LOW) for a short time, 
- * measure the back-emf during this pause, then continue driving the
- * motor. Measured value, EMF voltage and motor speed are output to 
- * an LCD.
+ * Calculate EMF while motor is running, no pausing required.
  *******************************************************************/
 
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 
 const int motor_pin = 9; // PWM driving NPN to control motor
-const int emf_pin = A0;  // back-emf related input
-const int pause_pin = 8; // digital driving NPN to pause motor
+const int vA_pin = A0;  // to motor +ve
+const int vB_pin = A1;  // to motor -ve and shunt top
+const int vC_pin = A2;  // to shunt bottom and collector
+
+struct node_voltages {
+  int a[100];
+  int b[100];
+  int c[100];
+  int ab[10];
+  int bc[10];
+};
+
+const float k_volts_per_adc_bit = 5/1024;     // 5V/2^10
+const float R_shunt = 0.5;
+const float k_Rcoils_Rshunt_const = 1.95/R_shunt; // Rcoils=1.95, Rshunt=0.5
+
+struct pwm_set_points {
+  int target;
+  int current;
+  int steps;
+  int next;
+  int target_to_current;
+  int target_to_current_abs;
+};
 
 void setup() {
   pinMode( motor_pin, OUTPUT );
-  pinMode( pause_pin, OUTPUT );
 
   lcd.begin(16, 2); //Initialize the 16x2 LCD
   lcd.clear();  // clear any old data displayed on the LCD
   lcd.print("Hello, COMP444!");
   lcd.setCursor(0,1);
-  lcd.print("emf to RPM v2.1");
+  lcd.print("emf to RPM v2.2");
   delay(1500);
 }
 
 void loop() {
 
-  unsigned long t_pause = 500;  // pause time in [us], ulong for quick add to micros()
-  unsigned long t_limit;
+  lcd.clear();
+  lcd.print( "emf: (unknown)" );
+  lcd.setCursor( 0,1 );
+  lcd.print( "  I: (unknown)" );
 
-  int motor_speed_target_last = 0;
-  int motor_speed_target = 0;
-  int motor_speed_current = 0;
-  int motor_speed_steps = 0;
-  int motor_speed_next = 0;
-  int motor_speed_target_to_current = 0;
-  int motor_speed_target_to_current_abs = 0;
+  pwm_set_points m_pwm {
+    .target                 = 0,
+    .current                = 0,
+    .steps                  = 0,
+    .next                   = 0,
+    .target_to_current      = 0,
+    .target_to_current_abs  = 0,
+  };
 
-  int adc_values[100] = {0};
+  node_voltages node = { // holds history (arrays) of node voltages used to calculate emf and current
+    .a = {0},
+    .b = {0},
+    .c = {0},
+    .ab = {0},
+    .bc = {0},
+  };
+//  int node_voltages::*p_node_voltages_abc[3];    // pointers to a,b,c                 // don't think I need this anymore...
+//  p_node_voltages_abc = { &node_voltages::a, &node_voltages::b, &node_voltages::c };  // don't think I need this anymore...
+  int m = 0; // index node_voltages.a,b,c arrays (while loop counter)
+  int n = 0; // index node_voltages.ab,bc arrays (n/10)
+
+  float emf[10] = {0};
+  float current[10] = {0};
+
+  unsigned long lcd_update_period = 1000000;  // update LCD every 1 sec, in [us]
+  unsigned long timestamp = micros() + lcd_update_period;
   
   while ( true ) {
 
-    digitalWrite( pause_pin, HIGH );  // connect to common
-
-    motor_speed_target = map(; // 1V-3V rating/5V supply=20-60% duty=51-153pwm
-    while ( motor_speed_target != motor_speed_current )
+    m_pwm.target = 102; // 1V-3V rating/5V supply=20-60% duty=51-153pwm
+    while ( m_pwm.target != m_pwm.current )
     {   // ramp motor speed to target
       
-      motor_speed_target_to_current = motor_speed_target - motor_speed_current;
-      motor_speed_target_to_current_abs = abs( motor_speed_target_to_current );
-//      motor_speed_steps = ( motor_speed_target_to_current_abs + 10 )/10; // most sig. digit+1
-//      motor_speed_next = motor_speed_current + motor_speed_target_to_current / motor_speed_steps;
-      motor_speed_next = motor_speed_current + motor_speed_target_to_current / motor_speed_target_to_current_abs; // +/-1 at a time
+      m_pwm.target_to_current = m_pwm.target - m_pwm.current;
+      m_pwm.target_to_current_abs = abs( m_pwm.target_to_current );
+      m_pwm.steps = ( m_pwm.target_to_current_abs + 10 )/10; // most sig. digit+1
+      m_pwm.next = m_pwm.current + m_pwm.target_to_current / m_pwm.steps;
+//      m_pwm.next = m_pwm.current + m_pwm.target_to_current / m_pwm.target_to_current_abs; // +/-1 at a time
   
-      analogWrite( motor_pin, motor_speed_next );
-//      delay(200); // slow ramp
-      delay(50);  // lower delay with only single increment changes
+      analogWrite( motor_pin, m_pwm.next );
+      delay(200); // slow ramp
+//      delay(50);  // lower delay with only single increment changes
   
-      motor_speed_current = motor_speed_next;
+      m_pwm.current = m_pwm.next;
     }
 
-//    // pause motor current, measure emf, reconnect driver
-//    digitalWrite( pause_pin, LOW );   // turn off motor driver
-//    delayMicroseconds( 250 );   // allow emf to stabilize
-//    t_limit = micros() + t_pause; // set time limit for measurements
-//    int n = 0;
-//    while ( micros() < t_limit ) {
-//      adc_values[n++] = analogRead( emf_pin ); // takes ~100us
-//      if ( n > 98 ) { break; } // if this happens, there's a timer issue
-//    }
-//    digitalWrite( pause_pin, HIGH );  // turn on motor driver
+    /* Measurements.
+     *  Notes:
+     *  - 1st read may be garbage due to adc multiplexer switch noise. Can put
+     *  in delay and read again, or do proper code without Arduino libraries.
+     *  - Each reading takes about 100us. Might be able to do them more quickly
+     *  without Arduino libraries, maybe even faster than consecutively. (Does
+     *  the ATmega328p have multiple ADCs, or just a multiplexer?)
+     */
+    node.a[m] = analogRead( vA_pin );  // 1st read garbage due to adc multiplex noise, delay stabilizes
+    node.b[m] = analogRead( vB_pin );
+    node.c[m] = analogRead( vC_pin );
+    m++;
+
+    if ( m % 10 == 0 ) {  // we have some multiple of and at least 10 measurements
+      int j, node_temp[3] = {0};
+      for ( j=0; j<10; j++ ) {          // add up last 10 values
+        node_temp[0] += node.a[m-j-1];  
+        node_temp[1] += node.b[m-j-1];
+        node_temp[2] += node.c[m-j-1];
+      }
+      node.ab[n] = ( node_temp[0] - node_temp[1] )/10;  // Vab avg over last 10 values
+      node.bc[n] = ( node_temp[1] - node_temp[2] )/10;  // Vbc avg over last 10 values
+      emf[n] = ( node.ab[n] - node.bc[n] * k_Rcoils_Rshunt_const ) * k_volts_per_adc_bit;
+      current[n] = node.bc[n] / R_shunt;
+      n++;
+    }
+
+    // spit out emf and current to user every X secs
+    if ( micros() > timestamp ) {
+      lcd.clear();
+      lcd.print( "emf: " );
+      lcd.print( emf[n-1], 5 );
+      lcd.setCursor( 0,1 );
+      lcd.print( "  I: " );
+      lcd.print( current[n-1], 5 );
+
+      // should probably spit out rpm somewhere around here, too
+
+      timestamp = micros() + lcd_update_period;
+    }
+
   }
 }
