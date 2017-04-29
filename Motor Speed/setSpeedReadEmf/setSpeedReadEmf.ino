@@ -127,18 +127,33 @@ void loop() {
     }
 
     // spit out emf and current to user every X secs
-    if ( micros() > timestamp ) {
+    if ( micros() > timestamp && n > 0) {
       lcd.clear();
-      lcd.print( "emf: " );
-      lcd.print( emf[n-1], 5 );
-      lcd.setCursor( 0,1 );
-      lcd.print( "  I: " );
-      lcd.print( current[n-1], 5 );
+//      char str_temp[17];                                    // broken
+//      sprintf( str_temp, "emf: %7.5f  %2d", emf[n-1], m );  // broken
+//      lcd.print( str_temp );                                // broken
+//      lcd.print( "emf: " );
+//      lcd.print( emf[n-1], 4 );
+      lcd.print( node.a[m-1] );                               // debugging
+      lcd.print( " " );                                       // debugging
+      lcd.print( node.b[m-1] );                               // debugging
+      lcd.setCursor( 0,1 );                                   // debugging
+      lcd.print( node.c[m-1] );                               // debugging
+      lcd.print( " " );
+      lcd.print( n );                                         // debugging
+      lcd.print( ":" );                                       // debugging
+      lcd.print( m );                                         // debugging
+//      lcd.setCursor( 0,1 );
+//      lcd.print( "  I: " );
+//      lcd.print( current[n-1], 4 );
 
       // should probably spit out rpm somewhere around here, too
 
       timestamp = micros() + lcd_update_period;
     }
+
+    if ( m > 99 ) { m = 0; }  // end of array, reset index
+    if ( n > 9 ) { n = 0; } // end of array, reset index
 
   }
 }
