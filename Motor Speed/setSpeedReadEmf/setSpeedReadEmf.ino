@@ -14,6 +14,8 @@ const int vA_pin = A0;  // to motor +ve
 const int vB_pin = A1;  // to motor -ve and shunt top
 const int vC_pin = A2;  // to shunt bottom and collector
 
+unsigned int debug_n = 0;
+
 struct node_voltages {
   int a[1000];
   int b[1000];
@@ -61,46 +63,22 @@ void loop() {
     .target_to_current      = 0,
     .target_to_current_abs  = 0,
   };
-
-  node_voltages node = { // holds history (arrays) of node voltages used to calculate emf and current
-    .a = {0},
-    .b = {0},
-    .c = {0},
-    .ab = {0},
-    .bc = {0},
-  };
-//  int node_voltages::*p_node_voltages_abc[3];    // pointers to a,b,c                 // don't think I need this anymore...
-//  p_node_voltages_abc = { &node_voltages::a, &node_voltages::b, &node_voltages::c };  // don't think I need this anymore...
+    
+  node_voltages node;   // holds history (arrays) of node voltages used to calculate emf and current
   int m = 0; // index node_voltages.a,b,c arrays (while loop counter)
-  int n = 0; // index node_voltages.ab,bc arrays (n/100)
+  int n = 0; // index node_voltages.ab,bc arrays (n/10)
 
   float emf[100] = {0};
   float current[100] = {0};
 
   unsigned long lcd_update_period = 1000000;    // update LCD every 1 sec, in [us]
   unsigned long timestamp = micros() + lcd_update_period;
-  unsigned long timestamp_debug[2] = {0};      // for debugging only
-  unsigned int timestamp_debug_index = 0;       // for debugging only
 
-  char str_debug0[] = "1234567890123456";       // for debugging only
-  char str_debug1[] = "1234567890123456";       // for debugging only
-  int another_index = 0;
   while ( true ) {
 
-    m_pwm.target = 153; // 1V-3V rating/5V supply=20-60% duty=51-153pwm
+     m_pwm.target = 153; // 1V-3V rating/5V supply=20-60% duty=51-153pwm
     while ( m_pwm.target != m_pwm.current )
     {   // ramp motor speed to target
-
-lcd.clear(); lcd.print( another_index++ );
-//// DEBUGGING WATCHDOG
-//      timestamp_debug[ timestamp_debug_index++ % 2 ] = micros();
-//      if ( timestamp_debug_index > 1
-//        && timestamp_debug[0]
-//        && timestamp_debug[1]
-//        && abs(timestamp_debug[1] - timestamp_debug[0]) > 5e6 ) {
-//        str_debug0="Error: stuck in "; str_debug1="motor ramp loop "; lcdPrintAll( str_debug0, str_debug1 );
-//      }
-//// DEBUGGING WATCHDOG
       
       m_pwm.target_to_current = m_pwm.target - m_pwm.current;
       m_pwm.target_to_current_abs = abs( m_pwm.target_to_current );
@@ -128,39 +106,24 @@ lcd.clear(); lcd.print( another_index++ );
     node.c[m] = analogRead( vC_pin );
     m++;
 
-    if ( m % 100 == 0 ) {  // we have some multiple of and at least 100 measurements
-
-      timestamp_debug[ timestamp_debug_index++ % 2 ] = micros();      // debugging
-      
+    if ( m % 10 == 0 ) {  // we have some multiple of and at least 10 measurements
+lcd.clear(); lcd.print("made it m%10");
       int j, node_temp[3] = {0};
-      for ( j=0; j<100; j++ ) {          // add up last 100 values
+      for ( j=0; j<10; j++ ) {          // add up last 10 values
         node_temp[0] += node.a[m-j-1];  
         node_temp[1] += node.b[m-j-1];
         node_temp[2] += node.c[m-j-1];
       }
-      node.ab[n] = ( node_temp[0] - node_temp[1] )/100;  // Vab avg over last 100 values
-      node.bc[n] = ( node_temp[1] - node_temp[2] )/100;  // Vbc avg over last 100 values
+      node.ab[n] = ( node_temp[0] - node_temp[1] )/10;  // Vab avg over last 100 values
+      node.bc[n] = ( node_temp[1] - node_temp[2] )/10;  // Vbc avg over last 100 values
       emf[n] = ( node.ab[n] - node.bc[n] * k_Rcoils_Rshunt_const ) * k_volts_per_adc_bit;
       current[n] = node.bc[n] / R_shunt;
       n++;
     }
 
     // spit out emf and current to user every X secs
-    if ( micros() > timestamp && n > 0) {
-
-//// DEBUGGING WATCHDOG
-//      timestamp_debug[ timestamp_debug_index++ % 2] = micros();
-//      if ( timestamp_debug_index > 1
-//        && timestamp_debug[0]
-//        && timestamp_debug[1]
-//        && abs(timestamp_debug[1] - timestamp_debug[0]) > 5e6 ) {
-//        str_debug0="Error: stuck in "; str_debug1="motor ramp loop "; lcdPrintAll( str_debug0, str_debug1 );
-//      }
-//// DEBUGGING WATCHDOG
-      
+    if ( micros() > timestamp && n > 0) {      
       lcd.clear();
-//      char str_temp[17];                                    // broken
-//      sprintf( str_temp, "emf: %7.5f  %2d", emf[n-1], m );  // broken
 //      lcd.print( str_temp );                                // broken
 //      lcd.print( "emf: " );
 //      lcd.print( emf[n-1], 4 );
@@ -184,8 +147,8 @@ lcd.clear(); lcd.print( another_index++ );
       timestamp = micros() + lcd_update_period;
     }
 
-    if ( m > 999 ) { m = 0; }  // end of array, reset index
-    if ( n > 99 ) { n = 0; } // end of array, reset index
+    if ( m > 99 ) { m = 0; }  // end of array, reset index
+    if ( n > 9 ) { n = 0; } // end of array, reset index
 
   }
 }
