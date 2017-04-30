@@ -14,8 +14,6 @@ const int vA_pin = A0;  // to motor +ve
 const int vB_pin = A1;  // to motor -ve and shunt top
 const int vC_pin = A2;  // to shunt bottom and collector
 
-unsigned int debug_n = 0;
-
 struct node_voltages {
   int a[1000];
   int b[1000];
@@ -66,10 +64,10 @@ void loop() {
     
   node_voltages node;   // holds history (arrays) of node voltages used to calculate emf and current
   int m = 0; // index node_voltages.a,b,c arrays (while loop counter)
-  int n = 0; // index node_voltages.ab,bc arrays (n/10)
+  int n = 0; // index node_voltages.ab,bc arrays (m/10)
 
-  float emf[100] = {0};
-  float current[100] = {0};
+  float emf[10] = {0};
+  float current[10] = {0};
 
   unsigned long lcd_update_period = 1000000;    // update LCD every 1 sec, in [us]
   unsigned long timestamp = micros() + lcd_update_period;
@@ -77,18 +75,16 @@ void loop() {
   while ( true ) {
 
      m_pwm.target = 153; // 1V-3V rating/5V supply=20-60% duty=51-153pwm
-    while ( m_pwm.target != m_pwm.current )
-    {   // ramp motor speed to target
-      
+
+    // ramp motor speed to target
+    while ( m_pwm.target != m_pwm.current ) {
       m_pwm.target_to_current = m_pwm.target - m_pwm.current;
       m_pwm.target_to_current_abs = abs( m_pwm.target_to_current );
       m_pwm.steps = ( m_pwm.target_to_current_abs + 10 )/10; // most sig. digit+1
       m_pwm.next = m_pwm.current + m_pwm.target_to_current / m_pwm.steps;
-//      m_pwm.next = m_pwm.current + m_pwm.target_to_current / m_pwm.target_to_current_abs; // +/-1 at a time
   
       analogWrite( motor_pin, m_pwm.next );
       delay(200); // slow ramp
-//      delay(50);  // lower delay with only single increment changes
   
       m_pwm.current = m_pwm.next;
     }
@@ -107,10 +103,10 @@ void loop() {
     m++;
 
     if ( m % 10 == 0 ) {  // we have some multiple of and at least 10 measurements
-lcd.clear(); lcd.print("made it m%10");
+
       int j, node_temp[3] = {0};
       for ( j=0; j<10; j++ ) {          // add up last 10 values
-        node_temp[0] += node.a[m-j-1];  
+        node_temp[0] += node.a[m-j-1];
         node_temp[1] += node.b[m-j-1];
         node_temp[2] += node.c[m-j-1];
       }
@@ -147,13 +143,14 @@ lcd.clear(); lcd.print("made it m%10");
       timestamp = micros() + lcd_update_period;
     }
 
-    if ( m > 99 ) { m = 0; }  // end of array, reset index
-    if ( n > 9 ) { n = 0; } // end of array, reset index
+    if ( m > 99 ) { m = 0; String aa="9 bottles"; String bb=" "; lcdPrintAll(aa,bb); delay(500); } // end of array, reset index
+    if ( n > 9 ) { n = 0; String cc="9 mo bottles"; String dd=" "; lcdPrintAll(cc,dd); delay(500); } // end of array, reset index
 
   }
 }
 
-void lcdPrintAll( char &str0, char &str1 ) {
+void lcdPrintAll( String &str0, String &str1 ) {
+//void lcdPrintAll( char &str0, char &str1 ) {
   while ( true ) {
     lcd.clear();
     lcd.print( str0 );
