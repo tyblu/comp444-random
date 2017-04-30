@@ -6,16 +6,26 @@ const int vA_pin = A0;  // to motor +ve
 const int vB_pin = A1;  // to motor -ve and shunt top
 const int vC_pin = A2;  // to shunt bottom and collector
 
+// Define various ADC prescaler (https://goo.gl/qLdu2e)
+const unsigned char prescale_002 = (1 << ADPS0);
+const unsigned char prescale_004 = (1 << ADPS1);
+const unsigned char prescale_008 = (1 << ADPS1) | (1 << ADPS0);
+const unsigned char prescale_016 = (1 << ADPS2);
+const unsigned char prescale_032 = (1 << ADPS2) | (1 << ADPS0);
+const unsigned char prescale_064 = (1 << ADPS2) | (1 << ADPS1);
+const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+
 void setup() {
   pinMode( motor_pin, OUTPUT );
   
-  analogReference( EXTERNAL );
+  ADCSRA &= ~prescale_128;  // remove bits set by Arduino library
+  ADCSRA |= prescale_016;    // set our own prescaler
 
   lcd.begin(16, 2); //Initialize the 16x2 LCD
   lcd.clear();
-  lcd.print("Testing Speed");
+  lcd.print("Testing 16MHz/16");
   lcd.setCursor(0,1);
-  lcd.print("v1.0020170430");
+  lcd.print("v1.01-20170430");
   delay(1500);
   lcd.clear();
 }
@@ -54,7 +64,7 @@ void loop() {
 
     lcd.clear();
     lcd.print( "vA: " );
-    lcd.print( vA_pin );
+    lcd.print( vA_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t1: " );
     lcd.print( t[t_index-6] - t[t_index-7] );
@@ -64,7 +74,7 @@ void loop() {
 
     lcd.clear();
     lcd.print( "vB: " );
-    lcd.print( vA_pin );
+    lcd.print( vA_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t1: " );
     lcd.print( t[t_index-4] - t[t_index-5] );
@@ -74,7 +84,7 @@ void loop() {
 
     lcd.clear();
     lcd.print( "vC: " );
-    lcd.print( vA_pin );
+    lcd.print( vA_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t1: " );
     lcd.print( t[t_index-2] - t[t_index-3] );
@@ -83,6 +93,7 @@ void loop() {
     delay(1000);
 
     if ( t_index > (100-1-6) ) { t_index = 0; }
+    if ( ++while_loop_counter > 999 ) { while_loop_counter = 0; }
     
   }
 
