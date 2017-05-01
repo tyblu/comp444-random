@@ -7,13 +7,13 @@ const int vB_pin = A1;  // to motor -ve and shunt top
 const int vC_pin = A2;  // to shunt bottom and collector
 
 // Define various ADC prescaler (https://goo.gl/qLdu2e)
-const unsigned char prescale_002 = (1 << ADPS0);
-const unsigned char prescale_004 = (1 << ADPS1);
-const unsigned char prescale_008 = (1 << ADPS1) | (1 << ADPS0);
-const unsigned char prescale_016 = (1 << ADPS2);
-const unsigned char prescale_032 = (1 << ADPS2) | (1 << ADPS0);
-const unsigned char prescale_064 = (1 << ADPS2) | (1 << ADPS1);
-const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+const unsigned char prescale_002 = (1 << ADPS0);                                //   8 MHz (615.4 kHz) ~   1.6 us
+const unsigned char prescale_004 = (1 << ADPS1);                                //   4 MHz (307.7 kHz) ~   3.3 us
+const unsigned char prescale_008 = (1 << ADPS1) | (1 << ADPS0);                 //   2 MHz (153.8 kHz) ~   6.5 us
+const unsigned char prescale_016 = (1 << ADPS2);                                //   1 MHz ( 76.9 kHz) ~  13 us   This one looks like the winner.
+const unsigned char prescale_032 = (1 << ADPS2) | (1 << ADPS0);                 // 500 kHz ( 38.5 kHz) ~  26 us
+const unsigned char prescale_064 = (1 << ADPS2) | (1 << ADPS1);                 // 250 kHz ( 19.2 kHz) ~  52 us
+const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);  // 125 kHz ( 9.6 kHz) ~  104 us
 
 #define NODE_VOLTAGES_ARRAY_SIZE 100
 
@@ -34,7 +34,7 @@ void setup() {
   lcd.clear();
   lcd.print("Testing 16MHz/16");
   lcd.setCursor(0,1);
-  lcd.print("v1.04-20170430");
+  lcd.print("v1.05-20170501");
   delay(1500);
   lcd.clear();
 }
@@ -51,7 +51,6 @@ void loop() {
   unsigned int t_diffs_index = 0;
 
   unsigned int while_loop_counter = 0;
-
 
   analogWrite( motor_pin, 153 );
 
@@ -77,8 +76,8 @@ void loop() {
     compute_node_voltages_vavg_vmin_vmax( c );
 
     lcd.clear();
-    lcd.print( "vA: " );
-    lcd.print( a.vavg ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
+    lcd.print( "vAavg: " );
+    lcd.print( a.vavg ); lcd.setCursor(12,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t: " );
     lcd.print( t_diffs[ t_diffs_index - 3 ] );
@@ -86,10 +85,14 @@ void loop() {
     lcd.print( t_diffs[ t_diffs_index - 3 ]/NODE_VOLTAGES_ARRAY_SIZE );
     lcd.print("per)");
     delay(1000);
+    lcd.setCursor( 0,0 ); lcd.print( "vAmax: " ); lcd.print( a.vmax );
+    delay(1000);
+    lcd.setCursor( 0,0 ); lcd.print( "vAmin: " ); lcd.print( a.vmin );
+    delay(1000);
 
     lcd.clear();
-    lcd.print( "vB: " );
-    lcd.print( b.vavg ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
+    lcd.print( "vBavg: " );
+    lcd.print( b.vavg ); lcd.setCursor(12,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t: " );
     lcd.print( t_diffs[ t_diffs_index - 2 ] );
@@ -97,16 +100,24 @@ void loop() {
     lcd.print( t_diffs[ t_diffs_index - 2 ]/NODE_VOLTAGES_ARRAY_SIZE );
     lcd.print("per)");
     delay(1000);
+    lcd.setCursor( 0,0 ); lcd.print( "vBmax: " ); lcd.print( b.vmax );
+    delay(1000);
+    lcd.setCursor( 0,0 ); lcd.print( "vBmin: " ); lcd.print( b.vmin );
+    delay(1000);
 
     lcd.clear();
-    lcd.print( "vC: " );
-    lcd.print( c.vavg ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
+    lcd.print( "vCavg: " );
+    lcd.print( c.vavg ); lcd.setCursor(12,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t: " );
     lcd.print( t_diffs[ t_diffs_index - 1 ] );
     lcd.print(" (");
     lcd.print( t_diffs[ t_diffs_index - 1 ]/NODE_VOLTAGES_ARRAY_SIZE );
     lcd.print("per)");
+    delay(1000);
+    lcd.setCursor( 0,0 ); lcd.print( "vCmax: " ); lcd.print( c.vmax );
+    delay(1000);
+    lcd.setCursor( 0,0 ); lcd.print( "vCmin: " ); lcd.print( c.vmin );
     delay(1000);
 
     if ( t_index > (100-1-5) ) { t_index = 0; t_diffs_index = 0; }
