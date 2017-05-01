@@ -15,88 +15,151 @@ const unsigned char prescale_032 = (1 << ADPS2) | (1 << ADPS0);
 const unsigned char prescale_064 = (1 << ADPS2) | (1 << ADPS1);
 const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 
+#define NODE_VOLTAGES_ARRAY_SIZE 100
+
+struct node_voltages {
+  unsigned int vdata[NODE_VOLTAGES_ARRAY_SIZE];
+  unsigned int vmin = 1023;   // default initial value
+  unsigned int vmax = 0;      // default initial value
+  unsigned int vavg;
+};
+
 void setup() {
   pinMode( motor_pin, OUTPUT );
   
   ADCSRA &= ~prescale_128;    // remove bits set by Arduino library
-  ADCSRA |= prescale_004;     // set our own prescaler
+  ADCSRA |= prescale_016;     // set our own prescaler
 
   lcd.begin(16, 2); //Initialize the 16x2 LCD
   lcd.clear();
-  lcd.print("Testing 16MHz/4");
+  lcd.print("Testing 16MHz/16");
   lcd.setCursor(0,1);
-  lcd.print("v1.01-20170430");
+  lcd.print("v1.04-20170430");
   delay(1500);
   lcd.clear();
 }
 
 void loop() {
 
-  unsigned long t0 = 0;
+  node_voltages a, b, c;
+  int n;
+  
   unsigned long t[100] = {0};
   unsigned int t_index = 0;
-  t[t_index++] = micros(); t[t_index++] = micros();
-  unsigned int t_offset = t[1]-t[0];
+  unsigned long t_offset = get_timestamp_offset();
+  unsigned long t_diffs[100] = {0};
+  unsigned int t_diffs_index = 0;
 
   unsigned int while_loop_counter = 0;
 
-  int node_a, node_b, node_c;
-  int node_a_temp, node_b_temp, node_c_temp;
 
   analogWrite( motor_pin, 153 );
 
   while ( true ) {
 
     t[t_index++] = micros();
-
-    node_a = analogRead( vA_pin );
+    for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++) { a.vdata[n] = analogRead( vA_pin ); }
     t[t_index++] = micros();
-    node_a = analogRead( vA_pin );
-    t[t_index++] = micros();
-
-    node_b = analogRead( vB_pin );
-    t[t_index++] = micros();
-    node_b = analogRead( vB_pin );
-    t[t_index++] = micros();
+    t_diffs[t_diffs_index++] = t[t_index-1] - t[t_index-2] - t_offset;
     
-    node_c = analogRead( vC_pin );
     t[t_index++] = micros();
-    node_c = analogRead( vC_pin );
+    for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++) { b.vdata[n] = analogRead( vB_pin ); }
     t[t_index++] = micros();
+    t_diffs[t_diffs_index++] = t[t_index-1] - t[t_index-2] - t_offset;
+    
+    t[t_index++] = micros();
+    for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++) { c.vdata[n] = analogRead( vC_pin ); }
+    t[t_index++] = micros();
+    t_diffs[t_diffs_index++] = t[t_index-1] - t[t_index-2] - t_offset;
+
+    compute_node_voltages_vavg_vmin_vmax( a );
+    compute_node_voltages_vavg_vmin_vmax( b );
+    compute_node_voltages_vavg_vmin_vmax( c );
 
     lcd.clear();
     lcd.print( "vA: " );
-    lcd.print( vA_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
+    lcd.print( a.vavg ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
-    lcd.print( " t1: " );
-    lcd.print( t[t_index-6] - t[t_index-7] - t_offset );
-    lcd.print( " t2: " );
-    lcd.print( t[t_index-5] - t[t_index-6] - t_offset );
+    lcd.print( " t: " );
+    lcd.print( t_diffs[ t_diffs_index - 3 ] );
+    lcd.print(" (");
+    lcd.print( t_diffs[ t_diffs_index - 3 ]/NODE_VOLTAGES_ARRAY_SIZE );
+    lcd.print("per)");
     delay(1000);
 
     lcd.clear();
     lcd.print( "vB: " );
-    lcd.print( vB_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
+    lcd.print( b.vavg ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
-    lcd.print( " t1: " );
-    lcd.print( t[t_index-4] - t[t_index-5] - t_offset );
-    lcd.print( " t2: " );
-    lcd.print( t[t_index-3] - t[t_index-4] - t_offset );
+    lcd.print( " t: " );
+    lcd.print( t_diffs[ t_diffs_index - 2 ] );
+    lcd.print(" (");
+    lcd.print( t_diffs[ t_diffs_index - 2 ]/NODE_VOLTAGES_ARRAY_SIZE );
+    lcd.print("per)");
     delay(1000);
 
     lcd.clear();
     lcd.print( "vC: " );
-    lcd.print( vC_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
+    lcd.print( c.vavg ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
-    lcd.print( " t1: " );
-    lcd.print( t[t_index-2] - t[t_index-3] - t_offset );
-    lcd.print( " t2: " );
-    lcd.print( t[t_index-1] - t[t_index-2] - t_offset );
+    lcd.print( " t: " );
+    lcd.print( t_diffs[ t_diffs_index - 1 ] );
+    lcd.print(" (");
+    lcd.print( t_diffs[ t_diffs_index - 1 ]/NODE_VOLTAGES_ARRAY_SIZE );
+    lcd.print("per)");
     delay(1000);
 
-    if ( t_index > (100-1-6) ) { t_index = 0; }
-    if ( ++while_loop_counter > 999 ) { while_loop_counter = 0; }
+    if ( t_index > (100-1-5) ) { t_index = 0; t_diffs_index = 0; }
+    if ( ++while_loop_counter > 999 ) { while_loop_counter = 0; lcd.clear(); lcd.print("wtf is going on?"); }
     
   }
 
 }
+
+
+// attempt to figure out the overhead time for the adc reading loops, etc.
+unsigned long get_timestamp_offset() {
+  unsigned long timestamp[2] = {0};
+  unsigned int t_index = 0;
+  int n;
+
+  timestamp[t_index++] = micros();
+
+  for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++ ) { }
+
+  timestamp[t_index++] = micros();
+
+  return( timestamp[1] - timestamp[0] );
+}
+
+// update avg, max, and min values
+void compute_node_voltages_vavg_vmin_vmax( node_voltages& node_voltages_struct ) {
+  
+  unsigned long node_sum = 0;
+  
+  int n;
+  for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++ ){
+    node_sum += node_voltages_struct.vdata[n];
+
+    if ( node_voltages_struct.vmax < node_voltages_struct.vdata[n] ) {
+      node_voltages_struct.vmax = node_voltages_struct.vdata[n];
+    }
+
+    if ( node_voltages_struct.vmin > node_voltages_struct.vdata[n] ) {
+      node_voltages_struct.vmin = node_voltages_struct.vdata[n];
+    }
+  }
+  node_voltages_struct.vavg = node_sum / NODE_VOLTAGES_ARRAY_SIZE;
+}
+
+
+
+
+
+
+
+
+
+
+
+
