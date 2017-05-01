@@ -34,7 +34,7 @@ void setup() {
   lcd.clear();
   lcd.print("Testing 16MHz/16");
   lcd.setCursor(0,1);
-  lcd.print("v1.05-20170501");
+  lcd.print("v1.06-20170501");
   delay(1500);
   lcd.clear();
 }
@@ -53,6 +53,7 @@ void loop() {
   unsigned int while_loop_counter = 0;
 
   analogWrite( motor_pin, 153 );
+  delay(1000);                    // allow electronics to stabilize
 
   while ( true ) {
 
