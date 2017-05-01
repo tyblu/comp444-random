@@ -24,6 +24,8 @@ struct node_voltages {
   unsigned int vavg;
 };
 
+const unsigned int lcd_delay = 3000;
+
 void setup() {
   pinMode( motor_pin, OUTPUT );
   
@@ -85,11 +87,11 @@ void loop() {
     lcd.print(" (");
     lcd.print( t_diffs[ t_diffs_index - 3 ]/NODE_VOLTAGES_ARRAY_SIZE );
     lcd.print("per)");
-    delay(1000);
+    delay(lcd_delay);
     lcd.setCursor( 0,0 ); lcd.print( "vAmax: " ); lcd.print( a.vmax );
-    delay(1000);
+    delay(lcd_delay);
     lcd.setCursor( 0,0 ); lcd.print( "vAmin: " ); lcd.print( a.vmin );
-    delay(1000);
+    delay(lcd_delay);
 
     lcd.clear();
     lcd.print( "vBavg: " );
@@ -100,11 +102,11 @@ void loop() {
     lcd.print(" (");
     lcd.print( t_diffs[ t_diffs_index - 2 ]/NODE_VOLTAGES_ARRAY_SIZE );
     lcd.print("per)");
-    delay(1000);
+    delay(lcd_delay);
     lcd.setCursor( 0,0 ); lcd.print( "vBmax: " ); lcd.print( b.vmax );
-    delay(1000);
+    delay(lcd_delay);
     lcd.setCursor( 0,0 ); lcd.print( "vBmin: " ); lcd.print( b.vmin );
-    delay(1000);
+    delay(lcd_delay);
 
     lcd.clear();
     lcd.print( "vCavg: " );
@@ -115,11 +117,11 @@ void loop() {
     lcd.print(" (");
     lcd.print( t_diffs[ t_diffs_index - 1 ]/NODE_VOLTAGES_ARRAY_SIZE );
     lcd.print("per)");
-    delay(1000);
+    delay(lcd_delay);
     lcd.setCursor( 0,0 ); lcd.print( "vCmax: " ); lcd.print( c.vmax );
-    delay(1000);
+    delay(lcd_delay);
     lcd.setCursor( 0,0 ); lcd.print( "vCmin: " ); lcd.print( c.vmin );
-    delay(1000);
+    delay(lcd_delay);
 
     if ( t_index > (100-1-5) ) { t_index = 0; t_diffs_index = 0; }
     if ( ++while_loop_counter > 999 ) { while_loop_counter = 0; lcd.clear(); lcd.print("wtf is going on?"); }
