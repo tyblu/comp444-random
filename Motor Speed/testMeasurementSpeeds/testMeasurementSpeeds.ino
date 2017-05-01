@@ -19,11 +19,11 @@ void setup() {
   pinMode( motor_pin, OUTPUT );
   
   ADCSRA &= ~prescale_128;  // remove bits set by Arduino library
-  ADCSRA |= prescale_016;    // set our own prescaler
+  ADCSRA |= prescale_004;    // set our own prescaler
 
   lcd.begin(16, 2); //Initialize the 16x2 LCD
   lcd.clear();
-  lcd.print("Testing 16MHz/16");
+  lcd.print("Testing 16MHz/4");
   lcd.setCursor(0,1);
   lcd.print("v1.01-20170430");
   delay(1500);
@@ -35,6 +35,8 @@ void loop() {
   unsigned long t0 = 0;
   unsigned long t[100] = {0};
   unsigned int t_index = 0;
+  t[t_index++] = micros(); t[t_index++] = micros();
+  unsigned int t_offset = t[1]-t[0];
 
   unsigned int while_loop_counter = 0;
 
@@ -67,9 +69,9 @@ void loop() {
     lcd.print( vA_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t1: " );
-    lcd.print( t[t_index-6] - t[t_index-7] );
+    lcd.print( t[t_index-6] - t[t_index-7] - t_offset );
     lcd.print( " t2: " );
-    lcd.print( t[t_index-5] - t[t_index-6] );
+    lcd.print( t[t_index-5] - t[t_index-6] - t_offset );
     delay(1000);
 
     lcd.clear();
@@ -77,9 +79,9 @@ void loop() {
     lcd.print( vA_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t1: " );
-    lcd.print( t[t_index-4] - t[t_index-5] );
+    lcd.print( t[t_index-4] - t[t_index-5] - t_offset );
     lcd.print( " t2: " );
-    lcd.print( t[t_index-3] - t[t_index-4] );
+    lcd.print( t[t_index-3] - t[t_index-4] - t_offset );
     delay(1000);
 
     lcd.clear();
@@ -87,9 +89,9 @@ void loop() {
     lcd.print( vA_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t1: " );
-    lcd.print( t[t_index-2] - t[t_index-3] );
+    lcd.print( t[t_index-2] - t[t_index-3] - t_offset );
     lcd.print( " t2: " );
-    lcd.print( t[t_index-1] - t[t_index-2] );
+    lcd.print( t[t_index-1] - t[t_index-2] - t_offset );
     delay(1000);
 
     if ( t_index > (100-1-6) ) { t_index = 0; }
