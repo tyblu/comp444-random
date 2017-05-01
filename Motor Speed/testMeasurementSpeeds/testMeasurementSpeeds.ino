@@ -36,7 +36,7 @@ void setup() {
   lcd.clear();
   lcd.print("Testing 16MHz/16");
   lcd.setCursor(0,1);
-  lcd.print("v1.06-20170501");
+  lcd.print("v1.07-20170501");
   delay(1500);
   lcd.clear();
 }
@@ -55,7 +55,7 @@ void loop() {
   unsigned int while_loop_counter = 0;
 
   analogWrite( motor_pin, 153 );
-  delay(1000);                    // allow electronics to stabilize
+  lcd.print("Just a moment"); lcd_slow_dots(3000, 3);  // allow electronics to stabilize
 
   while ( true ) {
 
@@ -150,6 +150,8 @@ unsigned long get_timestamp_offset() {
 void compute_node_voltages_vavg_vmin_vmax( node_voltages& node_voltages_struct ) {
   
   unsigned long node_sum = 0;
+  node_voltages_struct.vmax = 0;    // start with default value
+  node_voltages_struct.vmin = 1023; // start with default value
   
   int n;
   for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++ ){
@@ -166,14 +168,14 @@ void compute_node_voltages_vavg_vmin_vmax( node_voltages& node_voltages_struct )
   node_voltages_struct.vavg = node_sum / NODE_VOLTAGES_ARRAY_SIZE;
 }
 
+void lcd_slow_dots( unsigned int tdelay, unsigned int dot_count) {
+  dot_count = max( dot_count, 1 );          // better not be zero
+  tdelay = max( min( tdelay/dot_count, 5000 ), 1 );   // max 5 seconds
 
-
-
-
-
-
-
-
-
-
+  int n;
+  for ( n=0; n<dot_count; n++ ) {
+    lcd.print(".");
+    delay( tdelay );
+  }
+}
 
