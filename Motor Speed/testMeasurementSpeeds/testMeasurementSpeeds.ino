@@ -18,8 +18,8 @@ const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 void setup() {
   pinMode( motor_pin, OUTPUT );
   
-  ADCSRA &= ~prescale_128;  // remove bits set by Arduino library
-  ADCSRA |= prescale_004;    // set our own prescaler
+  ADCSRA &= ~prescale_128;    // remove bits set by Arduino library
+  ADCSRA |= prescale_004;     // set our own prescaler
 
   lcd.begin(16, 2); //Initialize the 16x2 LCD
   lcd.clear();
@@ -54,14 +54,14 @@ void loop() {
     node_a = analogRead( vA_pin );
     t[t_index++] = micros();
 
-    node_b = analogRead( vA_pin );
+    node_b = analogRead( vB_pin );
     t[t_index++] = micros();
-    node_b = analogRead( vA_pin );
+    node_b = analogRead( vB_pin );
     t[t_index++] = micros();
     
-    node_c = analogRead( vA_pin );
+    node_c = analogRead( vC_pin );
     t[t_index++] = micros();
-    node_c = analogRead( vA_pin );
+    node_c = analogRead( vC_pin );
     t[t_index++] = micros();
 
     lcd.clear();
@@ -76,7 +76,7 @@ void loop() {
 
     lcd.clear();
     lcd.print( "vB: " );
-    lcd.print( vA_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
+    lcd.print( vB_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t1: " );
     lcd.print( t[t_index-4] - t[t_index-5] - t_offset );
@@ -86,7 +86,7 @@ void loop() {
 
     lcd.clear();
     lcd.print( "vC: " );
-    lcd.print( vA_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
+    lcd.print( vC_pin ); lcd.setCursor(11,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t1: " );
     lcd.print( t[t_index-2] - t[t_index-3] - t_offset );
