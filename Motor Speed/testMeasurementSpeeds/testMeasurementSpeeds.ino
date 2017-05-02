@@ -15,13 +15,13 @@ const unsigned char prescale_032 = (1 << ADPS2) | (1 << ADPS0);                 
 const unsigned char prescale_064 = (1 << ADPS2) | (1 << ADPS1);                 // 250 kHz ( 19.2 kHz) ~  52 us
 const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);  // 125 kHz ( 9.6 kHz) ~  104 us
 
-#define NODE_VOLTAGES_ARRAY_SIZE 100
+#define DATA_ARRAY_SIZE 1256
+#define NODE_VOLTAGES_ARRAY_SIZE 10
 
 struct node_voltages {
-  unsigned int vdata[NODE_VOLTAGES_ARRAY_SIZE];
-  unsigned int vmin = 1023;   // default initial value
-  unsigned int vmax = 0;      // default initial value
-  unsigned int vavg;
+  unsigned int vmin[NODE_VOLTAGES_ARRAY_SIZE] = {0};
+  unsigned int vmax[NODE_VOLTAGES_ARRAY_SIZE] = {0};
+  unsigned int vavg[NODE_VOLTAGES_ARRAY_SIZE] = {0};
 };
 
 const unsigned int lcd_delay = 3000;
@@ -36,98 +36,120 @@ void setup() {
   lcd.clear();
   lcd.print("Testing 16MHz/16");
   lcd.setCursor(0,1);
-  lcd.print("v1.07-20170501");
+  lcd.print("v1.10-20170501");
   delay(1500);
   lcd.clear();
 }
 
 void loop() {
 
+  int app = 1;
+  lcd.clear(); lcd.print("Memory A:"); lcd.setCursor( 1,1 ); lcd.print( freeRam() ); delay(1000);
+
   node_voltages a, b, c;
+  int m;
+  
+  lcd.clear(); lcd.print("Memory B:"); lcd.setCursor( 1,1 ); lcd.print( freeRam() ); delay(1000);
+  
+  unsigned int vdata[DATA_ARRAY_SIZE] = {0};
   int n;
   
-  unsigned long t[100] = {0};
-  unsigned int t_index = 0;
+  lcd.clear(); lcd.print("Memory C:"); lcd.setCursor( 1,1 ); lcd.print( freeRam() ); delay(1000);
+  
+  unsigned long t[6] = {0};
   unsigned long t_offset = get_timestamp_offset();
-  unsigned long t_diffs[100] = {0};
-  unsigned int t_diffs_index = 0;
+  unsigned long t_diffs[3] = {0};
 
   unsigned int while_loop_counter = 0;
 
   analogWrite( motor_pin, 153 );
-  lcd.print("Just a moment"); lcd_slow_dots(3000, 3);  // allow electronics to stabilize
+  lcd.clear(); lcd.print("Just a moment"); lcd_slow_dots(3000, 3);  // allow electronics to stabilize
+
+  lcd.clear(); lcd.print("Memory D:"); lcd.setCursor( 1,1 ); lcd.print( freeRam() ); delay(1000);
 
   while ( true ) {
 
-    t[t_index++] = micros();
-    for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++) { a.vdata[n] = analogRead( vA_pin ); }
-    t[t_index++] = micros();
-    t_diffs[t_diffs_index++] = t[t_index-1] - t[t_index-2] - t_offset;
-    
-    t[t_index++] = micros();
-    for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++) { b.vdata[n] = analogRead( vB_pin ); }
-    t[t_index++] = micros();
-    t_diffs[t_diffs_index++] = t[t_index-1] - t[t_index-2] - t_offset;
-    
-    t[t_index++] = micros();
-    for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++) { c.vdata[n] = analogRead( vC_pin ); }
-    t[t_index++] = micros();
-    t_diffs[t_diffs_index++] = t[t_index-1] - t[t_index-2] - t_offset;
+    if ( n % 10 == 0 ) { lcd.clear(); lcd.print("Memory E"); lcd.print(n); lcd.print(":"); lcd.setCursor( 1,1 ); lcd.print( freeRam() ); delay(1000); }
 
-    compute_node_voltages_vavg_vmin_vmax( a );
-    compute_node_voltages_vavg_vmin_vmax( b );
-    compute_node_voltages_vavg_vmin_vmax( c );
+    t[0] = micros();
+    for ( m=0; m<NODE_VOLTAGES_ARRAY_SIZE; m++) {
+      for ( n=0; n<DATA_ARRAY_SIZE; n++) { if ( n % 10 == 0 ) { lcd.clear(); lcd.print("m="); lcd.print(m); lcd.setCursor(1,7); lcd.print("n="); lcd.print(n); delay(250); }
+        vdata[n] = analogRead( vA_pin );
+      }
+      compute_node_voltages_vavg_vmin_vmax( a, vdata, m);
+    }
+    t[1] = micros();
+    t_diffs[0] = t[1] - t[0] - t_offset;
+
+    t[2] = micros();
+    for ( m=0; m<NODE_VOLTAGES_ARRAY_SIZE; m++) {
+      for ( n=0; n<DATA_ARRAY_SIZE; n++) { if ( n % 10 == 0 ) { lcd.clear(); lcd.print("m="); lcd.print(m); lcd.setCursor(1,7); lcd.print("n="); lcd.print(n); delay(250); }
+        vdata[n] = analogRead( vB_pin );
+      }
+      compute_node_voltages_vavg_vmin_vmax( b, vdata, m);
+    }
+    t[3] = micros();
+    t_diffs[1] = t[3] - t[2] - t_offset;
+    
+    t[4] = micros();
+    for ( m=0; m<NODE_VOLTAGES_ARRAY_SIZE; m++) {
+      for ( n=0; n<DATA_ARRAY_SIZE; n++) { if ( n % 10 == 0 ) { lcd.clear(); lcd.print("m="); lcd.print(m); lcd.setCursor(1,7); lcd.print("n="); lcd.print(n); delay(250); }
+        vdata[n] = analogRead( vC_pin );
+      }
+      compute_node_voltages_vavg_vmin_vmax( c, vdata, m);
+    }
+    t[5] = micros();
+    t_diffs[2] = t[5] - t[4] - t_offset;
+    
+lcd.clear(); lcd.print("made it!"); delay(2000); // debugging
 
     lcd.clear();
     lcd.print( "vAavg: " );
-    lcd.print( a.vavg ); lcd.setCursor(12,0); lcd.print(while_loop_counter);
+    lcd.print( a.vavg[1] ); lcd.setCursor(12,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t: " );
-    lcd.print( t_diffs[ t_diffs_index - 3 ] );
+    lcd.print( t_diffs[0] );
     lcd.print(" (");
-    lcd.print( t_diffs[ t_diffs_index - 3 ]/NODE_VOLTAGES_ARRAY_SIZE );
+    lcd.print( t_diffs[0] /NODE_VOLTAGES_ARRAY_SIZE );
     lcd.print("per)");
     delay(lcd_delay);
-    lcd.setCursor( 0,0 ); lcd.print( "vAmax: " ); lcd.print( a.vmax );
+    lcd.setCursor( 0,0 ); lcd.print( "vAmax: " ); lcd.print( a.vmax[1] );
     delay(lcd_delay);
-    lcd.setCursor( 0,0 ); lcd.print( "vAmin: " ); lcd.print( a.vmin );
+    lcd.setCursor( 0,0 ); lcd.print( "vAmin: " ); lcd.print( a.vmin[1] );
     delay(lcd_delay);
 
     lcd.clear();
     lcd.print( "vBavg: " );
-    lcd.print( b.vavg ); lcd.setCursor(12,0); lcd.print(while_loop_counter);
+    lcd.print( b.vavg[1] ); lcd.setCursor(12,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t: " );
-    lcd.print( t_diffs[ t_diffs_index - 2 ] );
+    lcd.print( t_diffs[1] );
     lcd.print(" (");
-    lcd.print( t_diffs[ t_diffs_index - 2 ]/NODE_VOLTAGES_ARRAY_SIZE );
+    lcd.print( t_diffs[1] /NODE_VOLTAGES_ARRAY_SIZE );
     lcd.print("per)");
     delay(lcd_delay);
-    lcd.setCursor( 0,0 ); lcd.print( "vBmax: " ); lcd.print( b.vmax );
+    lcd.setCursor( 0,0 ); lcd.print( "vBmax: " ); lcd.print( b.vmax[1] );
     delay(lcd_delay);
-    lcd.setCursor( 0,0 ); lcd.print( "vBmin: " ); lcd.print( b.vmin );
+    lcd.setCursor( 0,0 ); lcd.print( "vBmin: " ); lcd.print( b.vmin[1] );
     delay(lcd_delay);
 
     lcd.clear();
     lcd.print( "vCavg: " );
-    lcd.print( c.vavg ); lcd.setCursor(12,0); lcd.print(while_loop_counter);
+    lcd.print( c.vavg[1] ); lcd.setCursor(12,0); lcd.print(while_loop_counter);
     lcd.setCursor( 0,1 );
     lcd.print( " t: " );
-    lcd.print( t_diffs[ t_diffs_index - 1 ] );
+    lcd.print( t_diffs[2] );
     lcd.print(" (");
-    lcd.print( t_diffs[ t_diffs_index - 1 ]/NODE_VOLTAGES_ARRAY_SIZE );
+    lcd.print( t_diffs[2] /NODE_VOLTAGES_ARRAY_SIZE );
     lcd.print("per)");
     delay(lcd_delay);
-    lcd.setCursor( 0,0 ); lcd.print( "vCmax: " ); lcd.print( c.vmax );
+    lcd.setCursor( 0,0 ); lcd.print( "vCmax: " ); lcd.print( c.vmax[1] );
     delay(lcd_delay);
-    lcd.setCursor( 0,0 ); lcd.print( "vCmin: " ); lcd.print( c.vmin );
+    lcd.setCursor( 0,0 ); lcd.print( "vCmin: " ); lcd.print( c.vmin[1] );
     delay(lcd_delay);
 
-    if ( t_index > (100-1-5) ) { t_index = 0; t_diffs_index = 0; }
-    if ( ++while_loop_counter > 999 ) { while_loop_counter = 0; lcd.clear(); lcd.print("wtf is going on?"); }
-    
+    if ( ++while_loop_counter > 999 ) { while_loop_counter = 0; lcd.clear(); lcd.print("wtf is going on?"); delay(4000); }
   }
-
 }
 
 
@@ -146,27 +168,29 @@ unsigned long get_timestamp_offset() {
   return( timestamp[1] - timestamp[0] );
 }
 
+
 // update avg, max, and min values
-void compute_node_voltages_vavg_vmin_vmax( node_voltages& node_voltages_struct ) {
+void compute_node_voltages_vavg_vmin_vmax( node_voltages& node_voltages_struct, unsigned int data[], int struct_index ) {
   
   unsigned long node_sum = 0;
-  node_voltages_struct.vmax = 0;    // start with default value
-  node_voltages_struct.vmin = 1023; // start with default value
+  node_voltages_struct.vmax[struct_index] = 0;    // start with default value
+  node_voltages_struct.vmin[struct_index] = 1023; // start with default value
   
   int n;
-  for ( n=0; n<NODE_VOLTAGES_ARRAY_SIZE; n++ ){
-    node_sum += node_voltages_struct.vdata[n];
+  for ( n=0; n<DATA_ARRAY_SIZE; n++ ){
+    node_sum += data[n];
 
-    if ( node_voltages_struct.vmax < node_voltages_struct.vdata[n] ) {
-      node_voltages_struct.vmax = node_voltages_struct.vdata[n];
+    if ( node_voltages_struct.vmax[struct_index] < data[n] ) {
+      node_voltages_struct.vmax[struct_index] = data[n];
     }
 
-    if ( node_voltages_struct.vmin > node_voltages_struct.vdata[n] ) {
-      node_voltages_struct.vmin = node_voltages_struct.vdata[n];
+    if ( node_voltages_struct.vmin[struct_index] > data[n] ) {
+      node_voltages_struct.vmin[struct_index] = data[n];
     }
   }
-  node_voltages_struct.vavg = node_sum / NODE_VOLTAGES_ARRAY_SIZE;
+  node_voltages_struct.vavg[struct_index] = node_sum / DATA_ARRAY_SIZE;
 }
+
 
 void lcd_slow_dots( unsigned int tdelay, unsigned int dot_count) {
   dot_count = max( dot_count, 1 );          // better not be zero
@@ -179,3 +203,11 @@ void lcd_slow_dots( unsigned int tdelay, unsigned int dot_count) {
   }
 }
 
+
+// reports space between the heap and the stack
+int freeRam () // https://learn.adafruit.com/memories-of-an-arduino/measuring-free-memory
+{
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
