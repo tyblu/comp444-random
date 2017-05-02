@@ -60,7 +60,7 @@ volatile int next_analog_pin;                   // Which node to measure?
 volatile bool need_waveform_update;             // Do we need to measure the next waveform?
 volatile byte waveform_counter = 0;             // Keep track of how many waveforms we've measured in a row.
 volatile const byte waveform_counter_max = 10;  // Analyze data from how many waveforms at a time?
-unsigned int waveform_period_between_updates = 10000;  // For how long to NOT do any measurements? [ms] (~100ms?)
+unsigned int waveform_period_between_updates = 100;  // For how long to NOT do any measurements? [ms] (~100ms?)
 
 //struct value {
 //  int stddev;
@@ -88,13 +88,16 @@ void setup() {
   lcd.clear();
   lcd.print("Testing 16MHz/PRESCALE_ADC"); Serial.println("Testing 16MHz/PRESCALE_ADC");
   lcd.setCursor(0,1);
-  lcd.print("v1.00-20170502"); Serial.println("v1.00-20170502\n");
+  lcd.print("v1.01-20170502"); Serial.println("v1.01-20170502\n");
   delay(1500);
   lcd.clear();
 }
 
 void loop() {
 
+  Serial.println( freeRam() + " bytes free in stack." );
+  lcd.print( freeRam() + " bytes free in stack." ); delay(lcd_delay);
+  
   unsigned int motor_duty_byte = 153;      // 153/255 = 60% duty
   analogWrite( motor_pin, motor_duty_byte );
   lcd.clear(); lcd.print("Just a moment"); lcd_slow_dots(lcd_delay, 3); lcd.clear(); lcd.print("Runneratering."); // allow electronics to stabilize
@@ -105,16 +108,19 @@ void loop() {
   attachInterrupt( digitalPinToInterrupt( ISR_pin ), measure_waveform, ISR_MODE ); // enable ISR after stabilization
 
   while ( true ) {  // this main loop shouldn't have anything to do with ISRs
-    if ( waveform_counter >= 10 ) {
+    if ( waveform_counter == 1 ) {
+      Serial.println("waveform_counter == 1");
 //      need_waveform_update = false;   // disabled while testing
       waveform_counter = 0;
       detachInterrupt( digitalPinToInterrupt( ISR_pin ) );      // disable ISR when we have enough data
 //      t_next_waveform = millis() + waveform_period_between_updates;
+      analyze_waveform( vdata );
+      attachInterrupt( digitalPinToInterrupt( ISR_pin ), measure_waveform, ISR_MODE ); // debugging
     }
 
     if ( waveform_counter != waveform_counter_last ) {
       waveform_counter_last = waveform_counter;
-      Serial.println("Yet another waveform measured! (#" + waveform_counter);
+      Serial.print("Yet another waveform measured! (#"); Serial.print(waveform_counter); Serial.println(")");
       delay(250); // don't want to spam monitor
     }
   }
@@ -185,5 +191,14 @@ void measure_waveform() {
     vdata[n] = analogRead( motor_neg_pin );
   }
   waveform_counter++;
+  Serial.println("I\'m out!");                     // debugging
 }
 
+
+// reports space between the heap and the stack
+int freeRam () // https://learn.adafruit.com/memories-of-an-arduino/measuring-free-memory
+{
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
