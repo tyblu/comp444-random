@@ -37,9 +37,9 @@
  * that this uses too much SRAM if the prescale is set to 2. In fact,
  * it's completely untested, but 2*16e6/(2*13*490) ints is 2.5kB on
  * its own, pushing this program way over the Duo's 2k SRAM. */
-#define DATA_ARRAY_SIZE 313
+#define DATA_ARRAY_SIZE 16
 #define DATA_ARRAY_WINDOW_SIZE 3
-#define DATA_ARRAY_SUBWINDOW_SIZE 307
+#define DATA_ARRAY_SUBWINDOW_SIZE 10
 volatile unsigned int vdata[DATA_ARRAY_SIZE] = {0};  // for use in ISR
 volatile unsigned int waveform_counter = 0;
 
@@ -49,11 +49,10 @@ void setup() {
   
   ADCSRA &= ~prescale_128;    // remove bits set by Arduino library
   ADCSRA |= prescale_016;     // set our own prescaler
-  // Don't forget to set #define PRESCALE_ADC (line 44'ish).
 
   Serial.begin(9600);
   Serial.println("ISR Testing, 1MHz ADC");
-  Serial.println("v1.10-20170502\n");
+  Serial.println("v1.12-20170502\n");
   delay(1500);
 
   attachInterrupt( digitalPinToInterrupt( ISR_pin ), measure_waveform, RISING ); // enable ISR after stabilization
@@ -61,25 +60,51 @@ void setup() {
 
 void loop() {
 
-  unsigned long timestamp_write_now = millis() + 1000;
-  if ( millis() > timestamp_write_now ) {
-    Serial.print( "Bytes free in stack: " );
-    Serial.println( freeRam() );
-  }
+//  Serial.println("Program started");
 
   analogWrite( motor_pin, 153 );
+
+//  Serial.println("Motor spun up");
+
+//  unsigned long timestamp_write_now = millis() + 1000;
+//  if ( millis() > timestamp_write_now ) {
+//    Serial.print( "Bytes free in stack: " );
+//    Serial.println( freeRam() );
+//    timestamp_write_now = millis() + 5000;
+//    delay(500);
+//  }
+
+  if ( ( waveform_counter+1 ) % 10 == 0 || waveform_counter == 1) {
+    detachInterrupt( digitalPinToInterrupt( ISR_pin ) );
+    Serial.print("Let's take a breather! Whew, already ");
+    Serial.print( waveform_counter );
+    Serial.println(" waveforms into it!");
+    Serial.println("Let's take a closer look at the last waveform...");
+
+    int n;
+    for ( n=0; n<DATA_ARRAY_SIZE; n++ ) {
+      Serial.println(vdata[n]);
+    }
+    
+    Serial.print("\nSend any character to continue...");
+    while( !Serial.findUntil( "Go", '!' ) ) { delay(100); }
+    Serial.println("... Well, back at it!");
+    delay(1000);
+    
+    attachInterrupt( digitalPinToInterrupt( ISR_pin ), measure_waveform, RISING );
+  }
 }
 
 
 // ISR for PWM 
 void measure_waveform() {
-  Serial.println("I\'m in!" + waveform_counter);                     // debugging
+//  Serial.print("I\'m in! Waveform #"); Serial.println(waveform_counter);                     // debugging
   int n;
   for ( n=0; n<DATA_ARRAY_SIZE; n++ ) {
     vdata[n] = analogRead( motor_neg_pin );
   }
   waveform_counter++;
-  Serial.println("I\'m out!" + waveform_counter);                     // debugging
+//  Serial.print("I\'m out! Next waveform is #"); Serial.println(waveform_counter);                     // debugging
 }
 
 
