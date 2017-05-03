@@ -12,48 +12,126 @@
  *             http://www.uchobby.com/index.php/2007/11/24/arduino-interrupts/
  */
 
+#define F_CPU 16000000
+#define RESOLUTION 256
+
+// TimerTwo stuff it needs
+char oldSREG;
+
 // TimerTwo prescaler
-const unsigned char prescale_TimerTwo_mask = (1 << CS22) | (1 << CS21) | (1 << CS20);
 const unsigned char prescale_TimerTwo_0001 = (1 << CS20);
 const unsigned char prescale_TimerTwo_0008 = (1 << CS21);
 
 // TimerTwo overflow counter variables
 volatile unsigned long counter = 0;
-volatile unsigned long counter_limit;
+volatile unsigned long counter_limit = (1 << 31); // 2^31
 
 void setup()
 {
+  Serial.begin(9600);
+  
   pinMode( 13, OUTPUT );  // LED pin
-  timer2_init();
 }
 
 
 void loop()
 {
-//  unsigned int ISR_delay_us = 220;   // 220us
-  unsigned long ISR_delay_us = 0.5*1e6; // in [us]
-  counter_limit = ISR_delay_us / 16;
+  long timer2_period_requested = 10;
+  long timer2_period_returned = timer2_init( timer2_period_requested );
+  long timer_delay = 500000;  // [us]
+  counter_limit = timer_delay / timer2_period_returned;
 
-  unsigned long tstop = millis() + 5000;
+  Serial.println();
+  Serial.print("timer2_period_requested: "); Serial.println(timer2_period_requested);
+  Serial.print(" timer2_period_returned: "); Serial.println(timer2_period_returned);
+  Serial.print("            timer_delay: "); Serial.println(timer_delay);
+  Serial.print("          counter_limit: "); Serial.println(counter_limit);
 
   while ( true ) {
-    if ( millis() > tstop ) {
-      TIMSK2 = 0;
-      while ( true ) { }
-    }
+    timer2_enable();
+
+    Serial.println("\nTimer2 enabled!");
+
+    delay( 5000 );
+
+    timer2_disable();
+
+    Serial.println("Timer2 disabled!");
+
+    delay( 5000 );
   }
 }
 
 
-void timer2_init()
+// returns actual period
+long timer2_init( long microseconds )
 { 
   // prescale by /1 (16MHz, 16us OVF)
-  TCCR2A = 0;
-  TCCR2B = prescale_TimerTwo_0001;
+  TCCR2A = 0;   // Normal port operation, OC2A disconnected
+  return timer2_set_period( microseconds );
+}
 
-  TIMSK2 = 1 << TOIE2;  // Timer2 overflow interrupt enable
+// returns actual period
+long timer2_set_period( long microseconds )
+{
+  unsigned char prescale_bits;
+  unsigned int prescale_factor;
+  long cycles = ( F_CPU / 1000000 ) * microseconds;
+  if ( cycles < RESOLUTION )            
+  {
+    prescale_bits = (1 << CS20);                 // no prescale, /1
+    prescale_factor = 1;
+  }
+  else if ( (cycles>>=3) < RESOLUTION )
+  {
+    prescale_bits = (1 << CS21);                              // /8
+    prescale_factor = 8;
+  }
+  else if ( (cycles>>=2) < RESOLUTION ) 
+  {
+    prescale_bits = (1 << CS21) | (1 << CS20);                // /32
+    prescale_factor = 32;
+  }
+  else if ( (cycles>>=1) < RESOLUTION ) 
+  {
+    prescale_bits = (1 << CS22);                              // /64
+    prescale_factor = 64;
+  }
+  else if ( (cycles>>=1) < RESOLUTION ) 
+  {
+    prescale_bits = (1 << CS22) | (1 << CS20);                // /128
+    prescale_factor = 128;
+  }
+  else if ( (cycles>>=3) < RESOLUTION ) 
+  { 
+    prescale_bits = (1 << CS22) | (1 << CS21) | (1 << CS20);  // /1024
+    prescale_factor = 1024;
+  }
+  else  cycles = RESOLUTION-1, prescale_bits = (1 << CS22) | (1 << CS21) | (1 << CS20);  // not enuf bits sir, max set
 
-  TCNT2 = 0; // load timer for 1st cycle
+  TCCR2B &= ~( (1 << CS22) | (1 << CS21) | (1 << CS20) );
+  TCCR2B |= prescale_bits;
+
+  return ( 256 * prescale_factor * 1000000 ) / F_CPU;
+}
+
+void timer2_enable()
+{
+  TIMSK2 = (1 << TOIE2);  // Timer2 OVF ISR enable
+  oldSREG = SREG;
+  cli();
+  TCNT2 = 0;    // restart counter
+  SREG = oldSREG;
+}
+
+void timer2_disable()
+{
+  TIMSK2 = 0;
+}
+
+void timer2_set_delay( unsigned long delay_us )
+{
+  counter_limit = delay_us / 16;
 }
 
 ISR(TIMER2_OVF_vect) {
