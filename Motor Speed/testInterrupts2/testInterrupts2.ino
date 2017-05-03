@@ -37,15 +37,16 @@
  * that this uses too much SRAM if the prescale is set to 2. In fact,
  * it's completely untested, but 2*16e6/(2*13*490) ints is 2.5kB on
  * its own, pushing this program way over the Duo's 2k SRAM. */
-#define DATA_ARRAY_SIZE 16
+#define DATA_ARRAY_SIZE 25
 #define DATA_ARRAY_WINDOW_SIZE 3
-#define DATA_ARRAY_SUBWINDOW_SIZE 10
+#define DATA_ARRAY_SUBWINDOW_SIZE 25-6
 volatile unsigned int vdata[DATA_ARRAY_SIZE] = {0};  // for use in ISR
 volatile unsigned int waveform_counter = 0;
 
 
 void setup() {
   pinMode( motor_pin, OUTPUT );
+  pinMode( 12, OUTPUT );          // debugging, scoping to see ISR vs loop time
   
   ADCSRA &= ~prescale_128;    // remove bits set by Arduino library
   ADCSRA |= prescale_016;     // set our own prescaler
@@ -60,11 +61,7 @@ void setup() {
 
 void loop() {
 
-//  Serial.println("Program started");
-
   analogWrite( motor_pin, 153 );
-
-//  Serial.println("Motor spun up");
 
 //  unsigned long timestamp_write_now = millis() + 1000;
 //  if ( millis() > timestamp_write_now ) {
@@ -74,7 +71,7 @@ void loop() {
 //    delay(500);
 //  }
 
-  if ( ( waveform_counter+1 ) % 10 == 0 || waveform_counter == 1) {
+  if ( ( waveform_counter+1 ) % 10 == -1 || waveform_counter == 1) {
     detachInterrupt( digitalPinToInterrupt( ISR_pin ) );
     Serial.print("Let's take a breather! Whew, already ");
     Serial.print( waveform_counter );
@@ -99,12 +96,14 @@ void loop() {
 // ISR for PWM 
 void measure_waveform() {
 //  Serial.print("I\'m in! Waveform #"); Serial.println(waveform_counter);                     // debugging
+  digitalWrite( 12, HIGH );
   int n;
   for ( n=0; n<DATA_ARRAY_SIZE; n++ ) {
     vdata[n] = analogRead( motor_neg_pin );
   }
   waveform_counter++;
 //  Serial.print("I\'m out! Next waveform is #"); Serial.println(waveform_counter);                     // debugging
+  digitalWrite( 12, LOW );
 }
 
 
