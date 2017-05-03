@@ -18,10 +18,6 @@
 // TimerTwo stuff it needs
 char oldSREG;
 
-// TimerTwo prescaler
-const unsigned char prescale_TimerTwo_0001 = (1 << CS20);
-const unsigned char prescale_TimerTwo_0008 = (1 << CS21);
-
 // TimerTwo overflow counter variables
 volatile unsigned long counter = 0;
 volatile unsigned long counter_limit = (1 << 31); // 2^31
@@ -36,9 +32,9 @@ void setup()
 
 void loop()
 {
-  long timer2_period_requested = 10;
+  long timer2_period_requested = 8000;  // in [us]
   long timer2_period_returned = timer2_init( timer2_period_requested );
-  long timer_delay = 500000;  // [us]
+  long timer_delay = 500000;  // in [us]
   counter_limit = timer_delay / timer2_period_returned;
 
   Serial.println();
@@ -75,7 +71,7 @@ long timer2_init( long microseconds )
 long timer2_set_period( long microseconds )
 {
   unsigned char prescale_bits;
-  unsigned int prescale_factor;
+  long prescale_factor;
   long cycles = ( F_CPU / 1000000 ) * microseconds;
   if ( cycles < RESOLUTION )            
   {
@@ -107,12 +103,16 @@ long timer2_set_period( long microseconds )
     prescale_bits = (1 << CS22) | (1 << CS21) | (1 << CS20);  // /1024
     prescale_factor = 1024;
   }
-  else  cycles = RESOLUTION-1, prescale_bits = (1 << CS22) | (1 << CS21) | (1 << CS20);  // not enuf bits sir, max set
+  else
+  {
+    prescale_bits = (1 << CS22) | (1 << CS21) | (1 << CS20);  // not enuf bits sir, max set
+    prescale_factor = 1024;
+  }
 
   TCCR2B &= ~( (1 << CS22) | (1 << CS21) | (1 << CS20) );
   TCCR2B |= prescale_bits;
 
-  return ( 256 * prescale_factor * 1000000 ) / F_CPU;
+  return ( RESOLUTION * prescale_factor ) / ( F_CPU / 1000000 );
 }
 
 void timer2_enable()
@@ -127,11 +127,6 @@ void timer2_enable()
 void timer2_disable()
 {
   TIMSK2 = 0;
-}
-
-void timer2_set_delay( unsigned long delay_us )
-{
-  counter_limit = delay_us / 16;
 }
 
 ISR(TIMER2_OVF_vect) {
