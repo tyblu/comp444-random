@@ -148,117 +148,169 @@ void loop()
 
   while ( true )
   {
-    while ( 
+    while ( waveform_counter < 5*490 ) { }  // 5 sec
 
-    
-    if ( waveform_counter > 5*490 )   // more than 5 seconds of 490Hz PWM
+    noInterrupts(); // not sure if this disables Timer2 ISR, but it will only fire once if not
+    timer2_stop();
+
+    Serial.print("\nLet's take a breather! Whew, already ");
+    Serial.print( waveform_counter );
+    Serial.println(" PWM waveforms passed since last zeroed!");
+    Serial.println("Let's take a closer look at the last measurements...");
+    delay(1000);
+
+    int n;
+    for ( n=0; n<DATA_ARRAY_SIZE; n++ )
     {
-      
-      detachInterrupt( digitalPinToInterrupt( ISR_pin ) );
-      Serial.print("\nLet's take a breather! Whew, already ");
-      Serial.print( waveform_counter );
-      Serial.println(" waveforms into it!");
-      Serial.println("Let's take a closer look at the last waveform...");
-  
-      int n;
-      for ( n=0; n<DATA_ARRAY_SIZE; n++ )
-      {
-        Serial.println(vdata[n]);
-      }
-      
-      Serial.print("\nSend any character to continue...");
-      while( !Serial.findUntil( "Go", '!' ) ) { delay(100); }
-      Serial.println("... Well, back at it!");
-      delay(1000);
-      
-      attachInterrupt( digitalPinToInterrupt( ISR_pin ), measure_waveform, RISING );
+      Serial.println(vdata[n]);
     }
+    
+    Serial.println("\nHow does it look? I hope it worked!");
+    Serial.print("Send any character to continue");
+    while( !Serial.findUntil( "Go", '!' ) ) { delay(100); }
+    Serial.println("... Got it! Well, back at it!");
+
+    waveform_counter = 0;
+
+    interrupts();   // not sure if this enables Timer2 ISR, hopefully not
+    timer2_start(); // does not enable ISR, external ISR controls that
   }
 }
 
 
-// reports space between the heap and the stack
-int freeRam () // https://learn.adafruit.com/memories-of-an-arduino/measuring-free-memory
-{
-  extern int __heap_start, *__brkval; 
-  int v; 
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
+//// reports space between the heap and the stack
+//int freeRam () // https://learn.adafruit.com/memories-of-an-arduino/measuring-free-memory
+//{
+//  extern int __heap_start, *__brkval; 
+//  int v; 
+//  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+//}
 
 
 
 // TimerTwo
-// returns actual period
-long timer2_init( long microseconds )
+void timer2_init( long microseconds )
 { 
   // prescale by /1 (16MHz, 16us OVF)
   TCCR2A = 0;   // Normal port operation, OC2A disconnected
-  return timer2_set_period( microseconds );
+  timer2_set_period( microseconds );
 }
 
-// returns actual period
-long timer2_set_period( long microseconds )
+
+void timer2_set_period( long microseconds )
 {
-  unsigned char prescale_bits;
-  long prescale_factor;
-  long cycles = ( F_CPU / 1000000 ) * microseconds;
-  if ( cycles < RESOLUTION )            
+  if ( microseconds * ( F_CPU / 1000000 ) < RESOLUTION * 1 )
   {
-    prescale_bits = (1 << CS20);                 // no prescale, /1
+    timer2_prescale_bits = (1 << CS20);                 // no prescale, /1
     prescale_factor = 1;
   }
-  else if ( (cycles>>=3) < RESOLUTION )
+  else if ( microseconds * ( F_CPU / 1000000 ) < RESOLUTION * 8 )
   {
-    prescale_bits = (1 << CS21);                              // /8
+    timer2_prescale_bits = (1 << CS21);                              // /8
     prescale_factor = 8;
   }
-  else if ( (cycles>>=2) < RESOLUTION ) 
+  else if ( microseconds * ( F_CPU / 1000000 ) < RESOLUTION * 32 )
   {
-    prescale_bits = (1 << CS21) | (1 << CS20);                // /32
+    timer2_prescale_bits = (1 << CS21) | (1 << CS20);                // /32
     prescale_factor = 32;
   }
-  else if ( (cycles>>=1) < RESOLUTION ) 
+  else if ( microseconds * ( F_CPU / 1000000 ) < RESOLUTION * 64 )
   {
-    prescale_bits = (1 << CS22);                              // /64
+    timer2_prescale_bits = (1 << CS22);                              // /64
     prescale_factor = 64;
   }
-  else if ( (cycles>>=1) < RESOLUTION ) 
+  else if ( microseconds * ( F_CPU / 1000000 ) < RESOLUTION * 128 )
   {
-    prescale_bits = (1 << CS22) | (1 << CS20);                // /128
+    timer2_prescale_bits = (1 << CS22) | (1 << CS20);                // /128
     prescale_factor = 128;
   }
-  else if ( (cycles>>=3) < RESOLUTION ) 
+  else if ( microseconds * ( F_CPU / 1000000 ) < RESOLUTION * 1024 )
   { 
-    prescale_bits = (1 << CS22) | (1 << CS21) | (1 << CS20);  // /1024
+    timer2_prescale_bits = (1 << CS22) | (1 << CS21) | (1 << CS20);  // /1024
     prescale_factor = 1024;
   }
   else
   {
-    prescale_bits = (1 << CS22) | (1 << CS21) | (1 << CS20);  // not enuf bits sir, max set
+    timer2_prescale_bits = (1 << CS22) | (1 << CS21) | (1 << CS20);  // not enuf bits sir, max set
     prescale_factor = 1024;
   }
 
   TCCR2B &= ~( (1 << CS22) | (1 << CS21) | (1 << CS20) );
-  TCCR2B |= prescale_bits;
+  TCCR2B |= timer2_prescale_bits;
 
-  return ( RESOLUTION * prescale_factor ) / ( F_CPU / 1000000 );
+  tcnt2 = RESOLUTION - ( microseconds * ( F_CPU / 1000000 ) ) / prescale_factor;
+  TCNT2 = tcnt2;    // starts timer
 }
 
-void timer2_enable()
+
+void timer2_start() // don't call before timer2_init; disables ISR, call timer2_enable after
 {
-  TIMSK2 = (1 << TOIE2);  // Timer2 OVF ISR enable
+  unsigned int tcnt2_temp;
+
+  TIMSK2 &= ~(1 << TOIE2);  // Timer2 OVF ISR disable
+  
   oldSREG = SREG;
   cli();
-  TCNT2 = 0;    // restart counter
+  TCNT2 = tcnt2;    // restart counter
   SREG = oldSREG;
+  timer2_restart(); // prescale determined earlier with timer2_init or timer2_set_period
+  do { // wait until timer gets past it's first tick to stop 'phantom' interrupt
+    oldSREG = SREG;
+    cli();
+    tcnt2_temp = TCNT2;
+    SREG = oldSREG;
+  } while ( tcnt2_temp == tcnt2 );
+
+//  TIFR2 = 0xFF;             // clear interrupt flags
+//  TIMSK2 |= (1 << TOIE2);   // Timer2 OVF ISR enable
 }
 
-void timer2_disable()
+
+void timer2_stop()    // stop timer, ISR not disabled (but won't fire)
+{
+  TCCR2B &= ~( (1 << CS22) | (1 << CS21) | (1 << CS20) ); // clears all clock select bits
+}
+
+
+void timer2_restart() // starts clock; does not zero timer, use timer2_restart_zero for that
+{
+  TCCR2B |= timer2_prescale_bits;
+}
+
+
+void timer2_restart_zero()  // resets timer back to tcnt2, starts clock
+{
+//  TIMSK2 &= ~(1 << TOIE2);  // Timer2 OVF ISR disable
+  
+  oldSREG = SREG;
+  cli();
+  TCNT2 = tcnt2;    // restart counter
+  SREG = oldSREG;
+  timer2_restart(); // prescale determined earlier with timer2_init or timer2_set_period
+  
+  // may be phantom interrupt here, clearing flag instead of waiting for timer tick
+  TIFR2 = 0xFF;             // clear interrupt flag
+  
+//  TIMSK2 |= (1 << TOIE2);   // Timer2 OVF ISR enable
+}
+
+
+void timer2_enable()  // enables ISR, does not touch timer
+{
+  TIFR2 = 0xFF;             // clear interrupt flag
+  TIMSK2 |= (1 << TOIE2);   // Timer2 OVF ISR enable
+}
+
+
+void timer2_disable() // disables ISR, clears interrupt flag
 {
   TIMSK2 = 0;
+  TIFR2 = 0xFF;             // clear interrupt flag
 }
 
-ISR(TIMER2_OVF_vect) {
+
+ISR( TIMER2_OVF_vect )
+{
   digitalWrite( output_pin_A, HIGH );
   counter++;
   if ( counter >= counter_limit )
@@ -272,11 +324,12 @@ ISR(TIMER2_OVF_vect) {
     timer2_disable(); // Timer2 ISR is done, can be enabled again by external ISR
     digitalWrite( output_pin_B, LOW );
   }
-  digitaWrite( output_pin_A, LOW );
+  digitalWrite( output_pin_A, LOW );
 }
 
 void external_ISR()
 {
+  waveform_counter++;
   digitalWrite( output_pin_extern_ISR, toggle_me_extern_ISR^=1 );
   timer2_restart_zero();  // reset and start clock
   timer2_enable();        // enable Timer2 ISR
