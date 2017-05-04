@@ -12,8 +12,10 @@
  *             http://www.uchobby.com/index.php/2007/11/24/arduino-interrupts/
  */
 
-const unsigned int output_pin = 13;
-unsigned int toggle_me_pls = LOW;
+const unsigned int output_pin_A = 12;
+const unsigned int output_pin_B = 11;
+unsigned int toggle_me_A = LOW;
+unsigned int toggle_me_B = LOW;
 
 #define F_CPU 16000000
 #define RESOLUTION 256
@@ -31,13 +33,13 @@ volatile unsigned long counter_limit = (1 << 31); // 2^31
 void setup()
 {
   Serial.begin(9600);
-  pinMode( output_pin, OUTPUT );
+  pinMode( output_pin_A, OUTPUT );
 }
 
 
 void loop()
 {
-  long timer2_period = 35;  // in [us], minimum 6 or program hangs, up to 40% error in /1
+  long timer2_period = 40;  // in [us], minimum 6 or program hangs, up to 40% error in /1
   timer2_init( timer2_period );
   long timer_delay = 220;  // in [us]
   counter_limit = timer_delay / timer2_period; // [us] / [us]
@@ -56,27 +58,25 @@ void loop()
 
   unsigned long timestamp;
 
-  int prev_state = digitalRead( output_pin ); 
+  int prev_state = digitalRead( output_pin_A ); 
 
   while ( true ) {
 //    Serial.println("\nTimer2 enabled!");
 
-    timer2_restart();
-    timer2_enable();
+//    timer2_restart();
+//    timer2_enable();
 //    timestamp = micros();
 
-    while ( digitalRead( output_pin ) == prev_state ) { }
+    while ( digitalRead( output_pin_A ) == prev_state ) { }
 
 //    timestamp = micros() - timestamp;
 //    timer2_stop();
-    timer2_disable();
+//    timer2_disable();
 //    timer2_restart();
 
-    prev_state = digitalRead( output_pin );
+    prev_state = digitalRead( output_pin_A );
 
 //    Serial.print("Timer2 disabled!"); Serial.print(" Time: "); Serial.print( timestamp ); Serial.println("us");
-
-    delayMicroseconds( timer_delay*2 );
   }
 }
 
@@ -174,11 +174,12 @@ void timer2_disable() // disable ISR, timer continues
 ISR(TIMER2_OVF_vect) {
   TCNT2 = tcnt2;
   counter++;
-  toggle_me_pls = ( toggle_me_pls + 1 ) % 2;
-  digitalWrite( 12, toggle_me_pls );
+  toggle_me_A = ( toggle_me_A + 1 ) % 2;
+  digitalWrite( output_pin_B, toggle_me_A );
   if ( counter > counter_limit )
   {
-    digitalWrite( output_pin, !digitalRead(output_pin) );
+    toggle_me_B = ( toggle_me_B + 1 ) % 2;
+    digitalWrite( output_pin_A, toggle_me_B );
     counter = 0;
   }
 }
