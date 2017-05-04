@@ -125,16 +125,10 @@ void loop() {
 
 
 // ISR for PWM 
-void measure_waveform() {
-//  Serial.print("I\'m in! Waveform #"); Serial.println(waveform_counter);                     // debugging
+void start_timer2() {
   digitalWrite( 12, HIGH );
-//  int n;
-//  for ( n=0; n<DATA_ARRAY_SIZE; n++ ) {
-//    vdata[n] = analogRead( motor_neg_pin );
-//  }
   timer2_enable();
-  waveform_counter++;
-//  Serial.print("I\'m out! Next waveform is #"); Serial.println(waveform_counter);                     // debugging
+//  waveform_counter++;
   digitalWrite( 12, LOW );
 }
 
