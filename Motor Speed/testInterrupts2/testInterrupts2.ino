@@ -58,7 +58,7 @@ const unsigned int output_pin_B = 11; // TimerTwo, long tick-tock
 
 
 // External ISR stuff it needs
-volatile unsigned int toggle_me_extern_ISR = LOW; // for external ISR verification on oscilloscope
+//volatile unsigned int toggle_me_extern_ISR = LOW; // for external ISR verification on oscilloscope
 
 
 // Define various ADC prescaler (https://goo.gl/qLdu2e)
@@ -91,9 +91,9 @@ char oldSREG;
 unsigned char timer2_prescale_bits;
 unsigned long tcnt2;
 unsigned long prescale_factor = 1;
-volatile unsigned int toggle_me_A = LOW;  // TimerTwo, tick-tock
-volatile unsigned int toggle_me_B = LOW;  // TimerTwo, long tick-tock
-// toggle_me_A,B not used if ISRs are doing the ADC work
+//volatile unsigned int toggle_me_A = LOW;  // TimerTwo, tick-tock
+//volatile unsigned int toggle_me_B = LOW;  // TimerTwo, long tick-tock
+//// toggle_me_A,B not used if ISRs are doing the ADC work
 
 // TimerTwo overflow counter variables
 volatile unsigned long counter = 0;
@@ -132,7 +132,7 @@ void loop()
   // Setup external ISR
   digitalWrite( motor_pin, LOW ); // prevent external ISR from firing before ready
   // Calls timer2_enable(), so the external ISR turns on Timer2 ISRs
-  attachInterrupt( digitalPinToInterrupt( ISR_pin ), external_ISR, RISING );
+  attachInterrupt( digitalPinToInterrupt( ISR_pin ), external_ISR, FALLING );
 
   // Print TimerTwo data out, to make sure everything looks right
   Serial.print("  timer2_period: "); Serial.print(timer2_period); Serial.println(" [us]");
@@ -144,14 +144,17 @@ void loop()
   Serial.print("    timer_delay: "); Serial.print(timer_delay); Serial.println(" [us]");
   Serial.print("  counter_limit: "); Serial.println(counter_limit);
 
-  int duty_cycle = 60;  // 60% duty cycle
+  int duty_cycle = 45;
   analogWrite( motor_pin, ( 255 * duty_cycle )/100 );  // PWM starts, firing off external ISRs, chaining to Timer2 ISRs
+  Serial.println("\nMotor should be spinning now...");
+  delay(1000);
 
   while ( true )
   {    
     while ( waveform_counter < 5*490 ) { }  // put duty cycle-based motor variation here, later
 
-    noInterrupts(); // not sure if this disables Timer2 ISR, but it will only fire once if not
+    detachInterrupt( digitalPinToInterrupt( ISR_pin ) );
+//    noInterrupts(); // not sure if this disables Timer2 ISR, but it will only fire once if not
     timer2_stop();
 
     Serial.print("\nLet's take a breather! Whew, already ");
@@ -165,6 +168,8 @@ void loop()
     {
       Serial.println(vdata[n]);
     }
+
+    Serial.println("\n"); Serial.print(freeRam()); Serial.println("FREE SRAM");
     
     Serial.println("\nHow does it look? I hope it worked!");
     Serial.print("Send any character to continue");
@@ -172,20 +177,21 @@ void loop()
     Serial.println("... Got it! Well, back at it!");
 
     waveform_counter = 0;
-
-    interrupts();   // not sure if this enables Timer2 ISR, hopefully not
+    
     timer2_start(); // does not enable ISR, external ISR controls that
+    attachInterrupt( digitalPinToInterrupt( ISR_pin ), external_ISR, FALLING );
+//    interrupts();   // not sure if this enables Timer2 ISR, hopefully not
   }
 }
 
 
-//// reports space between the heap and the stack
-//int freeRam () // https://learn.adafruit.com/memories-of-an-arduino/measuring-free-memory
-//{
-//  extern int __heap_start, *__brkval; 
-//  int v; 
-//  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-//}
+// reports space between the heap and the stack
+int freeRam () // https://learn.adafruit.com/memories-of-an-arduino/measuring-free-memory
+{
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
 
 
 
@@ -330,9 +336,10 @@ ISR( TIMER2_OVF_vect )
 
 void external_ISR()
 {
+  digitalWrite( output_pin_extern_ISR, HIGH );
   waveform_counter++;
-  digitalWrite( output_pin_extern_ISR, toggle_me_extern_ISR^=1 );
   timer2_restart_zero();  // reset and start clock
   timer2_enable();        // enable Timer2 ISR
+  digitalWrite( output_pin_extern_ISR, LOW );
 }
 
