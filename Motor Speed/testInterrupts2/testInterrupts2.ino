@@ -144,11 +144,12 @@ void loop()
   Serial.print("    timer_delay: "); Serial.print(timer_delay); Serial.println(" [us]");
   Serial.print("  counter_limit: "); Serial.println(counter_limit);
 
-  analogWrite( motor_pin, 153 );  // PWM starts, firing off external ISRs, chaining to Timer2 ISRs
+  int duty_cycle = 60;  // 60% duty cycle
+  analogWrite( motor_pin, ( 255 * duty_cycle )/100 );  // PWM starts, firing off external ISRs, chaining to Timer2 ISRs
 
   while ( true )
-  {
-    while ( waveform_counter < 5*490 ) { }  // 5 sec
+  {    
+    while ( waveform_counter < 5*490 ) { }  // put duty cycle-based motor variation here, later
 
     noInterrupts(); // not sure if this disables Timer2 ISR, but it will only fire once if not
     timer2_stop();
