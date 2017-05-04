@@ -15,7 +15,7 @@
  * @author:    Tyler Lucas
  * Student ID: 3305203
  * Date:       May 2, 2017
- * Version     1.0
+ * Version     1.3
  * 
  * References: http://gammon.com.au/interrupts
  *             https://www.programiz.com/cpp-programming/examples/standard-deviation
@@ -24,15 +24,46 @@
  *             http://maxembedded.com/2011/06/avr-timers-timer0/
  */
 
+/* Circuit diagram a-la-crap:
+ *  
+ * |------------|
+ * |            |                          10k
+ * |         A0-|--------------------|-----/\/\/-----|MOTOR NEG PIN (or any analog voltage source)
+ * |  A         |                    \
+ * |  R         |    10k             / 10k
+ * |  D      13-|---/\/\/---|GND     \
+ * |  U         |    10k            _|_
+ * |  I      12-|---/\/\/---|GND    GND
+ * |  N         |    10k
+ * |  O      11-|---/\/\/---|GND   NOTE: PINS 11,12,13 FOR DEBUGGING ONLY.
+ * |            |
+ * |  D         |       330
+ * |  U   PWM 9-|---|---/\/\/---|BJT BASE
+ * |  E         |   /
+ * |            |   \ 10k
+ * | external   |   /
+ * |      ISR 2-|---|
+ * |            |
+ * |------------|
+ * 
+ */
 
- const int motor_pin = 9; // PWM driving NPN to control motor
- const int motor_neg_pin = A1;  // to motor -ve and shunt top
- const int ISR_pin = 2;  // external interrupt pin (#3 occupied by LCD)
+// Pin assignments.
+const int motor_pin = 9; // PWM driving NPN to control motor
+const int motor_neg_pin = A1;  // to motor -ve and shunt top
+const int ISR_pin = 2;  // external interrupt pin (#3 occupied by LCD)
+const unsigned int output_pin_extern_ISR = 13;  // for external ISR verification on osc.
+const unsigned int output_pin_A = 12; // TimerTwo tick-tock
+const unsigned int output_pin_B = 11; // TimerTwo, long tick-tock
+
+
+// External ISR stuff it needs
+volatile unsigned int toggle_me_extern_ISR = LOW; // for external ISR verification on oscilloscope
 
 
 // Define various ADC prescaler (https://goo.gl/qLdu2e)
- const unsigned char prescale_016 = (1 << ADPS2);                                //   1 MHz ( 76.9 kHz) ~  13 us
- const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);  // 125 kHz ( 9.6 kHz) ~  104 us
+const unsigned char prescale_016 = (1 << ADPS2);                                //   1 MHz ( 76.9 kHz) ~  13 us
+const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);  // 125 kHz ( 9.6 kHz) ~  104 us
 
  /* Determine datapoints req'd to capture voltages over 2 PWM periods,
  * given an ADC rate from the prescaler. My Arduino Duo (SparkFun 
@@ -44,64 +75,85 @@
 #define DATA_ARRAY_SIZE 25
 #define DATA_ARRAY_WINDOW_SIZE 3
 #define DATA_ARRAY_SUBWINDOW_SIZE 25-6
-volatile unsigned int vdata[DATA_ARRAY_SIZE] = {0};  // for use in ISR
-volatile unsigned int waveform_counter = 0;
+volatile unsigned int vdata[DATA_ARRAY_SIZE] = {0}; // holds analog data, may be collected in ISR
+volatile unsigned int waveform_counter = 0;         // number of PWM periods to analyze at once
 
 
 /*  TimerTwo
  *  Adapted from https://code.google.com/archive/p/arduino-timerone/ and
  *  http://maxembedded.com/2011/06/avr-timers-timer0/.
  */
- // TimerTwo stuff it needs
+
+// TimerTwo stuff it needs
 #define F_CPU 16000000
 #define RESOLUTION 256
 char oldSREG;
+unsigned char timer2_prescale_bits;
+unsigned long tcnt2;
+unsigned long prescale_factor = 1;
+volatile unsigned int toggle_me_A = LOW;  // TimerTwo, tick-tock
+volatile unsigned int toggle_me_B = LOW;  // TimerTwo, long tick-tock
+// toggle_me_A,B not used if ISRs are doing the ADC work
+
 // TimerTwo overflow counter variables
 volatile unsigned long counter = 0;
-volatile unsigned long counter_limit = (1 << 31); // 2^31
+volatile unsigned long counter_limit = (1 << 31); // 2^31, a big number
 
-void setup() {
+
+void setup()
+{
+  // Setup pins
   pinMode( motor_pin, OUTPUT );
-  pinMode( 12, OUTPUT );          // debugging, scoping to see external ISR vs loop time
-  pinMode( 11, OUTPUT );          // debugging, scoping to see Timer2 ISR vs loop time
+  pinMode( output_pin_extern_ISR, OUTPUT ); // debugging
+  pinMode( output_pin_A, OUTPUT );          // debugging
+  pinMode( output_pin_B, OUTPUT );          // debugging
 
-  // setup ADC
+  // Setup ADC
   ADCSRA &= ~prescale_128;    // remove bits set by Arduino library
   ADCSRA |= prescale_016;     // set our own prescaler
 
+  // Setup serial link and spit out intro
   Serial.begin(9600);
   Serial.println("ISR Testing, 1MHz ADC");
-  Serial.println("v1.20-20170503\n");
+  Serial.println("v1.3-20170504\n");
   delay(1500);
-
-  attachInterrupt( digitalPinToInterrupt( ISR_pin ), measure_waveform, RISING ); // enable ISR after stabilization
 }
 
-void loop() {
-  long timer2_period_requested = 15;  // in [us]
-  long timer2_period_returned = timer2_init( timer2_period_requested );
-  long timer_delay = 220;  // in [us]
-  counter_limit = timer_delay / timer2_period_returned;
 
-  Serial.println();
-  Serial.print("timer2_period_requested: "); Serial.print(timer2_period_requested); Serial.println("us");
-  Serial.print(" timer2_period_returned: "); Serial.print(timer2_period_returned); Serial.println("us");
-  Serial.print("        prescale factor: "); Serial.println( (int)((128 * (F_CPU/1e6))/RESOLUTION) );
-  Serial.print("            timer_delay: "); Serial.print(timer_delay); Serial.println("us");
-  Serial.print("          counter_limit: "); Serial.println(counter_limit);
+void loop()
+{
+  // Setup TimerTwo, do not enable ISR yet.
+  // Start with 0.25 the period of a 490Hz PWM waveform.
+  long timer2_period = 510; // 0.25 * ( 1/490Hz ) = 510 microseconds
+  long timer_delay = 510;
+  counter_limit = timer_delay / timer2_period;
+  timer2_init( timer2_period );
 
-  analogWrite( motor_pin, 153 );
+  // Setup external ISR
+  digitalWrite( motor_pin, LOW ); // prevent external ISR from firing before ready
+  // Calls timer2_enable(), so the external ISR turns on Timer2 ISRs
+  attachInterrupt( digitalPinToInterrupt( ISR_pin ), external_ISR, RISING );
 
-//  unsigned long timestamp_write_now = millis() + 1000;
-//  if ( millis() > timestamp_write_now ) {
-//    Serial.print( "Bytes free in stack: " );
-//    Serial.println( freeRam() );
-//    timestamp_write_now = millis() + 5000;
-//    delay(500);
-//  }
+  // Print TimerTwo data out, to make sure everything looks right
+  Serial.print("  timer2_period: "); Serial.print(timer2_period); Serial.println(" [us]");
+  Serial.print("          tcnt2: "); Serial.println(tcnt2);
+  Serial.print("      256-tcnt2: "); Serial.println(256-tcnt2);
+  Serial.print("prescale factor: "); Serial.println(prescale_factor);
+  Serial.print("     timer xtal: "); Serial.print((F_CPU/1000)/prescale_factor); Serial.println(" [kHz]");
+  Serial.print("     timer tick: "); Serial.print( (256-tcnt2) * prescale_factor / ( F_CPU / 1000000 ) ); Serial.println(" [us]");
+  Serial.print("    timer_delay: "); Serial.print(timer_delay); Serial.println(" [us]");
+  Serial.print("  counter_limit: "); Serial.println(counter_limit);
 
-  while ( true ) {
-    if ( ( waveform_counter+1 ) % 10 == -1 || waveform_counter == 1) {
+  analogWrite( motor_pin, 153 );  // PWM starts, firing off external ISRs, chaining to Timer2 ISRs
+
+  while ( true )
+  {
+    while ( 
+
+    
+    if ( waveform_counter > 5*490 )   // more than 5 seconds of 490Hz PWM
+    {
+      
       detachInterrupt( digitalPinToInterrupt( ISR_pin ) );
       Serial.print("\nLet's take a breather! Whew, already ");
       Serial.print( waveform_counter );
@@ -109,7 +161,8 @@ void loop() {
       Serial.println("Let's take a closer look at the last waveform...");
   
       int n;
-      for ( n=0; n<DATA_ARRAY_SIZE; n++ ) {
+      for ( n=0; n<DATA_ARRAY_SIZE; n++ )
+      {
         Serial.println(vdata[n]);
       }
       
@@ -121,15 +174,6 @@ void loop() {
       attachInterrupt( digitalPinToInterrupt( ISR_pin ), measure_waveform, RISING );
     }
   }
-}
-
-
-// ISR for PWM 
-void start_timer2() {
-  digitalWrite( 12, HIGH );
-  timer2_enable();
-//  waveform_counter++;
-  digitalWrite( 12, LOW );
 }
 
 
@@ -215,16 +259,26 @@ void timer2_disable()
 }
 
 ISR(TIMER2_OVF_vect) {
+  digitalWrite( output_pin_A, HIGH );
   counter++;
-  if ( counter > counter_limit )
+  if ( counter >= counter_limit )
   {
-    digitalWrite( 11, HIGH );
+    digitalWrite( output_pin_B, HIGH );
     int n;
     for ( n=0; n<DATA_ARRAY_SIZE; n++ ) {
       vdata[n] = analogRead( motor_neg_pin );
     }
     counter = 0;
-    timer2_disable();
-    digitalWrite( 11, LOW );
+    timer2_disable(); // Timer2 ISR is done, can be enabled again by external ISR
+    digitalWrite( output_pin_B, LOW );
   }
+  digitaWrite( output_pin_A, LOW );
 }
+
+void external_ISR()
+{
+  digitalWrite( output_pin_extern_ISR, toggle_me_extern_ISR^=1 );
+  timer2_restart_zero();  // reset and start clock
+  timer2_enable();        // enable Timer2 ISR
+}
+
