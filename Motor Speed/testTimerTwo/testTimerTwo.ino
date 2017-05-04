@@ -99,6 +99,7 @@ void loop()
   int n; // removed from for loop to get outside of micros() timer
   
   timestamp = micros();
+  timestamp_offset = micros();  // assignment and micros() access delay
   for ( n=1; n<2; n++ )
   {
     while ( toggle_me_A == prev_state ) { test_while_loop(); asm(""); }
@@ -276,11 +277,11 @@ void timer2_disable() // disables ISR, clears interrupt flag
 ISR(TIMER2_OVF_vect) {
   timer2_restart_zero();  // restart and zero timer
   counter++;
-//  toggle_me_A ^= 1;    // toggles between 0 and 1 (LOW or HIGH), breaks for other numbers
+  // toggles output and assigns between 0 and 1 (LOW or HIGH), breaks for other numbers
   digitalWrite( output_pin_A, toggle_me_A^=1 );
-  if ( counter+1 >= counter_limit )
+  if ( counter >= counter_limit )
   {
-//    toggle_me_B ^= 1;  // toggles between 0 and 1 (LOW or HIGH), breaks for other numbers
+    // toggles output and assigns between 0 and 1 (LOW or HIGH), breaks for other numbers
     digitalWrite( output_pin_B, toggle_me_B^=1 );
     counter = 0;
   }
