@@ -6,16 +6,30 @@
  * @author:    Tyler Lucas
  * Student ID: 3305203
  * Date:       May 3, 2017
- * Version     1.1
+ * Version     1.2
  * 
  * References: http://maxembedded.com/2011/06/avr-timers-timer0/
  *             http://www.uchobby.com/index.php/2007/11/24/arduino-interrupts/
  */
+// Define only one of the below modes.
+//#define OSC_ONLY // for doing measurements with oscilloscope, without serial link
+#define SERIAL       // for doing measurements with micros(), with serial link
+//#define OSC_SERIAL   // for doing measurements with oscilloscope, with serial link
 
-const unsigned int output_pin_A = 12;
-const unsigned int output_pin_B = 11;
-unsigned int toggle_me_A = LOW;
-unsigned int toggle_me_B = LOW;
+/* Change these to experiment. Oscilloscope can less than 1 microsecond,
+ * humans can see over 67000 microseconds (15 Hz). */
+#ifdef SERIAL
+#define TIMER_DELAY 300000      // slow down LED blink so you can see it
+const int loop_delay_time = 5;  // in [seconds]
+#else
+#define TIMER_DELAY 220
+#endif
+
+// Pin assignments.
+const unsigned int output_pin_A = 12; // flips every overflow
+volatile unsigned int toggle_me_A = LOW;
+const unsigned int output_pin_B = 13; // flips every TIMER_DELAY
+volatile unsigned int toggle_me_B = LOW;
 
 #define F_CPU 16000000
 #define RESOLUTION 256
@@ -28,55 +42,82 @@ unsigned long prescale_factor = 1;
 
 // TimerTwo overflow counter variables
 volatile unsigned long counter = 0;
-volatile unsigned long counter_limit = (1 << 31); // 2^31
+volatile unsigned long counter_limit = (1 << 31); // 2^31, a big number
 
 void setup()
 {
+  
+#ifndef OSC_ONLY
   Serial.begin(9600);
+#endif
+
   pinMode( output_pin_A, OUTPUT );
+  pinMode( output_pin_B, OUTPUT );
 }
 
 
 void loop()
 {
-  long timer2_period = 40;  // in [us], minimum 6 or program hangs, up to 40% error in /1
+  /* Period needs to be over 6us or the program will hang,
+   *  spending all of its time in the ISRs. Aggregate delay
+   *  time, timer_delay, has up to 40% error with /1
+   *  prescale when measured with micros(), perhaps due to
+   *  inaccuracy and overhead associated with using micros()
+   *  and reading pin states (digitalRead).
+   */
+  long timer2_period = 220;  // in [us], minimum 6 or program hangs, up to 40% error in /1
   timer2_init( timer2_period );
-  long timer_delay = 220;  // in [us]
+  long timer_delay = TIMER_DELAY;  // in [us], make >15Hz if you want to see LED blink
   counter_limit = timer_delay / timer2_period; // [us] / [us]
 
+#ifndef OSC_ONLY
   Serial.println();
-  Serial.print("  timer2_period: "); Serial.println(timer2_period);
+  Serial.print("  timer2_period: "); Serial.print(timer2_period); Serial.println(" [us]");
   Serial.print("          tcnt2: "); Serial.println(tcnt2);
   Serial.print("      256-tcnt2: "); Serial.println(256-tcnt2);
   Serial.print("prescale factor: "); Serial.println(prescale_factor);
-  Serial.print("     timer xtal: "); Serial.print((F_CPU/1000)/prescale_factor); Serial.println("kHz");
-  Serial.print("     timer tick: "); Serial.print( (256-tcnt2) * prescale_factor / ( F_CPU / 1000000 ) ); Serial.println("us");
-  Serial.print("    timer_delay: "); Serial.println(timer_delay);
+  Serial.print("     timer xtal: "); Serial.print((F_CPU/1000)/prescale_factor); Serial.println(" [kHz]");
+  Serial.print("     timer tick: "); Serial.print( (256-tcnt2) * prescale_factor / ( F_CPU / 1000000 ) ); Serial.println(" [us]");
+  Serial.print("    timer_delay: "); Serial.print(timer_delay); Serial.println(" [us]");
   Serial.print("  counter_limit: "); Serial.println(counter_limit);
+#endif
 
   timer2_start();
 
+#ifdef SERIAL
   unsigned long timestamp;
+#endif
 
-  int prev_state = digitalRead( output_pin_A ); 
+  unsigned int prev_state = toggle_me_B;
 
   while ( true ) {
-//    Serial.println("\nTimer2 enabled!");
+#ifdef SERIAL
+    Serial.println("\nTimer2 enabled!");
 
+    timer2_restart();
+    timestamp = micros();
+    timer2_enable();
+
+    while ( toggle_me_B == prev_state ) { }
+
+    timestamp = micros() - timestamp;
+    timer2_disable();
+    timer2_stop();
 //    timer2_restart();
-//    timer2_enable();
-//    timestamp = micros();
 
-    while ( digitalRead( output_pin_A ) == prev_state ) { }
+    prev_state = toggle_me_B;
 
-//    timestamp = micros() - timestamp;
-//    timer2_stop();
-//    timer2_disable();
-//    timer2_restart();
-
-    prev_state = digitalRead( output_pin_A );
-
-//    Serial.print("Timer2 disabled!"); Serial.print(" Time: "); Serial.print( timestamp ); Serial.println("us");
+    Serial.print("Timer2 disabled!");
+    Serial.print(" Time: ");
+    Serial.print( float(timestamp/1e6), 3 );
+    Serial.print(" seconds. That is ");
+    if ( timestamp > TIMER_DELAY ) { Serial.print( "+" ); }
+    Serial.print( 100*( (float)(timestamp) / (float)(TIMER_DELAY) )-100, 2 );
+    Serial.println("%% from the target delay.");
+    Serial.print("Timer restarting in "); Serial.print(loop_delay_time); Serial.println(" seconds...");
+    
+    delay( loop_delay_time*1000 );
+#endif
   }
 }
 
@@ -85,7 +126,7 @@ void timer2_init( long microseconds )
 { 
   // prescale by /1 (16MHz, 16us OVF)
   TCCR2A = 0;   // Normal port operation, OC2A disconnected
-  return timer2_set_period( microseconds );
+  timer2_set_period( microseconds );
 }
 
 void timer2_set_period( long microseconds )
@@ -130,10 +171,11 @@ void timer2_set_period( long microseconds )
   TCCR2B |= timer2_prescale_bits;
 
   tcnt2 = RESOLUTION - ( microseconds * ( F_CPU / 1000000 ) ) / prescale_factor;
-  TCNT2 = tcnt2;
+  TCNT2 = tcnt2;    // starts timer
 }
 
-void timer2_start()
+
+void timer2_start() // don't call before timer2_init
 {
   unsigned int tcnt2_temp;
 
@@ -143,7 +185,7 @@ void timer2_start()
   cli();
   TCNT2 = tcnt2;    // restart counter
   SREG = oldSREG;
-  timer2_restart();
+  timer2_restart(); // prescale determined earlier with timer2_init or timer2_set_period
   do { // wait until timer gets past it's first tick to stop 'phantom' interrupt
     oldSREG = SREG;
     cli();
@@ -151,42 +193,66 @@ void timer2_start()
     SREG = oldSREG;
   } while ( tcnt2_temp == tcnt2 );
 
-  TIFR2 = 0xFF;             // clear interrupt flags
-  TIMSK2 |= (1 << TOIE2);   // Timer2 OVF ISR enable
+//  TIFR2 = 0xFF;             // clear interrupt flags
+//  TIMSK2 |= (1 << TOIE2);   // Timer2 OVF ISR enable
 }
+
 
 void timer2_stop()    // stop timer, ISR not disabled (but won't fire)
 {
   TCCR2B &= ~( (1 << CS22) | (1 << CS21) | (1 << CS20) ); // clears all clock select bits
 }
 
-void timer2_enable()  // enable ISR, timer may be anywhere
+
+void timer2_restart() // starts clock; does not zero timer, use timer2_start for that
 {
-  TIFR2 = 0xFF;             // clear interrupt flags
+  TCCR2B |= timer2_prescale_bits;
+}
+
+void timer2_restart_zero()
+{
+  unsigned int tcnt2_temp;
+
+  TIMSK2 &= ~(1 << TOIE2);  // Timer2 OVF ISR disable
+  
+  oldSREG = SREG;
+  cli();
+  TCNT2 = tcnt2;    // restart counter
+  SREG = oldSREG;
+  timer2_restart(); // prescale determined earlier with timer2_init or timer2_set_period
+  // may be phantom interrupt here, you may want to clear ISR flag
+  TIFR2 = 0xFF;             // clear interrupt flag
+//  TIMSK2 |= (1 << TOIE2);   // Timer2 OVF ISR enable
+}
+
+
+void timer2_enable()  // enables ISR, does not touch timer
+{
+  TIFR2 = 0xFF;             // clear interrupt flag
   TIMSK2 |= (1 << TOIE2);   // Timer2 OVF ISR enable
 }
 
-void timer2_disable() // disable ISR, timer continues
+
+void timer2_disable() // disables ISR, clears interrupt flag
 {
   TIMSK2 = 0;
+  TIFR2 = 0xFF;             // clear interrupt flag
 }
 
+
+// the test ISR
 ISR(TIMER2_OVF_vect) {
-  TCNT2 = tcnt2;
+  TCNT2 = tcnt2;    // restart timer
   counter++;
-  toggle_me_A = ( toggle_me_A + 1 ) % 2;
-  digitalWrite( output_pin_B, toggle_me_A );
+  toggle_me_A ^= 1;    // toggles between 0 and 1 (LOW or HIGH), breaks for other numbers
+  digitalWrite( output_pin_A, toggle_me_A );
   if ( counter > counter_limit )
   {
-    toggle_me_B = ( toggle_me_B + 1 ) % 2;
-    digitalWrite( output_pin_A, toggle_me_B );
+    toggle_me_B ^= 1;  // toggles between 0 and 1 (LOW or HIGH), breaks for other numbers
+    digitalWrite( output_pin_B, toggle_me_B );
     counter = 0;
   }
 }
 
-void timer2_restart()
-{
-  TCCR2B |= timer2_prescale_bits;
-  TCNT2 = tcnt2;
-}
+
 
