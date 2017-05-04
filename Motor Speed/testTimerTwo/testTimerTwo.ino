@@ -161,6 +161,7 @@ void timer2_init( long microseconds )
   timer2_set_period( microseconds );
 }
 
+
 void timer2_set_period( long microseconds )
 {
   if ( microseconds * ( F_CPU / 1000000 ) < RESOLUTION * 1 )
@@ -274,8 +275,9 @@ void timer2_disable() // disables ISR, clears interrupt flag
 
 
 // the test ISR
-ISR(TIMER2_OVF_vect) {
-  timer2_restart_zero();  // restart and zero timer
+ISR( TIMER2_OVF_vect )
+{
+  timer2_restart_zero();  // restart and zero timer back to tcnt2
   counter++;
   // toggles output and assigns between 0 and 1 (LOW or HIGH), breaks for other numbers
   digitalWrite( output_pin_A, toggle_me_A^=1 );
