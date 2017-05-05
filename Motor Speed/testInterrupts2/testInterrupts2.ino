@@ -15,7 +15,7 @@
  * @author:    Tyler Lucas
  * Student ID: 3305203
  * Date:       May 2, 2017
- * Version     1.3
+ * Version     1.4
  * 
  * References: http://gammon.com.au/interrupts
  *             https://www.programiz.com/cpp-programming/examples/standard-deviation
@@ -64,16 +64,24 @@ const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);  
  /* Determine datapoints req'd to capture voltages over 2 PWM periods,
  * given an ADC rate from the prescaler. My Arduino Duo (SparkFun 
  * RedBoard) runs at 16MHz, and the PWM is set to 490Hz. Prescaler
- * will probably be set to 16 for a 1MHz ADC, but no promises. Note
- * that this uses too much SRAM if the prescale is set to 2. In fact,
- * it's completely untested, but 2*16e6/(2*13*490) ints is 2.5kB on
- * its own, pushing this program way over the Duo's 2k SRAM. */
-#define DATA_ARRAY_SIZE 25
-#define DATA_ARRAY_WINDOW_SIZE 3
-#define DATA_ARRAY_SUBWINDOW_SIZE 25-6
+ * will probably be set to 16 for a 1MHz ADC, but no promises.
+ * Remember that the DATA_ARRAY_SIZE has to be scaled with the ADC
+ * speed to ensure the measurements don't take too long. At 90% duty,
+ * over the maximum I would expect for any PWM-controlled motor and
+ * way over the 60% maximum for our SIK M260, there are only 204
+ * microseconds available to sample the emf, and at least half of 
+ * that is too noisy to be useful (inductive spike from current dump
+ * and subsequent ringing), leaving around 100 microseconds. This is
+ * not done programatically (with the below formula) to ensure the
+ * user knows exactly what this number means. (It's important!)
+ * 
+ * DATA_ARRAY_SIZE = 100 microseconds * F_CPU / prescaler / 13 = about 8
+  */
+#define DATA_ARRAY_SIZE 8               // number of measurements per waveform. 
+#define DATA_STATISTICS_ARRAY_SIZE 100  // number of waveforms over which to aggregate statistics
 volatile unsigned int vdata[DATA_ARRAY_SIZE] = {0}; // holds analog data, may be collected in ISR
-volatile unsigned int waveform_counter = 0;         // number of PWM periods to analyze at once
-volatile bool data_ready = false;                   // flag indicating when vdata has been filled
+volatile unsigned int waveform_counter = 0;         // number of PWM periods analyzed
+volatile bool data_ready = false;                   // flag indicating that vdata has been updated
 
 
 /*  TimerTwo
@@ -88,13 +96,10 @@ char oldSREG;
 unsigned char timer2_prescale_bits;
 unsigned long tcnt2;
 unsigned long prescale_factor = 1;
-//volatile unsigned int toggle_me_A = LOW;  // TimerTwo, tick-tock
-//volatile unsigned int toggle_me_B = LOW;  // TimerTwo, long tick-tock
-//// toggle_me_A,B not used if ISRs are doing the ADC work
 
 // TimerTwo overflow counter variables
-volatile unsigned long counter = 0;
-volatile unsigned long counter_limit = (1 << 31); // 2^31, a big number
+volatile unsigned long timer2_counter = 0;
+volatile unsigned long timer2_counter_limit = (1 << 31); // 2^31, a big number
 
 
 void setup()
@@ -107,12 +112,12 @@ void setup()
 
   // Setup ADC
   ADCSRA &= ~prescale_128;    // remove bits set by Arduino library
-  ADCSRA |= prescale_016;     // set our own prescaler
+  ADCSRA |= prescale_016;     // set our own prescaler (1MHz)
 
   // Setup serial link and spit out intro
   Serial.begin(9600);
   Serial.println("ISR Testing, 1MHz ADC");
-  Serial.println("v1.3-20170504\n");
+  Serial.println("v1.4-20170505\n");
   delay(1500);
 }
 
@@ -123,7 +128,7 @@ void loop()
   // Start with 0.25 the period of a 490Hz PWM waveform.
   long timer2_period = 510; // 0.25 * ( 1/490Hz ) = 510 microseconds
   long timer_delay = 510;
-  counter_limit = timer_delay / timer2_period;
+  timer2_counter_limit = timer_delay / timer2_period;
   timer2_init( timer2_period );
 
   // Setup external ISR
@@ -139,10 +144,12 @@ void loop()
   Serial.print("     timer xtal: "); Serial.print((F_CPU/1000)/prescale_factor); Serial.println(" [kHz]");
   Serial.print("     timer tick: "); Serial.print( (256-tcnt2) * prescale_factor / ( F_CPU / 1000000 ) ); Serial.println(" [us]");
   Serial.print("    timer_delay: "); Serial.print(timer_delay); Serial.println(" [us]");
-  Serial.print("  counter_limit: "); Serial.println(counter_limit);
+  Serial.print("  counter_limit: "); Serial.println(timer2_counter_limit);
 
   // Setup statistical variables
-  int vdata_mean, vdata_std_dev2; // these might need to be arrays to store data from consecutive waveforms
+  int vdata_mean[100], vdata_std_dev2[100];
+  int vdata_mean_mean, vdata_mean_std_dev2, vdata_std_dev2_mean, vdata_std_dev2_std_dev2;
+  unsigned int waveform_counter = 0, waveform_counter_skipped = 0;
   
   // Get motor going, starting everything else.
   int duty_cycle = 45;
@@ -150,59 +157,125 @@ void loop()
   Serial.println("\nMotor should be spinning now...");
   delay(1000);
 
+  bool is_break_time = false;
+
   while ( true )
-  {    
-    while ( waveform_counter < 5*490 )
+  {
+    while ( !is_break_time )
     { // put duty cycle-based motor variation here, later
       if ( data_ready )
       {
+        
+        
         /* Should I disable interrupts here? If I need to, it means that
          *  I'm missing the next period. This is okay, but not the
          *  intended timing of the program. Instead, I'll use the flag
          *  'data_ready' and keep the ISRs active. */
-         
-        // get average, std. dev.
-        vdata_mean = get_avg_from_vdata();
-        vdata_std_dev2 = get_std_dev2_from_vdata( vdata_mean );
+        // get average, std. dev.      
+        vdata_mean[waveform_counter] = get_avg( vdata, DATA_ARRAY_SIZE );
+        vdata_std_dev2[waveform_counter] = get_std_dev2( vdata, vdata_mean[waveform_counter], DATA_ARRAY_SIZE );
 
-        data_ready = false; // finished processing data, flag for new
+        /* Is this measured data any good? Is the variance or standard
+         *  deviation within acceptable limits? Having viewed the
+         *  oscilloscope data, I can see that the measured signal varies
+         *  up to around 400 millivolts, only very rarely going outside.
+         *  To me, this means 6 standard deviations (+3 up, -3 down),
+         *  giving about a 67 mV standard deviation. */
+        if ( vdata_std_dev2[waveform_counter] < 67 * 67 )
+        {
+          waveform_counter++; // data is acceptable, increment counter
+        }
+        else
+        {
+          waveform_counter_skipped++; // we skipped another waveform
+        }
+
+        if ( waveform_counter < DATA_STATISTICS_ARRAY_SIZE ) {  // need more data
+          data_ready = false; // finished processing data, flag for new
+        }
+        else
+        { // stats collected from many waveforms, time to get values
+          is_break_time = true;
+        }
       }
-    }  
+    }
 
     detachInterrupt( digitalPinToInterrupt( ISR_pin ) );
 //    noInterrupts(); // not sure if this disables Timer2 ISR, but it will only fire once if not
     timer2_stop();
 
+    // Aggregate statistics.
+    vdata_mean_mean = get_avg( vdata_mean, DATA_STATISTICS_ARRAY_SIZE );
+    vdata_mean_std_dev2 = get_std_dev2( vdata_mean, vdata_mean_mean, DATA_STATISTICS_ARRAY_SIZE );
+    vdata_std_dev2_mean = get_avg( vdata_std_dev2, DATA_STATISTICS_ARRAY_SIZE );
+    vdata_std_dev2_std_dev2 = get_std_dev2( vdata_std_dev2, vdata_std_dev2_mean, DATA_STATISTICS_ARRAY_SIZE );
+
     Serial.print("\nLet's take a breather! Whew, already ");
-    Serial.print( waveform_counter );
+    Serial.print( waveform_counter + waveform_counter_skipped );
     Serial.println(" PWM waveforms passed since last zeroed!");
-    Serial.println("Let's take a closer look at the last measurements...");
+    Serial.print("We had to skip ");
+    Serial.print( waveform_counter_skipped );
+    Serial.print(" waveforms in order to get ");
+    Serial.print( waveform_counter );
+    Serial.println(" good sets of measurements.");
+    Serial.println("Let's take a closer look at our numbers...");
     delay(500);
 
-    Serial.print("\nThe last average was ");
-    Serial.print( vdata_mean );
-    Serial.print(" and the last standard deviation (squared) was ");
-    Serial.print( vdata_std_dev2 );
+    Serial.print("\nThe average value over all waveforms was ");
+    Serial.print( vdata_mean_mean );
+    Serial.print(", and had an average standard deviation (squared) of ");
+    Serial.print( vdata_std_dev2_mean );
     Serial.println(".");
     delay(500);
 
-    Serial.println("Does that look right? Let's take a look at the rest of the data...\n");
+    Serial.print("The standard deviation (squared) of the average values was ");
+    Serial.print( vdata_mean_std_dev2 );
+    Serial.print(", and the standard deviation of this statistic was ");
+    Serial.print( vdata_std_dev2_std_dev2 );
+    Serial.println(".");
     delay(500);
 
-    int n;
-    for ( n=0; n<DATA_ARRAY_SIZE; n++ )
-    {
-      Serial.println(vdata[n]);
-    }
+    Serial.println("\nDoes that look right? Do you want to see the individual statistics?");
+    Serial.println(" (Type \'y\' to see them, or any other characters or wait 3 sec to skip.)");
 
-    Serial.println("\n"); Serial.print(freeRam()); Serial.println("FREE SRAM");
+    long timestamp = millis() + 3000;
+    while( Serial.available() == 0 && millis() < timestamp ) { } // wait for input
+
+    if ( Serial.read() == 'y' )
+    {
+      print_all_stats( vdata_mean, vdata_std_dev2, DATA_STATISTICS_ARRAY_SIZE );
+    }
+    delay(500);
+
+    Serial.println("\nDo you want to see the last waveform measurements?");
+    Serial.println(" (Type \'y\' to see them, or any other characters or wait 3 sec to skip.)");
+
+    timestamp = millis() + 3000;
+    while( Serial.available() == 0 && millis() < timestamp ) { } // wait for input
+
+    if ( Serial.read() == 'y' )
+    {
+      int n;
+      for ( n=0; n<DATA_ARRAY_SIZE; n++ )
+      {
+        Serial.println(vdata[n]);
+      }
+    }
+    delay(500);
     
-    Serial.println("\nHow does it look? I hope it worked!");
-    Serial.print("Send any character to continue");
-    while( !Serial.findUntil( "Go", '!' ) ) { delay(100); }
-    Serial.println("... Got it! Well, back at it!");
+    // debugging, ran out of SRAM a few times
+//    Serial.println("\n"); Serial.print(freeRam()); Serial.println("FREE SRAM"); 
+    
+    Serial.println("\nI hope it worked! Restarting in 5 seconds. Send any character to stop testing.");
+
+    timestamp = millis() + 5000;
+    while( millis() < timestamp ) { if ( Serial.available() > 0 ) { stop_everything(); } }
+
+    Serial.println("... Well, back at it!\n");
+    delay(500);
 
     waveform_counter = 0;
+    waveform_counter_skipped = 0;
     
     timer2_start(); // does not enable ISR, external ISR controls that
     attachInterrupt( digitalPinToInterrupt( ISR_pin ), external_ISR, FALLING );
@@ -345,15 +418,15 @@ void timer2_disable() // disables ISR, clears interrupt flag
 ISR( TIMER2_OVF_vect )
 {
   digitalWrite( output_pin_A, HIGH );
-  counter++;
-  if ( counter >= counter_limit )
+  timer2_counter++;
+  if ( timer2_counter >= timer2_counter_limit )
   {
     digitalWrite( output_pin_B, HIGH );
     int n;
     for ( n=0; n<DATA_ARRAY_SIZE; n++ ) {
       vdata[n] = analogRead( motor_neg_pin );
     }
-    counter = 0;
+    timer2_counter = 0;
     timer2_disable(); // Timer2 ISR is done, can be enabled again by external ISR
     data_ready = true; // vdata[] is ready for number crunching
     digitalWrite( output_pin_B, LOW );
@@ -368,7 +441,6 @@ void external_ISR()
   
   if ( !data_ready )  // need new data
   {
-    waveform_counter++;
     timer2_restart_zero();  // reset and start clock
     timer2_enable();        // enable Timer2 ISR
   }
@@ -381,28 +453,57 @@ void external_ISR()
 }
 
 
-int get_avg_from_vdata()
+int get_avg( int data[], int data_size )
 {
   long temp_avg = 0;
   int n;
-  for ( n=0; n<DATA_ARRAY_SIZE; n++ )
+  for ( n=0; n<data_size; n++ )
   {
-    temp_avg += vdata[n];
+    temp_avg += data[n];
   }
-  return (int)( temp_avg / DATA_ARRAY_SIZE );
+  return (int)( temp_avg / data_size );
 }
 
 
-int get_std_dev2_from_vdata( int vdata_mean )
+int get_std_dev2( int data[], int data_mean, int data_size )
 {
   long temp_std_dev = 0;
   int temp_var;
   int n;
-  for ( n=0; n<DATA_ARRAY_SIZE; n++ )
+  for ( n=0; n<data_size; n++ )
   {
-    temp_var = vdata[n] - vdata_mean;
+    temp_var = data[n] - data_mean;
     temp_std_dev += temp_var * temp_var;
   }
-  return (int)( temp_std_dev / DATA_ARRAY_SIZE );
+  return (int)( temp_std_dev / data_size );
+}
+
+
+void print_all_stats( int avgs[], int stddev2s[], int stats_data_size )
+{
+  Serial.write('#');
+  Serial.println("\taverage\tstd.dev.sq.");
+  
+  int n;
+  for ( n=0; n<stats_data_size; n++ )
+  {
+    Serial.print( n+1 );
+    Serial.print( '\t' );
+    Serial.print( avgs[n] );
+    Serial.print( '\t' );
+    Serial.println( stddev2s[n] );
+  }
+
+  Serial.println();
+}
+
+
+void stop_everything()
+{
+  Serial.println("\n\nGoing to sleep now. Power cycle required.");
+  cli();
+//  sleep_enable();
+//  sleep_cpu();
+  while ( true ) { }  // I don't actually know how to put the Arduino to sleep.
 }
 
