@@ -57,10 +57,6 @@ const unsigned int output_pin_A = 12; // TimerTwo tick-tock
 const unsigned int output_pin_B = 11; // TimerTwo, long tick-tock
 
 
-// External ISR stuff it needs
-//volatile unsigned int toggle_me_extern_ISR = LOW; // for external ISR verification on oscilloscope
-
-
 // Define various ADC prescaler (https://goo.gl/qLdu2e)
 const unsigned char prescale_016 = (1 << ADPS2);                                //   1 MHz ( 76.9 kHz) ~  13 us
 const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);  // 125 kHz ( 9.6 kHz) ~  104 us
@@ -77,6 +73,7 @@ const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);  
 #define DATA_ARRAY_SUBWINDOW_SIZE 25-6
 volatile unsigned int vdata[DATA_ARRAY_SIZE] = {0}; // holds analog data, may be collected in ISR
 volatile unsigned int waveform_counter = 0;         // number of PWM periods to analyze at once
+volatile bool data_ready = false;                   // flag indicating when vdata has been filled
 
 
 /*  TimerTwo
@@ -144,6 +141,10 @@ void loop()
   Serial.print("    timer_delay: "); Serial.print(timer_delay); Serial.println(" [us]");
   Serial.print("  counter_limit: "); Serial.println(counter_limit);
 
+  // Setup statistical variables
+  int vdata_mean, vdata_std_dev2; // these might need to be arrays to store data from consecutive waveforms
+  
+  // Get motor going, starting everything else.
   int duty_cycle = 45;
   analogWrite( motor_pin, ( 255 * duty_cycle )/100 );  // PWM starts, firing off external ISRs, chaining to Timer2 ISRs
   Serial.println("\nMotor should be spinning now...");
@@ -151,7 +152,22 @@ void loop()
 
   while ( true )
   {    
-    while ( waveform_counter < 5*490 ) { }  // put duty cycle-based motor variation here, later
+    while ( waveform_counter < 5*490 )
+    { // put duty cycle-based motor variation here, later
+      if ( data_ready )
+      {
+        /* Should I disable interrupts here? If I need to, it means that
+         *  I'm missing the next period. This is okay, but not the
+         *  intended timing of the program. Instead, I'll use the flag
+         *  'data_ready' and keep the ISRs active. */
+         
+        // get average, std. dev.
+        vdata_mean = get_avg_from_vdata();
+        vdata_std_dev2 = get_std_dev2_from_vdata( vdata_mean );
+
+        data_ready = false; // finished processing data, flag for new
+      }
+    }  
 
     detachInterrupt( digitalPinToInterrupt( ISR_pin ) );
 //    noInterrupts(); // not sure if this disables Timer2 ISR, but it will only fire once if not
@@ -161,7 +177,17 @@ void loop()
     Serial.print( waveform_counter );
     Serial.println(" PWM waveforms passed since last zeroed!");
     Serial.println("Let's take a closer look at the last measurements...");
-    delay(1000);
+    delay(500);
+
+    Serial.print("\nThe last average was ");
+    Serial.print( vdata_mean );
+    Serial.print(" and the last standard deviation (squared) was ");
+    Serial.print( vdata_std_dev2 );
+    Serial.println(".");
+    delay(500);
+
+    Serial.println("Does that look right? Let's take a look at the rest of the data...\n");
+    delay(500);
 
     int n;
     for ( n=0; n<DATA_ARRAY_SIZE; n++ )
@@ -329,17 +355,54 @@ ISR( TIMER2_OVF_vect )
     }
     counter = 0;
     timer2_disable(); // Timer2 ISR is done, can be enabled again by external ISR
+    data_ready = true; // vdata[] is ready for number crunching
     digitalWrite( output_pin_B, LOW );
   }
   digitalWrite( output_pin_A, LOW );
 }
 
+
 void external_ISR()
 {
   digitalWrite( output_pin_extern_ISR, HIGH );
-  waveform_counter++;
-  timer2_restart_zero();  // reset and start clock
-  timer2_enable();        // enable Timer2 ISR
+  
+  if ( !data_ready )  // need new data
+  {
+    waveform_counter++;
+    timer2_restart_zero();  // reset and start clock
+    timer2_enable();        // enable Timer2 ISR
+  }
+//  else
+//  {
+//    // flag to let you know that you missed a period
+//  }
+  
   digitalWrite( output_pin_extern_ISR, LOW );
+}
+
+
+int get_avg_from_vdata()
+{
+  long temp_avg = 0;
+  int n;
+  for ( n=0; n<DATA_ARRAY_SIZE; n++ )
+  {
+    temp_avg += vdata[n];
+  }
+  return (int)( temp_avg / DATA_ARRAY_SIZE );
+}
+
+
+int get_std_dev2_from_vdata( int vdata_mean )
+{
+  long temp_std_dev = 0;
+  int temp_var;
+  int n;
+  for ( n=0; n<DATA_ARRAY_SIZE; n++ )
+  {
+    temp_var = vdata[n] - vdata_mean;
+    temp_std_dev += temp_var * temp_var;
+  }
+  return (int)( temp_std_dev / DATA_ARRAY_SIZE );
 }
 
