@@ -28,7 +28,7 @@
  *  
  * |------------|
  * |            |                          10k
- * |         A0-|--------------------|-----/\/\/-----|MOTOR NEG PIN (or any analog voltage source)
+ * |         A1-|--------------------|-----/\/\/-----|MOTOR NEG PIN (or any analog voltage source)
  * |  A         |                    \
  * |  R         |    10k             / 10k
  * |  D      13-|---/\/\/---|GND     \
@@ -76,7 +76,7 @@ const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);  
  * user knows exactly what this number means. (It's important!)
  * 
  * DATA_ARRAY_SIZE = 100 microseconds * F_CPU / prescaler / 13 = about 8
-  */
+ */
 #define DATA_ARRAY_SIZE 8               // number of measurements per waveform. 
 #define DATA_STATISTICS_ARRAY_SIZE 100  // number of waveforms over which to aggregate statistics
 volatile unsigned int vdata[DATA_ARRAY_SIZE] = {0}; // holds analog data, may be collected in ISR
@@ -117,7 +117,7 @@ void setup()
   // Setup serial link and spit out intro
   Serial.begin(9600);
   Serial.println("ISR Testing, 1MHz ADC");
-  Serial.println("v1.4-20170505\n");
+  Serial.println("v1.5-20170508\n");
   delay(1500);
 }
 
@@ -201,7 +201,6 @@ void loop()
     }
 
     detachInterrupt( digitalPinToInterrupt( ISR_pin ) );
-//    noInterrupts(); // not sure if this disables Timer2 ISR, but it will only fire once if not
     timer2_stop();
 
     // Aggregate statistics.
@@ -277,9 +276,8 @@ void loop()
     waveform_counter = 0;
     waveform_counter_skipped = 0;
     
-    timer2_start(); // does not enable ISR, external ISR controls that
+    timer2_start(); // does not enable timer ISR, external ISR controls that
     attachInterrupt( digitalPinToInterrupt( ISR_pin ), external_ISR, FALLING );
-//    interrupts();   // not sure if this enables Timer2 ISR, hopefully not
   }
 }
 
