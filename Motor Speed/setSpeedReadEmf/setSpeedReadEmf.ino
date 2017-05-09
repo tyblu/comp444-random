@@ -134,16 +134,17 @@ volatile unsigned long timer2_counter = 0;
 volatile unsigned long timer2_counter_limit = (1 << 31); // 2^31, a big number
 
 
-//// Formula constants, avoiding float bloat
-//const long k_volts_per_adc_bit = (1e6*5)/1024;  // (1e6uV/V)*5V/2^10=~4882 (int rounds down)
-//const long R_shunt = 500000;                    // (1e6uOhm/Ohm)*0.5Ohm
-//const long k_Rcoils_Rshunt_const = (1e3*1e6*1.95)/R_shunt; // 1000*((1e6uOhm/Ohm)*1.95Ohm)/((1e6uOhm/Ohm)*0.5Ohm)=3900
-
-
 // Motor constants
 #define MOTOR_DUTY_MAX 63   // 100 * 3V / (5V - 0.2V)
 #define MOTOR_DUTY_MIN 21   // 100 * 1V / (5V - 0.2V)
 const int motor_R_mOhm = 1950;  // 1.95 Ohm in [mOhm]
+// Measured datapoints
+#define MOTOR_RPM1 2400
+#define MOTOR_EMF1 1200 // in [mV]
+#define MOTOR_RPM2 6120
+#define MOTOR_EMF2 3000 // in [mV]
+#define MOTOR_TORQUE 5000 // in [mN*cm]
+#define MOTOR_CURRENT 850 // in [mA]
 
 
 void setup()
@@ -211,7 +212,7 @@ void loop()
   unsigned int waveform_counter = 0, waveform_counter_skipped = 0;
 
   // Setup motor sweep loop
-  int duty_cycle; // in [%], 21 to 63 for M260 motor
+  int duty_cycle = MOTOR_DUTY_MIN; // in [%], 21 to 63 for M260 motor
   int ramp_dir = 1; // +1 or -1, motor ramping direction
   // How quickly to ramp up motor duty? [ms/%]
   const unsigned long motor_sweep_rate = 100;   // Ramp time ~4s for 100ms delay
@@ -228,7 +229,6 @@ void loop()
   // How often to update info for user? [ms/printout]
   const unsigned long user_update_rate = 1000;
   unsigned long timestamp = millis() + user_update_rate;
-
 
   while ( true )
   {
@@ -295,7 +295,7 @@ void loop()
             get_mV_from_adc( v_pos_b_mean_mean, v_pos_a_mean_mean ),
             get_mV_from_adc( v_neg_b_mean_mean, v_pos_a_mean_mean ) );
 
-//          rpm = get_rpm( emf_mV );  // not yet implemented
+          rpm = get_rpm( emf_mV );
 
           current_mA = get_current_mA (
             get_mV_from_adc( v_pos_b_mean_mean, v_pos_a_mean_mean ),
@@ -303,12 +303,13 @@ void loop()
             emf_mV,
             motor_R_mOhm );
 
-//          torque = get_torque( current_mA );  // not yet implemented
+          torque = get_torque( current_mA );
 
           waveform_counter = 0;
           waveform_counter_skipped = 0;
-          data_ready = false;
           
+          data_ready = false;
+          is_break_time = false;
           timer2_start(); // does not enable timer ISR, external ISR controls that
           attachInterrupt( digitalPinToInterrupt( ISR_pin ), external_ISR, FALLING );
         }
@@ -317,15 +318,14 @@ void loop()
       if ( millis() > timestamp )  // update user interface(s)
       {
         sprintf( str0, "emf:%4d I:%4d", emf_mV, current_mA );
-//        str0 = "emf:"; str0 += emf_mV; str0 += " I:"; str0 += current_mA;
         sprintf( str1, "rpm:%4d t:%5d", rpm, torque );
-//        str1 = "rpm:"; str1 += rpm;    str1 += " t:"; str1 += torque;
         update_lcd( str0, str1 );
         update_serial( str0, str1 );
         timestamp = millis() + user_update_rate; // reset update timer
       }
     } // end while(MIN<duty<MAX) loop
     ramp_dir *= -1; // reverse direction
+    duty_cycle += ramp_dir;
   }
 }
 
@@ -640,4 +640,18 @@ int get_std_dev2( int data[], int data_mean, int data_size )
     temp_std_dev += temp_var * temp_var;
   }
   return (int)( temp_std_dev / data_size );
+}
+
+
+// Returns motor speed in [rpm]
+int get_rpm( int emf_mV )
+{
+  return (int)( (long)( emf_mV * ( MOTOR_RPM2 - MOTOR_RPM1 ))/( MOTOR_EMF2 - MOTOR_EMF1 ) );
+}
+
+
+// Returns torque in [mN*cm]
+int get_torque( int current )
+{
+  return (int)( (long)( ( current * MOTOR_TORQUE ) ) / MOTOR_CURRENT );
 }
