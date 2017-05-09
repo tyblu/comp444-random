@@ -13,7 +13,7 @@
  * @author:    Tyler Lucas
  * Student ID: 3305203
  * Date:       May 2, 2017
- * Version     2.00
+ * Version     2.01
  * 
  * References: http://gammon.com.au/interrupts
  *             https://www.programiz.com/cpp-programming/examples/standard-deviation
@@ -24,40 +24,33 @@
 
 /* Circuit diagram a-la-crap:
  *  
- * |------------|
- * |            |                                                      10k
- * |         A0-|-----------------------------------------------|-----/\/\/-----|MOTOR POS PIN
- * |            |                        10k                    \
- * |         A1-|-----------------|-----/\/\/--|MOTOR NEG PIN   / 10k
- * |            |                 \                             \
- * |         12-|---|LCD RS       / 10k                        _|_
- * |         11-|---|LCD ENABLE   \                            GND
- * |          5-|---|LCD D4      _|_
- * |          4-|---|LCD D5      GND
- * |          3-|---|LCD D6         
- * |          2-|---|LCD D7
- * |  A         |           
- * |  R         |    10k       
- * |  D       8-|---/\/\/---|GND
- * |  U         |    10k 
- * |  I       7-|---/\/\/---|GND
- * |  N         |    10k
- * |  O       6-|---/\/\/---|GND   NOTE: PINS 6,7,8 FOR DEBUGGING ONLY.
- * |            |
- * |  D         |        330
- * |  U   PWM 9-|---|---/\/\/---|BJT BASE
- * |  E         |   /
- * |            |   \ 10k
- * | external   |   /
- * |      ISR 2-|---|
- * |            |
- * |         12-|---|LCD RS
- * |         11-|---|LCD ENABLE
- * |          5-|---|LCD D4
- * |          4-|---|LCD D5
- * |          3-|---|LCD D6
- * |          2-|---|LCD D7
- * |            |
+ * |------------|                                                                               _Vs_
+ * |            |                                                      10k                        |
+ * |         A0-|----------------------------------------------------|--/\/\/---|MOTOR POS PIN|---|------|
+ * |            |                        10k                         \                            |      |
+ * |         A1-|-----------------|-----/\/\/--|MOTOR_NEG PIN|--|    / 10k                      __|__    /\ D1
+ * |            |                 \                             |    \                           +ve      |
+ * |         12-|---|LCD RS       / 10k                         |   _|_                         MOTOR     |
+ * |         11-|---|LCD ENABLE   \                             |   GND                         _-ve_     |
+ * |          6-|---|LCD D4      _|_                            |                                 |       |
+ * |          5-|---|LCD D5      GND                            |---------------------------------|-------|
+ * |          4-|---|LCD D6                                                                       |
+ * |          3-|---|LCD D7                                                                       |
+ * |  A         |                                                                                 |
+ * |  R         |    10k                                                                          |
+ * |  D       8-|---/\/\/---|GND                                                                  |
+ * |  U         |    10k                                                                          |
+ * |  I       7-|---/\/\/---|GND                                                                  |
+ * |  N         |    10k                                                                          |
+ * |  O      13-|---/\/\/---|GND  (NOTE: PINS 13,7,8 FOR DEBUGGING ISRs ONLY.)                    |
+ * |            |                                                                                 /
+ * |  D         |        330                                                                    |/
+ * |  U   PWM 9-|---|---/\/\/---|BJT BASE|------------------------------------------------------|  Q1
+ * |  E         |   /                                                                           |\
+ * |            |   \ 10k                                                                          V
+ * | external   |   /                                                                              |
+ * |      ISR 2-|---|                                                                             _|_
+ * |            |                                                                                 GND
  * |------------|
  * 
  */
@@ -70,13 +63,13 @@ const int motor_neg_pin = A1; // to motor -ve and shunt top
 const int ISR_pin = 2;        // external interrupt pin (#3 occupied by LCD)
 const unsigned int output_pin_extern_ISR = 8;  // for external ISR verification on osc.
 const unsigned int output_pin_A = 7; // TimerTwo tick-tock
-const unsigned int output_pin_B = 6; // TimerTwo, long tick-tock
+const unsigned int output_pin_B = 13; // TimerTwo, long tick-tock
 
 
 #include <LiquidCrystal.h>
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);  // ...(rs, enable, d4, d5, d6, d7)
+LiquidCrystal lcd(12, 11, 6, 5, 4, 3);  // ...(rs, enable, d4, d5, d6, d7)
 char str_intro[] = "setSpeedReadEmf";
-char str_version[] = "v2.00";
+char str_version[] = "v2.01";
 
 
 // Define various ADC prescaler (https://goo.gl/qLdu2e)
@@ -101,7 +94,7 @@ const unsigned char prescale_128 = (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);  
  * DATA_ARRAY_SIZE = 100 microseconds * F_CPU / prescaler / 13 = about 8
  */
 #define DATA_ARRAY_SIZE 8               // number of measurements per waveform. 
-#define DATA_STATISTICS_ARRAY_SIZE 100  // number of waveforms over which to aggregate statistics
+#define DATA_STATISTICS_ARRAY_SIZE 3  // number of waveforms over which to aggregate statistics
 // holds analog data, may be collected in ISR
 volatile unsigned int v_pos_a[DATA_ARRAY_SIZE] = {0};  // motor +ve from 1st half of period
 volatile unsigned int v_pos_b[DATA_ARRAY_SIZE] = {0};  // motor +ve from 1st half of period
@@ -139,12 +132,12 @@ volatile unsigned long timer2_counter_limit = (1 << 31); // 2^31, a big number
 #define MOTOR_DUTY_MIN 21   // 100 * 1V / (5V - 0.2V)
 const int motor_R_mOhm = 1950;  // 1.95 Ohm in [mOhm]
 // Measured datapoints
-#define MOTOR_RPM1 2400
-#define MOTOR_EMF1 1200 // in [mV]
-#define MOTOR_RPM2 6120
-#define MOTOR_EMF2 3000 // in [mV]
-#define MOTOR_TORQUE 5000 // in [mN*cm]
-#define MOTOR_CURRENT 850 // in [mA]
+#define MOTOR_RPM1 2400L
+#define MOTOR_EMF1 1200L    // in [mV]
+#define MOTOR_RPM2 6120L
+#define MOTOR_EMF2 3000L    // in [mV]
+#define MOTOR_TORQUE 2189L  // in [uN*mm], made up
+#define MOTOR_CURRENT 400L  // in [mA], made up
 
 
 void setup()
@@ -218,6 +211,7 @@ void loop()
   const unsigned long motor_sweep_rate = 100;   // Ramp time ~4s for 100ms delay
 
   // Setup data we're after, initialized to -1 for error detection (by user)
+  int v_ss = 5000;      // in [mV]
   int emf_mV = -1;      // in [mV]
   int current_mA = -1;  // in [mA]
   int rpm = -1;         // in [rpm]
@@ -227,7 +221,7 @@ void loop()
   char str0[] = "emf:XXXX  I:XXXX";
   char str1[] = "rpm:XXXX t:XXXXX";
   // How often to update info for user? [ms/printout]
-  const unsigned long user_update_rate = 1000;
+  const unsigned long user_update_rate = 250;
   unsigned long timestamp = millis() + user_update_rate;
 
   while ( true )
@@ -262,6 +256,7 @@ void loop()
           && v_neg_a_std_dev2[waveform_counter] < 67 * 67
           && v_neg_b_std_dev2[waveform_counter] < 67 * 67 )
         {
+          
           waveform_counter++; // data is acceptable, increment counter
         }
         else
@@ -289,17 +284,19 @@ void loop()
           v_neg_a_std_dev2_mean = get_avg( v_neg_a_std_dev2, DATA_STATISTICS_ARRAY_SIZE );
           v_neg_b_std_dev2_mean = get_avg( v_neg_b_std_dev2, DATA_STATISTICS_ARRAY_SIZE );
 
+          v_ss = 5000;  // debugging
+          
           emf_mV = get_emf_mV(
-            get_mV_from_adc( v_pos_a_mean_mean, v_pos_a_mean_mean ),
-            get_mV_from_adc( v_neg_a_mean_mean, v_pos_a_mean_mean ),
-            get_mV_from_adc( v_pos_b_mean_mean, v_pos_a_mean_mean ),
-            get_mV_from_adc( v_neg_b_mean_mean, v_pos_a_mean_mean ) );
+            get_mV_from_adc( v_pos_a_mean_mean, v_ss ),
+            get_mV_from_adc( v_neg_a_mean_mean, v_ss ),
+            get_mV_from_adc( v_pos_b_mean_mean, v_ss ),
+            get_mV_from_adc( v_neg_b_mean_mean, v_ss ) );
 
           rpm = get_rpm( emf_mV );
 
           current_mA = get_current_mA (
-            get_mV_from_adc( v_pos_b_mean_mean, v_pos_a_mean_mean ),
-            get_mV_from_adc( v_neg_b_mean_mean, v_pos_a_mean_mean ),
+            get_mV_from_adc( v_pos_b_mean_mean, v_ss ),
+            get_mV_from_adc( v_neg_b_mean_mean, v_ss ),
             emf_mV,
             motor_R_mOhm );
 
@@ -345,9 +342,11 @@ int get_emf_mV ( int motor_pos_1st_mV, int motor_neg_1st_mV, int motor_pos_2nd_m
   {
     return -1; // error, out of bounds
   }
-  
+
   // Calculation order changed to avoid negative numbers, in case this is changed to use unsigned
-  return ( motor_pos_1st_mV + motor_neg_2nd_mV ) - motor_neg_1st_mV - motor_pos_2nd_mV;
+  // emf = (pos1-neg1) - (pos2-neg2) = pos1+neg2-neg1-pos2
+//  return ( motor_pos_1st_mV + motor_neg_2nd_mV ) - motor_neg_1st_mV - motor_pos_2nd_mV;
+  return motor_pos_1st_mV - motor_neg_1st_mV; // Until I can figure out why the other is broken.
 }
 
 /* Current is the difference in stable voltages measured across motor terminals
@@ -366,7 +365,7 @@ int get_current_mA ( int motor_pos_2nd_mV, int motor_neg_2nd_mV, int emf_mV, int
     return -1; // error, out of bounds
   }
 
-  return ( 1000 * ( motor_pos_2nd_mV - motor_neg_2nd_mV - emf_mV ) ) / motor_resistance_mOhm;
+  return (int)( ( 1000L * ( (long)motor_pos_2nd_mV - (long)motor_neg_2nd_mV - emf_mV ) ) / (long)motor_resistance_mOhm );
 }
 
 
@@ -378,9 +377,9 @@ int get_mV_from_adc( int measurement, int source_voltage_mV )
   {
     return -1;  // error, out of bounds
   }
-  
+
   // Do calculations at maximum resolution without overrunning
-  return (int)( (long)( measurement * source_voltage_mV )/1024 );
+  return (int)( ( (long)measurement * (long)source_voltage_mV )/1024L );
 }
 
 
@@ -583,12 +582,13 @@ ISR( TIMER2_OVF_vect )
 
 
 // Helper for ISR( TIMER2_OVF_vect ), so I don't have to fight with array pointers.
+// Multiplies everything by 2 to account for voltage divider.
 void read_adc ( volatile unsigned int data_array[], int data_array_size, int adc_pin )
 {
   int n;
   for ( n=0; n<data_array_size; n++)
   {
-    data_array[n] = analogRead( adc_pin );
+    data_array[n] = 2* analogRead( adc_pin );
   }
 }
 
@@ -646,12 +646,12 @@ int get_std_dev2( int data[], int data_mean, int data_size )
 // Returns motor speed in [rpm]
 int get_rpm( int emf_mV )
 {
-  return (int)( (long)( emf_mV * ( MOTOR_RPM2 - MOTOR_RPM1 ))/( MOTOR_EMF2 - MOTOR_EMF1 ) );
+  return (int)( (long)emf_mV * ( MOTOR_RPM2 - MOTOR_RPM1 )/( MOTOR_EMF2 - MOTOR_EMF1 ) );
 }
 
 
 // Returns torque in [mN*cm]
 int get_torque( int current )
 {
-  return (int)( (long)( ( current * MOTOR_TORQUE ) ) / MOTOR_CURRENT );
+  return (int)( ( (long)current * MOTOR_TORQUE ) / MOTOR_CURRENT );
 }
