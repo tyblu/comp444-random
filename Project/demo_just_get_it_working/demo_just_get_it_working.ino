@@ -16,7 +16,8 @@
 #include <Servo.h>  // servo library
 
 Servo servo[4];  // servo control objects
-int angles[4], speeds[4];
+int angles[4] = { 90, 65, 90, 60 };   // initial angles
+int constraints[4][2] = { {0, 180}, {65, 125}, {65, 140}, {60, 150} };
 
 void setup()
 {
@@ -24,41 +25,40 @@ void setup()
   servo[1].attach( 6 );
   servo[2].attach( 5 );
   servo[3].attach( 3 );
-
-  int n;
-  for ( n=0; n<4; n++ )
-  {
-    servo[n].write( 90 );
-  }
+  for ( int n=0; n<4; n++ ) { servo[n].write( angles[n] ); }
   
   Serial.begin(9600);
-
-  pinMode(13, OUTPUT);
 }
 
 
 void loop()
 {
-  int n;
-  for ( n=0; n<4; n++ )
+  Serial.println();
+  
+  Serial.print("Servo #");
+  while ( Serial.available() == 0 ) { }
+  int servo_num = Serial.parseInt();
+  Serial.println( servo_num );
+
+  Serial.print("Angle: ");
+  while ( Serial.available() == 0 ) { }
+  int angle = Serial.parseInt();
+  Serial.println( angle );
+
+  angle = constrain(angle, constraints[servo_num][0], constraints[servo_num][1]);
+
+  Serial.print("Setting servo #");
+  Serial.print( servo_num );
+  Serial.print(" to ");
+  Serial.print( angle );
+  Serial.println(" degrees.");
+
+  int dir = (angle - angles[servo_num]) / abs(angle - angles[servo_num]);
+  while ( angles[servo_num] != angle )
   {
-    Serial.print("\nEnter new angle for servo ");
-    Serial.write('#');
-    Serial.print( n );
-    Serial.print(": ");
-
-    while ( Serial.available() == 0 ) { }
-    
-    angles[n] = Serial.parseInt();
-    Serial.print( angles[n] );
-    Serial.println(" deg entered.");
-    
-    angles[n] = constrain( angles[n], 0, 180 );
-
-    Serial.print("Setting angle to ");
-    Serial.print( angles[n] );
-    Serial.println(" deg.");
-
-    servo[n].write( angles[n] );
+    angles[servo_num] += dir;
+    servo[servo_num].write( angles[servo_num] );
+    delay(50);
+    Serial.write('.');
   }
 }
