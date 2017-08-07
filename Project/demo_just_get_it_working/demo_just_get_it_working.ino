@@ -20,10 +20,10 @@ int angles[4], speeds[4];
 
 void setup()
 {
-  servo[1].attach( 9 );
-  servo[2].attach( 6 );
-  servo[3].attach( 5 );
-  servo[4].attach( 3 );
+  servo[0].attach( 9 );
+  servo[1].attach( 6 );
+  servo[2].attach( 5 );
+  servo[3].attach( 3 );
 
   int n;
   for ( n=0; n<4; n++ )
@@ -32,6 +32,8 @@ void setup()
   }
   
   Serial.begin(9600);
+
+  pinMode(13, OUTPUT);
 }
 
 
