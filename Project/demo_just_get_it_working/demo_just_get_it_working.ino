@@ -154,15 +154,18 @@ void go_to(int servo_number, int angle)
   int min_delay_time = 10, max_delay_time = 100, delay_time = max_delay_time;
   
   int previous_angle;
+  bool continue_flag;
   do {
     previous_angle = angles[servo_number];
     
     delay(delay_time);
 
+    continue_flag = go_towards(servo_number, angle);
+
     if ( abs(angle - angles[servo_number]) > 15 && delay_time > min_delay_time )
       delay_time -= min_delay_time;
     else if ( abs(angle - angles[servo_number]) <= 15 && delay_time < max_delay_time)
       delay_time += min_delay_time;
-  } while ( go_towards(servo_number, angle) );
+  } while ( previous_angle - angles[servo_number] != 0 && continue_flag );
 }
 
