@@ -124,29 +124,28 @@ int constrain_servo_angle_conservatively(int servo_number, int input_angle)
 /*
  * Increments towards the intended angle, keeping other angles in valid ranges.
  */
-boolean go_towards(int servo_number, int angle)
+void go_towards(int servo_number, int angle)
 {
   angle = constrain_servo_angle(servo_number, angle);
-  int diff = angle - angles[servo_number];
   
+  int diff = angle - angles[servo_number];
   int dir;
   if (diff == 0)
-    return false;
+    dir = 0;
   else
     dir = diff / abs(diff);
   
   angles[servo_number] += dir;
   servo[servo_number].write( angles[servo_number] );
 
-  if ( servo_number = 1 )
-    go_to(3, angles[3]);
-  if ( servo_number = 3 )
-    go_to(1, angles[1]);
+  if ( servo_number == 3)
+  {
+    angles[(servo_number + 2) % 4] = constrain_servo_angle((servo_number + 2) % 4, angles[(servo_number + 2) % 4]);
+    servo[(servo_number + 2) % 4].write( angles[(servo_number + 2) % 4] );
+  }
   
 //  if ( angles[servo_number] % 15 == 0 )
 //    Serial.print(angles[servo_number]);
-
-  return true;
 }
 
 void go_to(int servo_number, int angle)
@@ -154,18 +153,17 @@ void go_to(int servo_number, int angle)
   int min_delay_time = 10, max_delay_time = 100, delay_time = max_delay_time;
   
   int previous_angle;
-  bool continue_flag;
   do {
     previous_angle = angles[servo_number];
     
     delay(delay_time);
 
-    continue_flag = go_towards(servo_number, angle);
+    go_towards(servo_number, angle);
 
     if ( abs(angle - angles[servo_number]) > 15 && delay_time > min_delay_time )
       delay_time -= min_delay_time;
     else if ( abs(angle - angles[servo_number]) <= 15 && delay_time < max_delay_time)
       delay_time += min_delay_time;
-  } while ( previous_angle - angles[servo_number] != 0 && continue_flag );
+  } while ( previous_angle - angles[servo_number] != 0 );
 }
 
