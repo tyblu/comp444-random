@@ -25,11 +25,11 @@ void setup()
   servo[1].attach( 6 );
   servo[2].attach( 5 );
   servo[3].attach( 3 );
-  for ( int n=0; n<4; n++ ) { servo[n].write( angles[n] ); }
+  for ( int n=0; n<4; n++ )
+    servo[n].write( angles[n] );
   
   Serial.begin(9600);
 }
-
 
 void loop()
 {
@@ -53,12 +53,20 @@ void loop()
   Serial.print( angle );
   Serial.println(" degrees.");
 
+  int min_delay_time = 10, max_delay_time = 100, delay_time = max_delay_time;
   int dir = (angle - angles[servo_num]) / abs(angle - angles[servo_num]);
   while ( angles[servo_num] != angle )
   {
     angles[servo_num] += dir;
     servo[servo_num].write( angles[servo_num] );
-    delay(50);
+    delay(delay_time);
     Serial.write('.');
+    if ( angles[servo_num] % 15 == 0 )
+      Serial.print(angles[servo_num]);
+
+    if ( abs(angle - angles[servo_num]) > 15 && delay_time > min_delay_time )
+      delay_time -= min_delay_time;
+    else if ( abs(angle - angles[servo_num]) <= 15 && delay_time < max_delay_time)
+      delay_time += min_delay_time;
   }
 }
