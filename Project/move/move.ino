@@ -26,6 +26,12 @@ void setup()
 
 void loop()
 {
+
+
+
+
+  ///////////////////
+  
   Serial.println();
   
   Serial.print("Servo #");
@@ -181,5 +187,34 @@ void attach_servos()
   servo_boom.attach( 6 );   // boom
   servo_pincher.attach( 5 );   // pincher
   servo_main.attach( 3 );   // main arm
+}
+
+void goal(double radius, double height, double angle, double jaw_width)
+{
+  //
+}
+
+int pincher_width_to_servo_angle(double width)
+{
+  double angle_normalized;
+  
+  if ( width > 5 )
+    angle_normalized = 15;
+  else if ( width <= 0 )
+    angle_normalized = 90;
+  else
+    angle_normalized = 88.409 - 15.269 * width;
+
+  return (int)angle_normalized + (140-90);
+}
+
+int swing_angle_to_servo_angle(int swing_angle)
+{
+  if ( swing_angle < 0 )
+    return 0;
+  else if ( swing_angle > 180 )
+    return 180;
+  else
+    return swing_angle;
 }
 
