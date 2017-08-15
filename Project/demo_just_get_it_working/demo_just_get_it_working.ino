@@ -6,7 +6,7 @@
  * @author:    Tyler Lucas
  * Student ID: 3305203
  * Date:       May 5, 2017
- * Version     1.1
+ * Version     1.2
  * 
  * References: SparkFun Inventor's Kit Example sketch 08-2: SINGLE SERVO Version 2.0 6/2012 MDG
  * 
