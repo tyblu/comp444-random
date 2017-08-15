@@ -14,7 +14,17 @@
 
 Servo servo_turret, servo_boom, servo_pincher, servo_main;
 Servo servos[4] = { servo_turret, servo_boom, servo_pincher, servo_main };
-const int angles[4] = { 90, 65, 90, 60 };   // initial angles
+
+float angle_main, angle_boom;
+float current_radius, current_height, current_swing_angle;
+float target_radius, target_height, target_swing_angle;
+
+int current_delay;
+const int angle_delay = 15;
+const int delay_max = 50;
+const int delay_min = 10;
+
+//const float PI = 3.141592654; // may already be defined
 
 void setup()
 {
@@ -189,14 +199,14 @@ void attach_servos()
   servo_main.attach( 3 );   // main arm
 }
 
-void goal(double radius, double height, double angle, double jaw_width)
+void set_target_state(double radius, double height, double angle, double jaw_width)
 {
   //
 }
 
-int pincher_width_to_servo_angle(double width)
+float pincher_width_to_servo_angle(double width)
 {
-  double angle_normalized;
+  float angle_normalized;
   
   if ( width > 5 )
     angle_normalized = 15;
@@ -218,3 +228,45 @@ int swing_angle_to_servo_angle(int swing_angle)
     return swing_angle;
 }
 
+int[] radius_height_to_main_and_boom_servo_angles(float radius, float height)
+{
+  float angle_main, angle_boom;
+
+  
+}
+
+int main_and_boom_angles_to_height(float angle_main, float angle_boom)
+{
+  double height;
+  double angle_main_rad = angle_main * 
+
+  height = 92 + 140 * sin(deg2rad(angle_main)) + 145 * sin(deg2rad(angle_boom))
+      - ( 0.0085 * angle_boom * angle_boom + 0.6807 * angle_boom - 3.8674 );
+}
+
+int main_and_boom_angles_to_radius(double angle_main, double angle_boom)
+{
+  //
+}
+
+float deg2rad(float deg)
+{
+  return deg * PI / 180;
+}
+
+const int normalization_offset_main = //
+const int normalization_offset_boom = //
+const int normalization_offset_pincher = 140 - 90;
+
+
+float normalize_servo_angle_main(float deg)
+
+float normalize_servo_angle_boom(float deg)
+
+float normalize_servo_angle_pincher(float deg)
+
+float get_servo_angle_from_normalized_main(float deg)
+
+float get_servo_angle_from_normalized_boom(float deg)
+
+float get_servo_angle_from_normalized_pincher(float deg)
