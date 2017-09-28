@@ -43,6 +43,19 @@ void setup()
 
   pinMode(sonarTrigPin, OUTPUT);
   pinMode(sonarEchoPin, INPUT);
+
+  pinMode(servo0PosPin, INPUT);
+  pinMode(servo1PosPin, INPUT);
+  pinMode(servo2PosPin, INPUT);
+  pinMode(servo3PosPin, INPUT);
+  
+  pinMode(forceLPin, INPUT);
+  pinMode(forceRPin, INPUT);
+
+  pinMode(forceLVccPin, OUTPUT);
+  digitalWrite(forceLVccPin, HIGH);
+  pinMode(forceLVccPin, OUTPUT);
+  digitalWrite(forceRVccPin, HIGH);
   
   Serial.begin(9600);
 }
@@ -82,6 +95,11 @@ void loop()
   Serial.print(" set to ");
   Serial.print( angles[servo_num] );
   Serial.println(" degrees.");
+
+  Serial.println();
+  Serial.print("Sonar reading: ");
+  Serial.print( readSonar() );
+  Serial.println(" mm");
 }
 
 int constrain_servo_angle(int servo_number, int input_angle)
