@@ -31,6 +31,7 @@
 
 Servo servo[4];  // servo control objects
 int angles[4] = { 90, 65, 90, 60 };   // initial angles
+int servoPosPin[4] = { servo0PosPin, servo1PosPin, servo2PosPin, servo3PosPin };
 
 void setup()
 {
@@ -53,15 +54,23 @@ void setup()
   pinMode(forceRPin, INPUT);
 
   pinMode(forceLVccPin, OUTPUT);
-  digitalWrite(forceLVccPin, HIGH);
+  digitalWrite(forceLVccPin, LOW);
   pinMode(forceLVccPin, OUTPUT);
-  digitalWrite(forceRVccPin, HIGH);
+  digitalWrite(forceRVccPin, LOW);
   
   Serial.begin(9600);
 }
 
 void loop()
 {
+  Serial.println();
+
+  Serial.print("Force sensor values: [L: ");
+  Serial.print( readForceSensor(forceLVccPin, forceLPin) );
+  Serial.print("] [R: ");
+  Serial.print( readForceSensor(forceRVccPin, forceRPin) );
+  Serial.println("]");
+
   Serial.println();
   
   Serial.print("Servo #");
@@ -95,6 +104,9 @@ void loop()
   Serial.print(" set to ");
   Serial.print( angles[servo_num] );
   Serial.println(" degrees.");
+
+  Serial.print("Measured angle (raw): ");
+  Serial.println( analogReadAverage( servoPosPin[servo_num], 10 ) );
 
   Serial.println();
   Serial.print("Sonar reading: ");
@@ -215,3 +227,21 @@ double readSonar()
   duration = pulseIn(sonarEchoPin, HIGH);
   return 0.146 * duration - 23.843;  // returns in mm
 }
+
+double readForceSensor(int forceSensorVccPin, int forceSensorPin)
+{
+  digitalWrite(forceSensorVccPin, HIGH);
+  delay(5);
+  double sensorValue = analogReadAverage(forceSensorPin, 10);
+  digitalWrite(forceSensorVccPin, LOW);
+  return sensorValue;
+}
+
+double analogReadAverage(int pin, int count)
+{
+  double sum = 0;
+  for (int i=0; i<count; i++)
+    sum += analogRead(pin);
+  return sum / count;
+}
+
