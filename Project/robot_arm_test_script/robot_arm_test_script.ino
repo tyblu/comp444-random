@@ -17,8 +17,8 @@
 #define sonarTrigPin 13
 #define sonarEchoPin 12
 #define servo0PWMPin 11
-#define servo1PWMPin 9
-#define servo2PWMPin 8
+#define servo1PWMPin 10
+#define servo2PWMPin 9
 #define servo3PWMPin 6
 #define forceLVccPin 5
 #define forceRVccPin 4
@@ -63,8 +63,6 @@ void setup()
 
 void loop()
 {
-  Serial.println();
-
   Serial.print("Force sensor values: [L: ");
   Serial.print( readForceSensor(forceLVccPin, forceLPin) );
   Serial.print("] [R: ");
