@@ -5,7 +5,7 @@
  * @author:    Tyler Lucas
  * Student ID: 3305203
  * Date:       October 3, 2017
- * Version     0.1
+ * Version     1.0
  * 
  * References: N/A
  * 
