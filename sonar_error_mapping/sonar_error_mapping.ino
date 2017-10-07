@@ -8,7 +8,7 @@
  * @author:    Tyler Lucas
  * Student ID: 3305203
  * Date:       October 6, 2017
- * Version     1.0
+ * Version     1.1
  * 
  * References: N/A
  * 
@@ -23,9 +23,9 @@
 
 #define angleMax 110
 #define angleMin 30
-#define angleAdjustmentMagnitude 5
+#define angleAdjustmentMagnitude 10
 
-#define timeDelayToNextAngle 500
+#define timeDelayToNextAngle 1000
 
 Servo servo;
 int angle = angleMin;
@@ -43,14 +43,15 @@ void setup()
   servo.write( angle );
   
   Serial.println();
-  Serial.println("Printing timestamp, input angle, and sonar measurement (pulse duration).");
+  Serial.println("Printing time, input angle, and sonar measurement (echo pulse delay [us]).");
 
   delay(1000);
 }
 
 void loop()
 {
-  unsigned long timestamp = millis();
+  unsigned long timeStart = millis();
+  unsigned long timestamp = timeStart;
   unsigned long timeNextAngle = timestamp + timeDelayToNextAngle;
   long sonarDuration;
 
@@ -62,7 +63,7 @@ void loop()
     sonarDuration = getSonarDuration();
     
     Serial.println();
-    Serial.print( timestamp );
+    Serial.print( timestamp - timeStart );
     Serial.write(',');
     Serial.print( angle );
     Serial.write(',');
