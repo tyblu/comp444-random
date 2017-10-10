@@ -20,10 +20,10 @@ int angles[4] = { 90, 65, 90, 60 };   // initial angles
 
 void setup()
 {
-  servo[0].attach( 9 );   // swivel
-  servo[1].attach( 6 );   // boom
-  servo[2].attach( 5 );   // pincher
-  servo[3].attach( 3 );   // main arm
+  servo[0].attach( 6 );   // swivel
+  servo[1].attach( 11 );   // boom
+  servo[2].attach( 9 );   // pincher
+  servo[3].attach( 10 );   // main arm
   for ( int n=0; n<4; n++ )
     servo[n].write( angles[n] );
   
