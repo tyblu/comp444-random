@@ -8,7 +8,7 @@
  * @author:    Tyler Lucas
  * Student ID: 3305203
  * Date:       October 6, 2017
- * Version     1.2
+ * Version     1.3
  * 
  * References: N/A
  * 
@@ -21,11 +21,11 @@
 #define sonarEchoPin 12
 #define servo0PWMPin 11
 
-#define angleMax 110
+#define angleMax 40
 #define angleMin 30
-#define angleAdjustmentMagnitude 80 /* Changed to maximum possible. */
+#define angleAdjustmentMagnitude 10
 
-#define timeDelayToNextAngle 1000
+#define timeDelayToNextAngle 100
 
 Servo servo;
 int angle = angleMin;
