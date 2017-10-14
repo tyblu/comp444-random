@@ -35,6 +35,8 @@ public:
 private:
 	int minAngle = 0, maxAngle = 180;
 	int sensorPin;
+	const float sensorSlope, sensorOffset;
+	const float analogAngleDeviationLimit;
 };
 
 #endif /* TYBLUSERVO_H_ */

@@ -48,7 +48,7 @@ int TybluServo::getMaxAngle()
 
 int TybluServo::getAnalogAngle()
 {
-	return -1;
+	return analogRead(sensorPin);
 }
 
 /**
