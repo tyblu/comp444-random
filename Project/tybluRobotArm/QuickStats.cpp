@@ -95,7 +95,7 @@ void QuickStats::bubbleSort(float A[],int len) {
 }
 
 float QuickStats::fabs(float sample) // calculate absolute value
-{
+{ 
   if(sample<0.f){
     return -sample;
   }else{
@@ -122,7 +122,7 @@ float QuickStats::median(float samples[],int m) //calculate the median
   }*/
   if (bitRead(m,0)==1) {  //If the last bit of a number is 1, it's odd. This is equivalent to "TRUE". Also use if m%2!=0.
     return sorted[m/2]; //If the number of data points is odd, return middle number.
-  } else {
+  } else {    
     return (sorted[(m/2)-1]+sorted[m/2])/2; //If the number of data points is even, return avg of the middle two numbers.
   }
 }
@@ -153,12 +153,12 @@ float QuickStats::mode(float samples[],int m,float epsilon) //calculate the mode
   int p=0; // counter for # unique numbers
   int maxp=0;
   int maxidx=0;
-  for(int i=1;i<m;i++){
+  for(int i=1;i<m;i++){ 
     if(fabs(sorted[i]-sorted[i-1])<epsilon){
       uniquect[p]++;  //if same number again, add to count
       if(uniquect[p]>maxp){
         maxp=uniquect[p];
-        maxidx=p;
+        maxidx=p;      
       }
     } else {
       p++;
@@ -168,8 +168,8 @@ float QuickStats::mode(float samples[],int m,float epsilon) //calculate the mode
   }
   /*for(int i=0;i<p+1;i++){
     Serial.println("Num: " + (String)unique[i] +"   Count: " + (String)uniquect[i]);
-  }*/
-  if (maxp>1) {
+  }*/  
+  if (maxp>1) {    
     return unique[maxidx]; //If there is more than one mode, return the lowest one.
   } else {
     return 0.0; //If there is no mode, return a zero.

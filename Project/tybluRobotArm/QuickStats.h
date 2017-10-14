@@ -16,7 +16,7 @@ class QuickStats {
     float average(float samples[],int m);
     float g_average(float samples[],int m);
     float minimum(float samples[],int m);
-    float maximum(float samples[],int m);
+    float maximum(float samples[],int m);	
     float stdev(float samples[],int m);
     float stderror(float samples[],int m);
     float CV(float samples[],int m);
