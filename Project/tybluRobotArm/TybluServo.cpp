@@ -51,3 +51,17 @@ int TybluServo::getAnalogAngle()
 	return -1;
 }
 
+/**
+ * If value is < 200 its treated as an angle, otherwise as pulse width in
+ * microseconds. If value is < minAngle then it's set to minAngle; if > maxAngle and
+ * < 200 then it's set to maxAngle.
+ */
+void TybluServo::write(int value)
+{
+	if (value < minAngle)
+		Servo::write(minAngle);
+	else if (value > maxAngle && value < 200)
+		Servo::write(maxAngle);
+	else							// minAngle > value > maxAngle || value > 200
+		Servo::write(value);
+}

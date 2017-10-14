@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "TybluServo.h"
 
-TybluServo boomArmServo(70, 115, A0);
+TybluServo boomArmServo(85, 95, A0);
 
 void setup()
 {
@@ -12,7 +12,14 @@ void setup()
 
 void loop()
 {
-	Serial.println("Version 0.2 functioning!");
+	int angle = (70+115)/2 + (115-70)/3 * sin(millis());
+	boomArmServo.write(angle);
+
+	Serial.println();
+	Serial.print("Version 0.21 functioning! Input angle: ");
+	Serial.print(angle);
+	Serial.print("   Angle written: ");
+	Serial.print(boomArmServo.read());
+
 	delay(2000);
-	boomArmServo.write((70+115)/2 + (115-70)/2 * sin(millis()));
 }
