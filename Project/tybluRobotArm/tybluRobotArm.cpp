@@ -1,32 +1,39 @@
 #include <Arduino.h>
-#include "TybluServo.h"
 #include "QuickStats.h"
 
-TybluServo boomArmServo(75, 110, A0);
-float sinCount = 0;
+void quickStatsDemo();
 
 void setup()
 {
 	Serial.begin(9600);
-	boomArmServo.write((70+115)/2);
-	boomArmServo.attach(11);
-
 	Serial.println("Compiled " __DATE__ " at " __TIME__);
-}
-
-void loop()
-{
-	sinCount += 0.1;
-	int angle = (70+115)/2 + (115-70)/2 * sin(sinCount);
-	boomArmServo.write(angle);
 
 	Serial.println();
-	Serial.print("Input angle: ");
-	Serial.print(angle);
-	Serial.print("   Angle written: ");
-	Serial.print(boomArmServo.read());
-	Serial.print("   sinCount=");
-	Serial.print(sinCount);
+	Serial.println();
 
-	delay(500);
+	quickStatsDemo();
+}
+
+void loop() {}
+
+void quickStatsDemo()
+{
+	Serial.println("QuickStats Demo");
+
+	float array[] = {1, 1, 2, 3, 3, 3, 3, 3, 4, 5, 6, 7, 8, 9, 100};
+	Serial.print("array[] = {");
+	for (int i=0; i<15; i++)
+	{
+		Serial.print(array[i]);
+		Serial.print(", ");
+	}
+	Serial.println("};");
+
+	QuickStats qs;
+	Serial.print("Average: ");
+	Serial.println( qs.average(array, 15) );
+	Serial.print("Geometric Average: ");
+	Serial.println( qs.g_average(array, 15) );
+	Serial.print("Mode: ");
+	Serial.println( qs.mode(array, 15, 0.1) );
 }
