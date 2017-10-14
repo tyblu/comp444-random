@@ -1,5 +1,5 @@
 /*
- * tybluForceSensor.h
+ * TybluForceSensor.h
  *
  *  Created on: Oct 13, 2017
  *      Author: tyblu
@@ -10,11 +10,14 @@
 #ifndef TYBLUFORCESENSOR_H_
 #define TYBLUFORCESENSOR_H_
 
-class tybluForceSensor
+class TybluForceSensor
 {
+public:
+	TybluForceSensor();
 
+private:
+	float slope, offset;
+	unsigned int
 };
-
-
 
 #endif /* TYBLUFORCESENSOR_H_ */

@@ -1,9 +1,14 @@
-#include <Arduino.h>
+/*
+ * TybluForceSensor.cpp
+ *
+ *  Created on: Oct 13, 2017
+ *      Author: tyblu
+ */
 
-void setup() {
+#include "TybluForceSensor.h"
+
+TybluForceSensor::TybluForceSensor() {
+	// TODO Auto-generated constructor stub
 
 }
 
-void loop() {
-
-}
