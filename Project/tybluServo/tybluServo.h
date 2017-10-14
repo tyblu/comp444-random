@@ -7,7 +7,7 @@
 
 #include <Arduino.h>
 #include <Servo.h>
-#include "tybluForceSensor.h"
+#include <TybluServo.h>
 
 #ifndef TYBLUSERVO_H
 #define TYBLUSERVO_H
