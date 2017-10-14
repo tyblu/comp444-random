@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "TybluServo.h"
+#include "QuickStats.h"
 
 TybluServo boomArmServo(75, 110, A0);
 float sinCount = 0;
