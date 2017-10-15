@@ -1,11 +1,9 @@
 #include <Arduino.h>
-#include "QuickStats.h"
 #include "TybluServo.h"
 
-TybluServo boomArmServo(75, 110, A0);
-int angle = (115+70)/2;
+TybluServo boomArmServo(75, 110, A0, 1.1131363501, -147.1303003827, 50);
+int angle = ( boomArmServo.getMaxAngle() + boomArmServo.getMinAngle() ) / 2;
 long timestamp = millis();
-QuickStats qs;
 int angleAdjustment = 3;
 
 void setup()
@@ -22,47 +20,20 @@ void setup()
 
 void loop()
 {
-	const int POINTS = 62;
 	if (timestamp + 1000 > millis() )
 	{
-		Serial.println();
+		Serial.println(); delay(5);
 
 		Serial.print("Angle = "); delay(5);
 		Serial.print( boomArmServo.read() ); delay(5);
-		Serial.print(",    Sample Time = "); delay(5);
-		float array[POINTS];
+		Serial.print(", Analog Angle = "); delay(5);
 		long sampleTime = millis();
-		for (int i=0; i<POINTS; i++)
-			array[i] = analogRead(A0);
+		int analogAngle = boomArmServo.getAnalogAngle();
 		sampleTime = millis() - sampleTime;
-		Serial.print( sampleTime ); delay(5);
-		Serial.print(" ms, Sorting Time = "); delay(5);
-		sampleTime = millis();
-		qs.bubbleSort(array, POINTS);
-		sampleTime = millis() - sampleTime;
+		Serial.print( analogAngle );
+		Serial.print(", Time = ");
 		Serial.print( sampleTime ); delay(5);
 		Serial.print(" ms"); delay(5);
-		Serial.println(); delay(5);
-
-		Serial.print("              Mode = "); delay(5);
-		sampleTime = millis();
-		float mode = qs.mode(array, POINTS, 1);
-		sampleTime = millis() - sampleTime;
-		Serial.print( mode ); delay(5);
-		Serial.print(", Compute Time = "); delay(5);
-		Serial.print( sampleTime ); delay(5);
-		Serial.print(" ms"); delay(5);
-		Serial.println(); delay(5);
-
-		Serial.print("Standard Deviation = "); delay(5);
-		sampleTime = millis();
-		float stdev = qs.stdev(array, POINTS);
-		sampleTime = millis() - sampleTime;
-		Serial.print( stdev ); delay(5);
-		Serial.print(", Compute Time = "); delay(5);
-		Serial.print( sampleTime ); delay(5);
-		Serial.print(" ms"); delay(5);
-		Serial.println(); delay(5);
 	}
 	else
 	{
