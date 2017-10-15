@@ -22,48 +22,75 @@ void setup()
 
 void loop()
 {
+	const int POINTS = 75;
 	if (timestamp + 1000 > millis() )
 	{
-		long sampleTime = millis();
-		float array[100];
-		for (int i=0; i<100; i++)
-			array[i] = analogRead(A0);
-		sampleTime = millis() - sampleTime;
-
 		Serial.println();
 
-		Serial.print("Angle = ");
-		Serial.print( boomArmServo.read() );
-		Serial.print(", Sample Time = ");
-		Serial.print( sampleTime );
-		Serial.println(" ms");
-
-		Serial.print("Average = ");
-		sampleTime = millis();
-		float avg = qs.average(array, 100);
+		Serial.print("             Angle = "); delay(5);
+		Serial.print( boomArmServo.read() ); delay(5);
+		Serial.print(",    Sample Time = "); delay(5);
+		float array[POINTS];
+		long sampleTime = millis();
+		for (int i=0; i<POINTS; i++)
+			array[i] = analogRead(A0);
 		sampleTime = millis() - sampleTime;
-		Serial.print( avg );
-		Serial.print(", Compute Time = ");
-		Serial.print( sampleTime );
-		Serial.println(" ms");
-
-		Serial.print("  Mode =");
+		Serial.print( sampleTime ); delay(5);
+		Serial.print(" ms,         Sorting Time = "); delay(5);
+		float arraySorted[POINTS];
+		for (int i=0; i<POINTS; i++)
+			arraySorted[i] = array[i];
 		sampleTime = millis();
-		float mode = qs.mode(array, 100, 1);
+		qs.bubbleSort(arraySorted, POINTS);
 		sampleTime = millis() - sampleTime;
-		Serial.print( mode );
-		Serial.print(", Compute Time = ");
-		Serial.print( sampleTime );
-		Serial.println(" ms");
+		Serial.print( sampleTime ); delay(5);
+		Serial.print(" ms"); delay(5);
+		Serial.println(); delay(5);
 
-		Serial.print("Std. Dev.=");
+		Serial.print("           Average = "); delay(5);
 		sampleTime = millis();
-		float stdev = qs.stdev(array, 100);
+		float avg = qs.average(array, POINTS);
 		sampleTime = millis() - sampleTime;
-		Serial.print( stdev );
-		Serial.print(", Compute Time = ");
-		Serial.print( sampleTime );
-		Serial.println(" ms");
+		Serial.print( avg ); delay(5);
+		Serial.print(", Compute Time = "); delay(5);
+		Serial.print( sampleTime ); delay(5);
+		Serial.print(" ms, Compute Time (sorted) = "); delay(5);
+		sampleTime = millis();
+		avg = qs.average(arraySorted, POINTS);
+		sampleTime = millis() - sampleTime;
+		Serial.print( sampleTime ); delay(5);
+		Serial.print(" ms"); delay(5);
+		Serial.println(); delay(5);
+
+		Serial.print("              Mode = "); delay(5);
+		sampleTime = millis();
+		float mode = qs.mode(array, POINTS, 1);
+		sampleTime = millis() - sampleTime;
+		Serial.print( mode ); delay(5);
+		Serial.print(", Compute Time = "); delay(5);
+		Serial.print( sampleTime ); delay(5);
+		Serial.print(" ms, Compute Time \(sorted\) = "); delay(5);
+		sampleTime = millis();
+		avg = qs.mode(arraySorted, POINTS, 1);
+		sampleTime = millis() - sampleTime;
+		Serial.print( sampleTime ); delay(5);
+		Serial.print(" ms"); delay(5);
+		Serial.println(); delay(5);
+
+		Serial.print("Standard Deviation = "); delay(5);
+		sampleTime = millis();
+		float stdev = qs.stdev(array, POINTS);
+		sampleTime = millis() - sampleTime;
+		Serial.print( stdev ); delay(5);
+		Serial.print(", Compute Time = "); delay(5);
+		Serial.print( sampleTime ); delay(5);
+		Serial.print(" ms, Compute Time \(sorted\) = "); delay(5);
+		sampleTime = millis();
+		avg = qs.stdev(arraySorted, POINTS);
+		sampleTime = millis() - sampleTime;
+		Serial.print( sampleTime ); delay(5);
+		Serial.print(" ms"); delay(5);
+		Serial.println(); delay(5);
 	}
 	else
 	{
