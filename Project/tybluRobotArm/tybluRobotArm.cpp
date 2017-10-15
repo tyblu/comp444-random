@@ -22,12 +22,12 @@ void setup()
 
 void loop()
 {
-	const int POINTS = 75;
+	const int POINTS = 62;
 	if (timestamp + 1000 > millis() )
 	{
 		Serial.println();
 
-		Serial.print("             Angle = "); delay(5);
+		Serial.print("Angle = "); delay(5);
 		Serial.print( boomArmServo.read() ); delay(5);
 		Serial.print(",    Sample Time = "); delay(5);
 		float array[POINTS];
@@ -36,27 +36,9 @@ void loop()
 			array[i] = analogRead(A0);
 		sampleTime = millis() - sampleTime;
 		Serial.print( sampleTime ); delay(5);
-		Serial.print(" ms,         Sorting Time = "); delay(5);
-		float arraySorted[POINTS];
-		for (int i=0; i<POINTS; i++)
-			arraySorted[i] = array[i];
+		Serial.print(" ms, Sorting Time = "); delay(5);
 		sampleTime = millis();
-		qs.bubbleSort(arraySorted, POINTS);
-		sampleTime = millis() - sampleTime;
-		Serial.print( sampleTime ); delay(5);
-		Serial.print(" ms"); delay(5);
-		Serial.println(); delay(5);
-
-		Serial.print("           Average = "); delay(5);
-		sampleTime = millis();
-		float avg = qs.average(array, POINTS);
-		sampleTime = millis() - sampleTime;
-		Serial.print( avg ); delay(5);
-		Serial.print(", Compute Time = "); delay(5);
-		Serial.print( sampleTime ); delay(5);
-		Serial.print(" ms, Compute Time (sorted) = "); delay(5);
-		sampleTime = millis();
-		avg = qs.average(arraySorted, POINTS);
+		qs.bubbleSort(array, POINTS);
 		sampleTime = millis() - sampleTime;
 		Serial.print( sampleTime ); delay(5);
 		Serial.print(" ms"); delay(5);
@@ -69,11 +51,6 @@ void loop()
 		Serial.print( mode ); delay(5);
 		Serial.print(", Compute Time = "); delay(5);
 		Serial.print( sampleTime ); delay(5);
-		Serial.print(" ms, Compute Time \(sorted\) = "); delay(5);
-		sampleTime = millis();
-		avg = qs.mode(arraySorted, POINTS, 1);
-		sampleTime = millis() - sampleTime;
-		Serial.print( sampleTime ); delay(5);
 		Serial.print(" ms"); delay(5);
 		Serial.println(); delay(5);
 
@@ -83,11 +60,6 @@ void loop()
 		sampleTime = millis() - sampleTime;
 		Serial.print( stdev ); delay(5);
 		Serial.print(", Compute Time = "); delay(5);
-		Serial.print( sampleTime ); delay(5);
-		Serial.print(" ms, Compute Time \(sorted\) = "); delay(5);
-		sampleTime = millis();
-		avg = qs.stdev(arraySorted, POINTS);
-		sampleTime = millis() - sampleTime;
 		Serial.print( sampleTime ); delay(5);
 		Serial.print(" ms"); delay(5);
 		Serial.println(); delay(5);
