@@ -2,7 +2,7 @@
 #include "TybluServo.h"
 
 //TybluServo(minAngle, maxAngle, sensorPin, sensorSlope, sensorOffset, pt_count);
-TybluServo boomArmServo(75, 110, A0, 1.1131363501, -147.1303003827+2.3854482-1.464397252+0.628556251+0.05401401, 50);
+TybluServo boomArmServo(75, 110, A0, 1.13539908, -145.580693, 50);
 int angle = ( boomArmServo.getMaxAngle() + boomArmServo.getMinAngle() ) / 2;
 long timestamp = millis();
 int angleAdjustment = 1;
