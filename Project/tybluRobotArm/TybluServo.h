@@ -41,7 +41,7 @@ private:
 	int minAngle = 0, maxAngle = 180;
 	int sensorPin = -1;
 	float sensorSlope, sensorOffset;
-	const float analogDeviationLimit = 75;
+	const float analogDeviationLimit = 50;
 	unsigned int measurementsCount = 100;
 	QuickStats qs;
 };

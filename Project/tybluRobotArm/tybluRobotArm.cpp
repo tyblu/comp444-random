@@ -1,10 +1,11 @@
 #include <Arduino.h>
 #include "TybluServo.h"
 
-TybluServo boomArmServo(75, 110, A0, 1.1131363501, -147.1303003827, 50);
+//TybluServo(minAngle, maxAngle, sensorPin, sensorSlope, sensorOffset, pt_count);
+TybluServo boomArmServo(75, 110, A0, 1.1131363501, -147.1303003827+2.3854482-1.464397252+0.628556251+0.05401401, 50);
 int angle = ( boomArmServo.getMaxAngle() + boomArmServo.getMinAngle() ) / 2;
 long timestamp = millis();
-int angleAdjustment = 3;
+int angleAdjustment = 1;
 
 void setup()
 {
@@ -15,6 +16,8 @@ void setup()
 	boomArmServo.write(angle);
 	boomArmServo.attach(11);
 
+	Serial.println("INPUT ANGLE, MEASURED ANGLE, MEASUREMENT TIME");
+
 	delay(1000);
 }
 
@@ -22,18 +25,15 @@ void loop()
 {
 	if (timestamp + 1000 > millis() )
 	{
-		Serial.println(); delay(5);
-
-		Serial.print("Angle = "); delay(5);
-		Serial.print( boomArmServo.read() ); delay(5);
-		Serial.print(", Analog Angle = "); delay(5);
+		Serial.print( boomArmServo.read() );
+		Serial.write(',');
 		long sampleTime = millis();
 		int analogAngle = boomArmServo.getAnalogAngle();
 		sampleTime = millis() - sampleTime;
 		Serial.print( analogAngle );
-		Serial.print(", Time = ");
-		Serial.print( sampleTime ); delay(5);
-		Serial.print(" ms"); delay(5);
+		Serial.write(',');
+		Serial.print( sampleTime );
+		Serial.println();
 	}
 	else
 	{
