@@ -26,6 +26,8 @@ public:
 	 */
 	void write(int value);	// extends Servo::write(int)
 
+	void calibrateSensor(int angleA, int angleB);
+
 	void setMinAngle(int minAngle);
 	void setMaxAngle(int maxAngle);
 	void setSensorPin(int sensorPin);
@@ -36,13 +38,15 @@ public:
 	int getMaxAngle();
 	int getAnalogAngle();
 	int getMeasurementsCount();
+	float getSensorSlope();
+	float getSensorOffset();
 
 private:
 	int minAngle = 0, maxAngle = 180;
 	int sensorPin = -1;
 	float sensorSlope, sensorOffset;
 	const float analogDeviationLimit = 50;
-	unsigned int measurementsCount = 100;
+	unsigned int measurementsCount = 50;
 	QuickStats qs;
 };
 
