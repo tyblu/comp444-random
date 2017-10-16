@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <Servo.h>
 #include "QuickStats.h"
+#include <inttypes.h>
 
 class TybluServo : public Servo
 {
@@ -25,7 +26,9 @@ public:
 	 * < 200 then it's set to maxAngle.
 	 */
 	void write(int value);	// extends Servo::write(int)
+	uint8_t attach(int pin);
 
+	void smooth(int value);
 	void calibrateSensor(int angleA, int angleB);
 
 	void setMinAngle(int minAngle);

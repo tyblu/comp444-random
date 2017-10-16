@@ -5,6 +5,7 @@
  *      Author: tyblu
  */
 
+//#include <Arduino.h>	// only for Serial debug messages
 #include "TybluLsq.h"
 
 TybluLsq::TybluLsq() {}
@@ -29,6 +30,7 @@ TybluLsq::TybluLsq() {}
  */
 void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 {
+//	Serial.println("inside TybluLsq::llsq");
 	float top = 0.0, bot = 0.0, xbar = 0.0, ybar = 0.0;
 
 	if ( n == 1 )
@@ -56,5 +58,7 @@ void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 
 	a = top / bot;
 	b = ybar - a * xbar;
+
+//	Serial.println("leaving TybluLsq::llsq");
 	return;
 }

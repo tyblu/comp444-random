@@ -8,13 +8,25 @@
 #include "TybluServo.h"
 #include "QuickStats.h"
 #include "TybluLsq.h"
+#include <inttypes.h>
 
-// used in getAnalogAngle and calibrateSensor
+/* This should probably be put somewhere else. */
+template <typename T> int sgn(T val) {
+	return (T(0) < val) - (val < T(0));
+}
+
+// used in getAnalogAngle, calibrateSensor, and smooth
 #define MODE_EPSILON 1.0
 #define MODE_LOWER_LIMIT 10		// 5V *  10/1024 = 49mV
 #define MODE_UPPER_LIMIT 512	// 5V * 512/1024 = 2.5V, max in equal voltage divider
-#define CALIB_STEP_SIZE 2
-#define CALIB_PASSES 1
+#define CALIB_STEP_SIZE 5
+#define CALIB_STEPS 14
+#define CALIB_STEP_DELAY 25
+#define SMOOTH_ANGLE_MIN 1
+#define SMOOTH_ANGLE_MAX 179
+#define SMOOTH_ADJUSTMENT_ANGLE 2
+#define SMOOTH_ADJUSTMENT_ANGLE_STOPPED 1
+#define SMOOTH_ADJUSTMENT_DELAY 25
 
 TybluServo::TybluServo() : Servo()
 {
@@ -57,22 +69,20 @@ void TybluServo::calibrateSensor(int angleA, int angleB)
 	if (sensorPin < 0 || angleA < minAngle || angleB > maxAngle)
 		return;
 
-/* This should be changed to be a gentle transition. Later. */
-	this->write(angleA);
+	this->smooth(angleA);
 	delay(500);				// wait for servo to reach angleA
 
 	// measure data
-	unsigned int arraySize = 2 * CALIB_PASSES * (angleB - angleA) / CALIB_STEP_SIZE + 1;
-	float angles[arraySize], measurements[arraySize];
+	float angles[CALIB_STEPS], measurements[CALIB_STEPS];
 	angles[0] = angleA;
 	int direction = 1;
 	unsigned int iterator = 0;
 	do {
-		this->write(angles[iterator]);
-		delay(100);
+		this->smooth(angles[iterator]);
+		delay(CALIB_STEP_DELAY);
 		measurements[iterator] = this->getAnalogAngle();
 
-		Serial.println(); Serial.print(iterator); Serial.print(" : "); Serial.print(angles[iterator]); Serial.print(" | "); Serial.print(measurements[iterator]);
+//		Serial.println(); Serial.print(iterator); Serial.print(" : "); Serial.print(angles[iterator]); Serial.print(" | "); Serial.print(measurements[iterator]);
 
 		// skips bad data by not advancing iterator, leading to overwrite
 		if (measurements[iterator] > MODE_LOWER_LIMIT
@@ -90,7 +100,7 @@ void TybluServo::calibrateSensor(int angleA, int angleB)
 		angles[iterator] = angles[iterator-1] + direction * CALIB_STEP_SIZE;
 
 //		Serial.print(", ANGLEB="); Serial.print(angles[iterator-1]);
-	} while (iterator < arraySize);
+	} while (iterator < CALIB_STEPS);
 	Serial.println();
 
 //	Serial.println();
@@ -110,7 +120,7 @@ void TybluServo::calibrateSensor(int angleA, int angleB)
 	float a, b;
 	TybluLsq lsq;
 	// void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
-	lsq.llsq(arraySize, measurements, angles, a, b);
+	lsq.llsq(CALIB_STEPS, measurements, angles, a, b);
 
 //	Serial.print(" Y[] = a*X[] + b --> a = ");
 //	Serial.print(a);
@@ -211,4 +221,47 @@ void TybluServo::write(int value)
 		Servo::write(maxAngle);
 	else							// minAngle > value > maxAngle || value > 200
 		Servo::write(value);
+}
+
+/*
+ * Attempts to pre-set servo position to avoid initial jolts, than attaches.
+ * Servo::attach(int) description:
+ * Attach the given pin to the next free channel, sets pinMode, returns channel
+ * number or 0 if failure.
+ */
+uint8_t TybluServo::attach(int pin)
+{
+	int currentAnalogAngle = this->getAnalogAngle();
+	if ( currentAnalogAngle >= this->getMinAngle() && currentAnalogAngle <= this->getMaxAngle() )
+		this->write(currentAnalogAngle);
+	return Servo::attach(pin);
+}
+
+void TybluServo::smooth(int targetAngle)
+{
+	int currentAngle = this->read();
+
+	if (currentAngle < SMOOTH_ANGLE_MIN || currentAngle > SMOOTH_ANGLE_MAX)
+	{
+		this->write(targetAngle);		// can't figure out where servo is, just write angle
+		return;
+	}
+
+	bool isMoving = false;
+	int lastCurrentAngle = currentAngle;
+	while (currentAngle != targetAngle)
+	{
+//		Serial.print("current="); Serial.print(currentAngle); Serial.print(", target="); Serial.print(targetAngle); Serial.print(", dir="); Serial.println(sgn(targetAngle - currentAngle));
+		if ( !isMoving || abs(targetAngle - currentAngle) <= SMOOTH_ADJUSTMENT_ANGLE )
+			currentAngle += sgn(targetAngle - currentAngle) * SMOOTH_ADJUSTMENT_ANGLE_STOPPED;
+		else
+			currentAngle += sgn(targetAngle - currentAngle) * SMOOTH_ADJUSTMENT_ANGLE;
+
+		if (lastCurrentAngle == currentAngle)
+			break;
+
+		this->write(currentAngle);
+		delay(SMOOTH_ADJUSTMENT_DELAY);
+		isMoving = true;
+	}
 }

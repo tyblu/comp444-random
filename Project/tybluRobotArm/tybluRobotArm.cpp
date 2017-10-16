@@ -7,6 +7,7 @@ long timestamp = millis();
 int angleAdjustment = 4;
 
 void dots(int n, int t);
+void ellipsis();
 
 void setup()
 {
@@ -18,7 +19,7 @@ void setup()
 
 	boomArmServo.attach(11);
 
-	Serial.print("Calibrating Sensor"); dots(3,50);
+	Serial.print("Calibrating Sensor"); ellipsis();
 	const int angleA = boomArmServo.getMinAngle() + 1;
 	const int angleB = boomArmServo.getMaxAngle() - 1;
 	boomArmServo.calibrateSensor(angleA, angleB);
@@ -74,3 +75,5 @@ void dots(int num, int delayTime)
 		delay(delayTime);
 	}
 }
+
+void ellipsis() { dots(3, 100); }
