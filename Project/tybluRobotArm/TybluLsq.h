@@ -2,7 +2,7 @@
  * TybluLsq.h
  *
  *  Created on: Oct 15, 2017
- *      Author: tyblu
+ *      Author: Tyler Lucas <tyblu@live.com>
  */
 
 #ifndef TYBLULSQ_H_
@@ -11,8 +11,6 @@
 class TybluLsq
 {
 public:
-	TybluLsq();
-
 	/*
 	 * Computes the linear least square fit of Y = a * X + b, minimizing the root-
 	 * mean-square error to a set of data points.

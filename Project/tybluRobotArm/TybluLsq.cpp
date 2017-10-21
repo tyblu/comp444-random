@@ -2,13 +2,11 @@
  * TybluLsq.cpp
  *
  *  Created on: Oct 15, 2017
- *      Author: tyblu
+ *      Author: Tyler Lucas <tyblu@live.com>
  */
 
 //#include <Arduino.h>	// only for Serial debug messages
 #include "TybluLsq.h"
-
-TybluLsq::TybluLsq() {}
 
 /*
  * Computes the linear least square fit of Y = a * X + b, minimizing the root-
