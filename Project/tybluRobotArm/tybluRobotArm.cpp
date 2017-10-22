@@ -1,10 +1,25 @@
 #include <Arduino.h>
 #include "TybluServo.h"
 
-TybluServo boomArmServo(70, 115, A0, 1, 0, 50);
-int angle = ( boomArmServo.getMaxAngle() + boomArmServo.getMinAngle() ) / 2;
+/*
+ * TybluServo constructor arguments: (int, int, int, int, int, float, float, int)
+ * int pwmPin								Pin used to control servo.
+ * int minAngle, int maxAngle 				Allowed range of movement.
+ * int safeAngle							Nominal position for servo.
+ * int sensorPin 							Angle sensor pin (A0, A1, ...).
+ * float sensorSlope, float sensorOffset	Initial angle sensor linear coefficients.
+ * int pt_count								Number of float measurements to use when
+ * 											calibrating angle sensor. NOTE: Should
+ *		hard-code this and use other memory (PROGMEM, etc.) to get around this
+ *		memory constraint.
+ */
+TybluServo boom1Servo  (10, 80, 100,  90, A1, 0.557, -49.64, 50);	// TowerPro 946R, sensor needs verification
+TybluServo boom2Servo  (11, 70, 115,  80, A0, 1.113, -147.1, 50);	// Power HD 1501MG
+TybluServo turretServo ( 6, 30, 150,  90, A3, 1.000, -1.000, 50);	// not measured
+TybluServo clawServo   ( 9, 80, 130, 100, A2, 0.557, -61.38, 50);	// TowerPro 946R, angles need verification
+TybluServo * servos[4] = { &boom1Servo, &boom2Servo, &turretServo, &clawServo };
+
 long timestamp = millis();
-int angleAdjustment = 4;
 
 void dots(int n, int t);
 void ellipsis();
@@ -17,17 +32,19 @@ void setup()
 	Serial.println(__FILE__ " compiled " __DATE__ " at " __TIME__);
 	Serial.println();
 
-	boomArmServo.attach(11);
+	Serial.print("Calibrating Sensors"); ellipsis();
+	for (int i=0; i<4; i++)
+	{
+		servos[i]->attach();
+		servos[i]->calibrateSensor();
+		servos[i]->smooth( servos[i]->getSafeAngle() );
+	}
 
-	Serial.print("Calibrating Sensor"); ellipsis();
-	const int angleA = boomArmServo.getMinAngle() + 1;
-	const int angleB = boomArmServo.getMaxAngle() - 1;
-	boomArmServo.calibrateSensor(angleA, angleB);
 	Serial.println();
 	Serial.print("y = ");
-	Serial.print(boomArmServo.getSensorSlope());
+	Serial.print(boom2Servo.getSensorSlope());
 	Serial.print(" * x ");
-	float offset = boomArmServo.getSensorOffset();
+	float offset = boom2Servo.getSensorOffset();
 	if (offset < 0)
 		Serial.print("- ");
 	else
@@ -37,7 +54,8 @@ void setup()
 
 	delay(2000);
 
-	boomArmServo.detach();
+	boom2Servo.detach();
+
 }
 
 void loop()

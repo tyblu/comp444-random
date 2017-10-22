@@ -30,19 +30,35 @@ template <typename T> int sgn(T val) {
 
 TybluServo::TybluServo() : Servo()
 {
+	this->pwmPin = -1;
 	this->minAngle = 0;
 	this->maxAngle = 180;
+	this->safeAngle = (minAngle + maxAngle) / 2;
 	this->sensorPin = -1;
 	this->measurementsCount = 1;
 	this->sensorSlope = 1.0;
 	this->sensorOffset = 0.0;
 }
 
-TybluServo::TybluServo(int min, int max, int sensorPin,
-		float sensorSlope, float sensorOffset, int pt_count) : Servo()
+/*
+ * Constructor arguments:
+ * int pwmPin								Pin used to control servo.
+ * int minAngle, int maxAngle 				Allowed range of movement.
+ * int safeAngle							Nominal position for servo.
+ * int sensorPin 							Angle sensor pin (A0, A1, ...).
+ * float sensorSlope, float sensorOffset	Initial angle sensor linear coefficients.
+ * int pt_count								Number of float measurements to use when
+ * 											calibrating angle sensor. NOTE: Should
+ *		hard-code this and use other memory (PROGMEM, etc.) to get around this
+ *		memory constraint.
+ */
+TybluServo::TybluServo(int pwmPin, int min, int max, int safe,
+		int sensorPin, float sensorSlope, float sensorOffset, int pt_count) : Servo()
 {
+	this->pwmPin = pwmPin;
 	this->minAngle = min;
 	this->maxAngle = max;
+	this->safeAngle = safe;
 	this->sensorPin = sensorPin;
 	this->measurementsCount = pt_count;
 	this->sensorSlope = sensorSlope;
@@ -50,14 +66,20 @@ TybluServo::TybluServo(int min, int max, int sensorPin,
 }
 
 /**
+ * Pre-conditions: Servo must be attached, have max/min angles set, and have valid
+ * sensor pin.
+ * Post-conditions: In addition to preconditions, sensor slope and offset variables
+ * are set, allowing for accurate returns from TybluServo::getAnalogAngle.
+ *
+ * Returns true if it completes successfully, false otherwise. No variables changed.
+ *
  * Calibrates servo position sensor by fitting line to measured results while moving
  * between angleA and angleB. Movements starts at angleA, travels to angleB, back to
  * angleA, and it may repeat this several more times. The servo always obeys the
  * minAngle and maxAngle limits, so make sure angleA and angleB are within them or
- * the calibration will not work. At the moment, the function just quits if angleA/B
- * are not inside the limits.
+ * the calibration will not work (returns false).
  */
-void TybluServo::calibrateSensor(int angleA, int angleB)
+bool TybluServo::calibrateSensor(int angleA, int angleB)
 {
 	{	// ensure angleA <= angleB
 		int temp = min(angleA, angleB);
@@ -67,7 +89,7 @@ void TybluServo::calibrateSensor(int angleA, int angleB)
 
 	// invalid sensor pin or calibration test range outside of servo min/max
 	if (sensorPin < 0 || angleA < minAngle || angleB > maxAngle)
-		return;
+		return false;
 
 	this->smooth(angleA);
 	delay(500);				// wait for servo to reach angleA
@@ -130,6 +152,16 @@ void TybluServo::calibrateSensor(int angleA, int angleB)
 
 	sensorSlope = a;
 	sensorOffset = b;
+
+	return true;
+}
+
+/*
+ * Same as calibrateSensor(int angleA, int angleB), using max/min angles.
+ */
+bool TybluServo::calibrateSensor()
+{
+	return calibrateSensor(this->minAngle, this->maxAngle);
 }
 
 void TybluServo::setMinAngle(int minAngle)
@@ -140,6 +172,11 @@ void TybluServo::setMinAngle(int minAngle)
 void TybluServo::setMaxAngle(int maxAngle)
 {
 	this->maxAngle = maxAngle;
+}
+
+void TybluServo::setSafeAngle(int safeAngle)
+{
+	this->safeAngle = safeAngle;
 }
 
 void TybluServo::setSensorPin(int sensorPin)
@@ -166,6 +203,16 @@ int TybluServo::getMinAngle()
 int TybluServo::getMaxAngle()
 {
 	return this->maxAngle;
+}
+
+int TybluServo::getSafeAngle()
+{
+	return this->safeAngle;
+}
+
+int TybluServo::getSensorPin()
+{
+	return this->sensorPin;
 }
 
 int TybluServo::getAnalogAngle()
@@ -231,10 +278,23 @@ void TybluServo::write(int value)
  */
 uint8_t TybluServo::attach(int pin)
 {
+	this->pwmPin = pin;
 	int currentAnalogAngle = this->getAnalogAngle();
 	if ( currentAnalogAngle >= this->getMinAngle() && currentAnalogAngle <= this->getMaxAngle() )
 		this->write(currentAnalogAngle);
 	return Servo::attach(pin);
+}
+
+/*
+ * Preconditions: pwmPin must have been set either in the [full] constructor or
+ * TybluServo::attach(int pin) (presumably later followed by a 'detach()).
+ *
+ * Attaches to previously set pwmPin, calling TybluServo::attach(pwmPin). Returns
+ * uint8_t 0 on fail (i.e. bad pwmPin), channel number otherwise.
+ */
+uint8_t TybluServo::attach()
+{
+	return this->attach(this->pwmPin);
 }
 
 void TybluServo::smooth(int targetAngle)
