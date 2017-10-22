@@ -25,6 +25,11 @@ public:
 	 * 	&a, &b		Used for output; the slope and y-intercept of resultant line.
 	 */
 	void llsq( int n, float x[], float y[], float &a, float &b );
+
+	/*
+	 * As TybluLsq::llsq, but with arrays of ints instead of floats.
+	 */
+	void llsqInt( int n, int x[], int y[], float &a, float &b );
 };
 
 #endif /* TYBLULSQ_H_ */

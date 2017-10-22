@@ -60,3 +60,11 @@ void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 //	Serial.println("leaving TybluLsq::llsq");
 	return;
 }
+
+/*
+ * As TybluLsq::llsq, but with arrays of ints instead of floats.
+ */
+void TybluLsq::llsqInt( int n, int x[], int y[], float &a, float &b )
+{
+	return;
+}
