@@ -5,8 +5,9 @@
  *  http://pb435.pbworks/com
  */
 
-#include "Arduino.h"
 #include "QuickStats.h"
+
+#include "Arduino.h"
 #include <math.h>
 
 QuickStats::QuickStats(){/*nothing to construct*/}

@@ -10,8 +10,8 @@
 
 #include <Arduino.h>
 #include <Servo.h>
-#include "QuickStats.h"
 #include <inttypes.h>
+#include "QuickStats.h"
 
 class TybluServo : public Servo
 {
