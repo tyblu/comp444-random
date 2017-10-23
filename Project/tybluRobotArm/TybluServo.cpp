@@ -6,9 +6,10 @@
  */
 
 #include "TybluServo.h"
-#include "QuickStats.h"
 #include "TybluLsq.h"
 #include <inttypes.h>
+
+#include "QuickStats.h"
 
 /* This should probably be put somewhere else. */
 template <typename T> int sgn(T val) {
@@ -19,7 +20,7 @@ template <typename T> int sgn(T val) {
 #define MODE_EPSILON 1.0
 #define MODE_LOWER_LIMIT 10		// 5V *  10/1024 = 49mV
 #define MODE_UPPER_LIMIT 512	// 5V * 512/1024 = 2.5V, max in equal voltage divider
-#define CALIB_STEP_SIZE 5
+#define CALIB_STEP_SIZE 3
 #define CALIB_STEPS 13
 #define CALIB_STEP_DELAY 25
 #define SMOOTH_ANGLE_MIN 1
@@ -95,11 +96,14 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 	delay(500);				// wait for servo to reach angleA
 
 	// measure data
+	Serial.println("\nTybluServo::calibrateSensor(int,int): about to declare float arrays");
 	float angles[CALIB_STEPS], measurements[CALIB_STEPS];
+	Serial.println("TybluServo::calibrateSensor(int,int): declared float arrays!\n");
 	angles[0] = angleA;
 	int direction = 1;
 	unsigned int iterator = 0;
 	do {
+		Serial.println(angles[iterator]);
 		this->smooth(angles[iterator]);
 		delay(CALIB_STEP_DELAY);
 		measurements[iterator] = this->getAnalogAngle();
@@ -272,8 +276,8 @@ void TybluServo::write(int value)
 /*
  * Attempts to pre-set servo position to avoid initial jolts, than attaches.
  * Servo::attach(int) description:
- * Attach the given pin to the next free channel, sets pinMode, returns channel
- * number or 0 if failure.
+ * 	Attach the given pin to the next free channel, sets pinMode, returns channel
+ * 	number or 0 if failure.
  */
 uint8_t TybluServo::attach(int pin)
 {

@@ -17,12 +17,12 @@
  *		hard-code this and use other memory (PROGMEM, etc.) to get around this
  *		memory constraint.
  */
-TybluServo boom1Servo (BOOM1_PWM_PIN, 120, 150,  90, A1, 0.557, -49.64, 50);	// TowerPro 946R, sensor needs verification
+//TybluServo boom1Servo (BOOM1_PWM_PIN, 120, 150,  90, A1, 0.557, -49.64, 50);	// TowerPro 946R, sensor needs verification
 TybluServo boom2Servo (BOOM2_PWM_PIN, 70, 115,  80, A0, 1.113, -147.1, 50);	// Power HD 1501MG
 //TybluServo turretServo (TURRET_PWM_PIN, 30, 150,  90, A3, 1.000, -1.000, 50);	// not measured
 //TybluServo clawServo (CLAW_PWM_PIN, 80, 130, 100, A2, 0.557, -61.38, 50);	// TowerPro 946R, angles need verification
-#define NUM_ACTIVE_SERVOS 2
-TybluServo * servos[NUM_ACTIVE_SERVOS] = { &boom1Servo, &boom2Servo };
+#define NUM_ACTIVE_SERVOS 1
+TybluServo * servos[NUM_ACTIVE_SERVOS] = { &boom2Servo };
 
 void dots(int n, int t);
 void ellipsis();
@@ -38,7 +38,7 @@ void setup()
 	Serial.print("Calibrating Sensors"); ellipsis();
 	for (int i=0; i<NUM_ACTIVE_SERVOS; i++)
 	{
-		servos[i]->attach();
+		Serial.print(servos[i]->attach());	// get rid of Serial debug
 		servos[i]->calibrateSensor();
 		Serial.print(" Finished calibrating a servo. ");
 		servos[i]->smooth( servos[i]->getSafeAngle() );
