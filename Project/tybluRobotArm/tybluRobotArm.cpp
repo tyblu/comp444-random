@@ -36,29 +36,27 @@ void setup()
 	Serial.println();
 
 	Serial.print("Calibrating Sensors"); ellipsis();
-	for (int i=0; i<4; i++)
+	for (int i=0; i<NUM_ACTIVE_SERVOS; i++)
 	{
 		servos[i]->attach();
 		servos[i]->calibrateSensor();
+		Serial.print(" Finished calibrating a servo. ");
 		servos[i]->smooth( servos[i]->getSafeAngle() );
-	}
 
-	Serial.println();
-	Serial.print("y = ");
-	Serial.print(boom2Servo.getSensorSlope());
-	Serial.print(" * x ");
-	float offset = boom2Servo.getSensorOffset();
-	if (offset < 0)
-		Serial.print("- ");
-	else
-		Serial.print("+ ");
-	Serial.print(abs(offset));
+		Serial.println();
+		Serial.print(i);
+		Serial.print(": y = ");
+		Serial.print(servos[i]->getSensorSlope());
+		Serial.print(" * x");
+		if (servos[i]->getSensorOffset() < 0)
+			Serial.print(" - ");
+		else
+			Serial.print(" + ");
+		Serial.print( abs( servos[i]->getSensorOffset() ) );
+	}
 	Serial.println();
 
 	delay(2000);
-
-	boom2Servo.detach();
-
 }
 
 void loop()

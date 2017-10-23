@@ -20,7 +20,7 @@ template <typename T> int sgn(T val) {
 #define MODE_LOWER_LIMIT 10		// 5V *  10/1024 = 49mV
 #define MODE_UPPER_LIMIT 512	// 5V * 512/1024 = 2.5V, max in equal voltage divider
 #define CALIB_STEP_SIZE 5
-#define CALIB_STEPS 14
+#define CALIB_STEPS 13
 #define CALIB_STEP_DELAY 25
 #define SMOOTH_ANGLE_MIN 1
 #define SMOOTH_ANGLE_MAX 179
@@ -140,9 +140,8 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 
 	// least squares fit
 	float a, b;
-	TybluLsq lsq;
 	// void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
-	lsq.llsq(CALIB_STEPS, measurements, angles, a, b);
+	TybluLsq::llsq(CALIB_STEPS, measurements, angles, a, b);
 
 //	Serial.print(" Y[] = a*X[] + b --> a = ");
 //	Serial.print(a);
@@ -279,9 +278,9 @@ void TybluServo::write(int value)
 uint8_t TybluServo::attach(int pin)
 {
 	this->pwmPin = pin;
-	int currentAnalogAngle = this->getAnalogAngle();
-	if ( currentAnalogAngle >= this->getMinAngle() && currentAnalogAngle <= this->getMaxAngle() )
-		this->write(currentAnalogAngle);
+	int currentAnalogAngle = getAnalogAngle();
+	if ( currentAnalogAngle >= minAngle && currentAnalogAngle <= maxAngle )
+		write(currentAnalogAngle);
 	return Servo::attach(pin);
 }
 

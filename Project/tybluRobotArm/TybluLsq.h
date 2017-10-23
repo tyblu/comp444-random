@@ -24,12 +24,15 @@ public:
 	 * 	x[], y[]	Linearly correlated data point arrays, size n.
 	 * 	&a, &b		Used for output; the slope and y-intercept of resultant line.
 	 */
-	void llsq( int n, float x[], float y[], float &a, float &b );
+	static void llsq( int n, float x[], float y[], float &a, float &b );
 
 	/*
 	 * As TybluLsq::llsq, but with arrays of ints instead of floats.
 	 */
-	void llsqInt( int n, int x[], int y[], float &a, float &b );
+	static void llsqInt( int n, int x[], int y[], float &a, float &b );
+
+private:	// Make it obvious that this is an entirely static class.
+	TybluLsq::TybluLsq() {};
 };
 
 #endif /* TYBLULSQ_H_ */
