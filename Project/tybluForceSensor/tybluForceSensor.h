@@ -2,7 +2,7 @@
  * TybluForceSensor.h
  *
  *  Created on: Oct 13, 2017
- *      Author: tyblu
+ *      Author: Tyler Lucas
  */
 
 #include <Arduino.h>
@@ -13,11 +13,14 @@
 class TybluForceSensor
 {
 public:
-	TybluForceSensor();
+	TybluForceSensor(unsigned int powerPin, unsigned int sensorPin,
+			double slope = 1, double offset = 0);
+	void setSensorSlope(double slope);
+	void setSensorOffset(double offset);
+	int getValue(float varianceLimit);
 
 private:
-	float slope, offset;
-	unsigned int
+	double slope, offset;
 };
 
 #endif /* TYBLUFORCESENSOR_H_ */

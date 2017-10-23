@@ -7,8 +7,27 @@
 
 #include "TybluForceSensor.h"
 
-TybluForceSensor::TybluForceSensor() {
-	// TODO Auto-generated constructor stub
-
+/*
+ *
+ */
+TybluForceSensor::TybluForceSensor(unsigned int powerPin, unsigned int sensorPin,
+		double slope, double offset)
+{
+	this->slope = slope;
+	this->offset = offset;
 }
 
+void TybluForceSensor::setSensorSlope(double slope)
+{
+	this->slope = slope;
+}
+
+void TybluForceSensor::setSensorOffset(double offset)
+{
+	this->offset = offset;
+}
+
+int TybluForceSensor::getValue(float varianceLimit)
+{
+	return 0;
+}
