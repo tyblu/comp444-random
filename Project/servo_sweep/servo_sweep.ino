@@ -14,10 +14,10 @@
 
 #include <Servo.h>
 
-#define boomArmPin 11
-#define mainArmPin 10
-#define clawPin 9       // max 140, min 69
-#define swivelPin 6     // max 180, min 10
+#define boomArmPin 9
+#define mainArmPin 6
+#define clawPin 5       // max 140, min 69
+#define swivelPin 3     // max 180, min 10
 
 #define angleMin 60
 #define angleMax 110
