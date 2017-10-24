@@ -8,7 +8,6 @@
 #include "TybluServo.h"
 #include "TybluLsq.h"
 #include <inttypes.h>
-
 #include "QuickStats.h"
 
 /* This should probably be put somewhere else. */
@@ -28,6 +27,7 @@ template <typename T> int sgn(T val) {
 #define SMOOTH_ADJUSTMENT_ANGLE 2
 #define SMOOTH_ADJUSTMENT_ANGLE_STOPPED 1
 #define SMOOTH_ADJUSTMENT_DELAY 25
+#define MEASUREMENTS_COUNT 50
 
 TybluServo::TybluServo() : Servo()
 {
@@ -36,7 +36,6 @@ TybluServo::TybluServo() : Servo()
 	this->maxAngle = 180;
 	this->safeAngle = (minAngle + maxAngle) / 2;
 	this->sensorPin = -1;
-	this->measurementsCount = 1;
 	this->sensorSlope = 1.0;
 	this->sensorOffset = 0.0;
 }
@@ -48,20 +47,15 @@ TybluServo::TybluServo() : Servo()
  * int safeAngle							Nominal position for servo.
  * int sensorPin 							Angle sensor pin (A0, A1, ...).
  * float sensorSlope, float sensorOffset	Initial angle sensor linear coefficients.
- * int pt_count								Number of float measurements to use when
- * 											calibrating angle sensor. NOTE: Should
- *		hard-code this and use other memory (PROGMEM, etc.) to get around this
- *		memory constraint.
  */
 TybluServo::TybluServo(int pwmPin, int min, int max, int safe,
-		int sensorPin, float sensorSlope, float sensorOffset, int pt_count) : Servo()
+		int sensorPin, float sensorSlope, float sensorOffset) : Servo()
 {
 	this->pwmPin = pwmPin;
 	this->minAngle = min;
 	this->maxAngle = max;
 	this->safeAngle = safe;
 	this->sensorPin = sensorPin;
-	this->measurementsCount = pt_count;
 	this->sensorSlope = sensorSlope;
 	this->sensorOffset = sensorOffset;
 }
@@ -96,9 +90,8 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 	delay(500);				// wait for servo to reach angleA
 
 	// measure data
-	Serial.println("\nTybluServo::calibrateSensor(int,int): about to declare float arrays");
-	float angles[CALIB_STEPS], measurements[CALIB_STEPS];
-	Serial.println("TybluServo::calibrateSensor(int,int): declared float arrays!\n");
+	float angles[CALIB_STEPS];
+	float measurements[CALIB_STEPS];
 	angles[0] = angleA;
 	int direction = 1;
 	unsigned int iterator = 0;
@@ -108,7 +101,7 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 		delay(CALIB_STEP_DELAY);
 		measurements[iterator] = this->getAnalogAngle();
 
-//		Serial.println(); Serial.print(iterator); Serial.print(" : "); Serial.print(angles[iterator]); Serial.print(" | "); Serial.print(measurements[iterator]);
+		Serial.println(); Serial.print(iterator); Serial.print(" : "); Serial.print(angles[iterator]); Serial.print(" | "); Serial.print(measurements[iterator]);
 
 		// skips bad data by not advancing iterator, leading to overwrite
 		if (measurements[iterator] > MODE_LOWER_LIMIT
@@ -187,11 +180,6 @@ void TybluServo::setSensorPin(int sensorPin)
 	this->sensorPin = sensorPin;
 }
 
-void TybluServo::setMeasurementsCount(int pt_count)
-{
-	this->measurementsCount = pt_count;
-}
-
 void TybluServo::setSensorConstants(float slope, float offset)
 {
 	this->sensorSlope = slope;
@@ -220,20 +208,21 @@ int TybluServo::getSensorPin()
 
 int TybluServo::getAnalogAngle()
 {
-	float measurements[measurementsCount];
+	float measurements[MEASUREMENTS_COUN];
 	float stDev = analogDeviationLimit + 1.0;
 
 	while ( stDev > analogDeviationLimit)
 	{
-		for (int i=0; i<measurementsCount; i++)
+		for (int i=0; i<MEASUREMENTS_COUNT
+; i++)
 			measurements[i] = analogRead(sensorPin);
-		qs.bubbleSort(measurements, measurementsCount);
-		stDev = qs.stdev(measurements, measurementsCount);
+		qs.bubbleSort(measurements, MEASUREMENTS_COUNT);
+		stDev = qs.stdev(measurements, MEASUREMENTS_COUNT);
 //		Serial.print(" STDEV=");
 //		Serial.println(stDev);
 	}
 
-	float mode = qs.mode(measurements, measurementsCount, MODE_EPSILON);
+	float mode = qs.mode(measurements, MEASUREMENTS_COUNT, MODE_EPSILON);
 //	Serial.print(" MODE=");
 //	Serial.print(mode);
 //	Serial.print(" SLOPE=");

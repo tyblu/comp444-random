@@ -26,7 +26,7 @@
  * 	x[], y[]	Linearly correlated data point arrays, size n.
  * 	&a, &b		Used for output; the slope and y-intercept of resultant line.
  */
-static void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
+void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 {
 //	Serial.println("inside TybluLsq::llsq");
 	float top = 0.0, bot = 0.0, xbar = 0.0, ybar = 0.0;
@@ -64,7 +64,7 @@ static void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 /*
  * As TybluLsq::llsq, but with arrays of ints instead of floats.
  */
-static void TybluLsq::llsqInt( int n, int x[], int y[], float &a, float &b )
+void TybluLsq::llsqInt( int n, int x[], int y[], float &a, float &b )
 {
 	return;
 }

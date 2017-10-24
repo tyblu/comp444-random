@@ -24,13 +24,9 @@ public:
 	 * int safeAngle							Nominal position for servo.
 	 * int sensorPin 							Angle sensor pin (A0, A1, ...).
 	 * float sensorSlope, float sensorOffset	Initial angle sensor linear coefficients.
-	 * int pt_count								Number of float measurements to use when
-	 * 											calibrating angle sensor. NOTE: Should
-	 *		hard-code this and use other memory (PROGMEM, etc.) to get around this
-	 *		memory constraint.
 	 */
 	TybluServo(int pwmPin, int minAngle, int maxAngle, int safeAngle,
-			int sensorPin, float sensorSlope, float sensorOffset, int pt_count);
+			int sensorPin, float sensorSlope, float sensorOffset);
 
 	/*
 	 * If value is < 200 its treated as an angle, otherwise as pulse width in
@@ -75,7 +71,6 @@ public:
 	void setMaxAngle(int maxAngle);
 	void setSafeAngle(int safeAngle);
 	void setSensorPin(int sensorPin);
-	void setMeasurementsCount(int pt_count);
 	void setSensorConstants(float sensorSlope, float sensorOffset);
 
 	int getMinAngle();
@@ -83,7 +78,6 @@ public:
 	int getSafeAngle();
 	int getSensorPin();
 	int getAnalogAngle();
-	int getMeasurementsCount();
 	float getSensorSlope();
 	float getSensorOffset();
 

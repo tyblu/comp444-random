@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "TybluServo.h"
+#include "TybluLsq.h"
 
 #define BOOM1_PWM_PIN 6
 #define BOOM2_PWM_PIN 9
