@@ -16,18 +16,18 @@ template <typename T> int sgn(T val) {
 }
 
 // used in getAnalogAngle, calibrateSensor, and smooth
-#define MODE_EPSILON 1.0
 #define MODE_LOWER_LIMIT 10		// 5V *  10/1024 = 49mV
 #define MODE_UPPER_LIMIT 512	// 5V * 512/1024 = 2.5V, max in equal voltage divider
 #define CALIB_STEP_SIZE 3
-#define CALIB_STEPS 13
+#define CALIB_STEPS 12
 #define CALIB_STEP_DELAY 25
+#define CALIB_MAX_ITERATIONS 500
 #define SMOOTH_ANGLE_MIN 1
 #define SMOOTH_ANGLE_MAX 179
 #define SMOOTH_ADJUSTMENT_ANGLE 2
 #define SMOOTH_ADJUSTMENT_ANGLE_STOPPED 1
 #define SMOOTH_ADJUSTMENT_DELAY 25
-#define MEASUREMENTS_COUNT 50
+#define MEASUREMENTS_COUNT 40
 
 TybluServo::TybluServo() : Servo()
 {
@@ -95,13 +95,15 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 	angles[0] = angleA;
 	int direction = 1;
 	unsigned int iterator = 0;
+	unsigned int total_iterations = 0;
 	do {
-		Serial.println(angles[iterator]);
-		this->smooth(angles[iterator]);
+		total_iterations++;
+		// Serial.println(angles[iterator]);
+		this->smooth((int)angles[iterator]);
 		delay(CALIB_STEP_DELAY);
-		measurements[iterator] = this->getAnalogAngle();
+		measurements[iterator] = this->getAnalogRaw();
 
-		Serial.println(); Serial.print(iterator); Serial.print(" : "); Serial.print(angles[iterator]); Serial.print(" | "); Serial.print(measurements[iterator]);
+//		Serial.println(); Serial.print(iterator); Serial.print(" : "); Serial.print(angles[iterator]); Serial.print(" | "); Serial.print(measurements[iterator]);
 
 		// skips bad data by not advancing iterator, leading to overwrite
 		if (measurements[iterator] > MODE_LOWER_LIMIT
@@ -119,8 +121,10 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 		angles[iterator] = angles[iterator-1] + direction * CALIB_STEP_SIZE;
 
 //		Serial.print(", ANGLEB="); Serial.print(angles[iterator-1]);
-	} while (iterator < CALIB_STEPS);
-	Serial.println();
+	} while (iterator < CALIB_STEPS && total_iterations < CALIB_MAX_ITERATIONS);
+
+	if (total_iterations >= CALIB_MAX_ITERATIONS)
+		Serial.println("CALIB_MAX_ITERATIONS reached!");
 
 //	Serial.println();
 //	Serial.println("i : angle | meas.");
@@ -208,13 +212,17 @@ int TybluServo::getSensorPin()
 
 int TybluServo::getAnalogAngle()
 {
-	float measurements[MEASUREMENTS_COUN];
+		return (int)( this->getAnalogRaw() * sensorSlope + sensorOffset );
+}
+
+int TybluServo::getAnalogRaw()
+{
+	float measurements[MEASUREMENTS_COUNT];
 	float stDev = analogDeviationLimit + 1.0;
 
 	while ( stDev > analogDeviationLimit)
 	{
-		for (int i=0; i<MEASUREMENTS_COUNT
-; i++)
+		for (int i=0; i<MEASUREMENTS_COUNT; i++)
 			measurements[i] = analogRead(sensorPin);
 		qs.bubbleSort(measurements, MEASUREMENTS_COUNT);
 		stDev = qs.stdev(measurements, MEASUREMENTS_COUNT);
@@ -222,7 +230,7 @@ int TybluServo::getAnalogAngle()
 //		Serial.println(stDev);
 	}
 
-	float mode = qs.mode(measurements, MEASUREMENTS_COUNT, MODE_EPSILON);
+	float mode = qs.mode(measurements, MEASUREMENTS_COUNT);
 //	Serial.print(" MODE=");
 //	Serial.print(mode);
 //	Serial.print(" SLOPE=");
@@ -234,7 +242,7 @@ int TybluServo::getAnalogAngle()
 	if (mode < MODE_LOWER_LIMIT || mode > MODE_UPPER_LIMIT)
 		return 0;
 	else
-		return (int)mode * sensorSlope + sensorOffset;
+		return (int)mode;
 }
 
 float TybluServo::getSensorSlope()

@@ -82,6 +82,8 @@ public:
 	float getSensorOffset();
 
 private:
+	int getAnalogRaw();
+
 	int pwmPin;
 	int minAngle = 0, maxAngle = 180;
 	int safeAngle;

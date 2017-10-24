@@ -30,9 +30,6 @@ public:
 	 * As TybluLsq::llsq, but with arrays of ints instead of floats.
 	 */
 	static void llsqInt( int n, int x[], int y[], float &a, float &b );
-
-private:	// Make it obvious that this is an entirely static class.
-	TybluLsq::TybluLsq() {};
 };
 
 #endif /* TYBLULSQ_H_ */
