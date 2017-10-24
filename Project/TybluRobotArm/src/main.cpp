@@ -1,7 +1,5 @@
 #include <Arduino.h>
 #include "TybluServo.h"
-#include "TybluLsq.h"	// VSCode-PlatformIO linker does not find this unless defined here
-#include "SPI.h"		// VSCode-PlatformIO linker does not find this unless defined here
 
 #define BOOM1_PWM_PIN 6
 #define BOOM2_PWM_PIN 9
