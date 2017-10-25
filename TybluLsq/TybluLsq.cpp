@@ -5,7 +5,12 @@
  *      Author: Tyler Lucas <tyblu@live.com>
  */
 
-//#include <Arduino.h>	// only for Serial debug messages
+#define TybluLsq_DEBUG_MODE
+#ifdef TybluLsq_DEBUG_MODE
+#	include <Arduino.h>	// only for Serial debug messages
+#	define DEBUG(x) Serial.print("TybluLsq : "); Serial.println(x);
+#endif
+
 #include "TybluLsq.h"
 
 /*
@@ -28,8 +33,10 @@
  */
 void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 {
-//	Serial.println("inside TybluLsq::llsq");
-	float top = 0.0, bot = 0.0, xbar = 0.0, ybar = 0.0;
+	float top = 0.0;
+	float bot = 0.0;
+	float xbar = 0.0;
+	float ybar = 0.0;
 
 	if ( n == 1 )
 	{
@@ -37,6 +44,8 @@ void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 		b = y[0];
 		return;
 	}
+
+	DEBUG("right before averaging x and y")
 
 	// Average X and Y
 	for (int i=0; i<n; i++)
@@ -47,17 +56,19 @@ void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 	xbar = xbar / (float)n;
 	ybar = ybar / (float)n;
 
+	DEBUG("right before computing Beta, printing i, top, bot")
+
 	// Compute Beta
 	for (int i=0; i<n; i++)
 	{
 		top += ( x[i] - xbar ) * ( y[i] - ybar );
 		bot += ( x[i] - xbar ) * ( x[i] - xbar );
+		DEBUG(i) DEBUG(top) DEBUG(bot) DEBUG(x[i]) DEBUG(y[i])
 	}
 
 	a = top / bot;
 	b = ybar - a * xbar;
 
-//	Serial.println("leaving TybluLsq::llsq");
 	return;
 }
 

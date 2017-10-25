@@ -10,6 +10,13 @@
 #include "C:\Users\tyblu\Documents\repos\comp444-random\TybluLsq\TybluLsq.h"
 #include "C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h"
 
+#define TybluServo_DEBUG_MODE
+#ifdef TybluServo_DEBUG_MODE
+//#	include <Arduino.h>	// only for Serial debug messages
+#	define DEBUG1(x) Serial.print("TybluServo : "); Serial.println(x); delay(2)	// note missing ';'
+#	define DEBUG2(x,y) Serial.print("TybluServo : "); Serial.print(x); Serial.println(y); delay(2)	// note missing ';'
+#endif
+
 /* This should probably be put somewhere else. */
 template <typename T> int sgn(T val) {
 	return (T(0) < val) - (val < T(0));
@@ -77,6 +84,9 @@ TybluServo::TybluServo(int pwmPin, int min, int max, int safe,
  */
 bool TybluServo::calibrateSensor(int angleA, int angleB)
 {
+	if (!this->attached())
+		return false;
+
 	{	// ensure angleA <= angleB
 		int temp = min(angleA, angleB);
 		angleB = max(angleA, angleB);
@@ -97,6 +107,9 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 	int direction = 1;
 	unsigned int iterator = 0;
 	unsigned int total_iterations = 0;
+
+	DEBUG1("starting do-while...");
+
 	do {
 		total_iterations++;
 		// Serial.println(angles[iterator]);
@@ -121,35 +134,24 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 
 		angles[iterator] = angles[iterator-1] + direction * CALIB_STEP_SIZE;
 
-//		Serial.print(", ANGLEB="); Serial.print(angles[iterator-1]);
 	} while (iterator < CALIB_STEPS && total_iterations < CALIB_MAX_ITERATIONS);
+
+	DEBUG1("finished do-while loop");
+	DEBUG2("iterator=",iterator);
+	DEBUG2("CALIB_STEPS=",CALIB_STEPS);
 
 	if (total_iterations >= CALIB_MAX_ITERATIONS)
 		Serial.println("CALIB_MAX_ITERATIONS reached!");
 
-//	Serial.println();
-//	Serial.println("i : angle | meas.");
-//	for (int j=0; j<arraySize; j++)
-//	{
-//		Serial.print(j);
-//		Serial.print(" : ");
-//		Serial.print(angles[j]);
-//		Serial.print(" | ");
-//		Serial.print(measurements[j]);
-//		Serial.println();
-//	}
-//	Serial.println();
-
 	// least squares fit
 	float a, b;
+
+	DEBUG1("Going into TybluLsq::llsq()...");
+
 	// void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 	TybluLsq::llsq(CALIB_STEPS, measurements, angles, a, b);
 
-//	Serial.print(" Y[] = a*X[] + b --> a = ");
-//	Serial.print(a);
-//	Serial.print(", b = ");
-//	Serial.print(b);
-//	Serial.println(); delay(5);
+	DEBUG1("Got out of TybluLsq::llsq()");
 
 	sensorSlope = a;
 	sensorOffset = b;

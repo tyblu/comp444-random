@@ -1,5 +1,4 @@
 #include <Arduino.h>
-
 #include "C:\Users\tyblu\Documents\repos\comp444-random\TybluServo\TybluServo.h"
 
 #define BOOM1_PWM_PIN 6
@@ -18,12 +17,12 @@
  *		hard-code this and use other memory (PROGMEM, etc.) to get around this
  *		memory constraint.
  */
-TybluServo boom1Servo (BOOM1_PWM_PIN, 100, 150,  90, A1, 0.557, -49.64);	// TowerPro 946R, sensor needs verification
-TybluServo boom2Servo (BOOM2_PWM_PIN, 70, 115,  80, A0, 1.113, -147.1);	// Power HD 1501MG
+TybluServo boom1Servo(BOOM1_PWM_PIN, 100, 150,  90, A1, 0.557, -49.64);	// TowerPro 946R, sensor needs verification
+TybluServo boom2Servo(BOOM2_PWM_PIN, 70, 115,  80, A0, 1.113, -147.1);	// Power HD 1501MG
 //TybluServo turretServo (TURRET_PWM_PIN, 30, 150,  90, A3, 1.000, -1.000);	// not measured
 //TybluServo clawServo (CLAW_PWM_PIN, 80, 130, 100, A2, 0.557, -61.38);	// TowerPro 946R, angles need verification
 #define NUM_ACTIVE_SERVOS 2
-TybluServo * servos[NUM_ACTIVE_SERVOS] = { &boom2Servo , &boom1Servo };
+TybluServo * servos[NUM_ACTIVE_SERVOS] = { &boom1Servo , &boom2Servo };
 
 void dots(int n, int t);
 void ellipsis();
@@ -42,7 +41,7 @@ void setup()
 		unsigned int servoAttachAttempts = 0;
 		do {
 			servos[i]->attach();
-			if (servoAttachAttempts > 3)
+			if (servoAttachAttempts++ > 3)
 			{
 				Serial.println("Could not attach a servo.");
 				break;
