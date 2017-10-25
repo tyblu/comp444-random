@@ -67,6 +67,9 @@ public:
 	 */
 	bool calibrateSensor();
 
+	/* Prints y = m * x + b string. */
+	void printSensorLine();
+
 	void setMinAngle(int minAngle);
 	void setMaxAngle(int maxAngle);
 	void setSafeAngle(int safeAngle);
@@ -84,11 +87,17 @@ public:
 private:
 	int getAnalogRaw();
 
-	int pwmPin;
+	/* Line equation: y = m * x + b */
+	struct line
+	{
+		float m;
+		float b;
+	} sensorLine;
+
+	int pwmPin = -1;
 	int minAngle = 0, maxAngle = 180;
-	int safeAngle;
+	int safeAngle = 90;
 	int sensorPin = -1;
-	float sensorSlope, sensorOffset;
 	const float analogDeviationLimit = 50;
 	unsigned int measurementsCount = 50;
 	QuickStats qs;

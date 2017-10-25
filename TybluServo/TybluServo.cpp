@@ -12,9 +12,11 @@
 
 #define TybluServo_DEBUG_MODE
 #ifdef TybluServo_DEBUG_MODE
-//#	include <Arduino.h>	// only for Serial debug messages
 #	define DEBUG1(x) Serial.print("TybluServo : "); Serial.println(x); delay(2)	// note missing ';'
 #	define DEBUG2(x,y) Serial.print("TybluServo : "); Serial.print(x); Serial.println(y); delay(2)	// note missing ';'
+#else
+#	define DEBUG1(x)
+#	define DEBUG2(x,y)
 #endif
 
 /* This should probably be put somewhere else. */
@@ -44,8 +46,8 @@ TybluServo::TybluServo() : Servo()
 	this->maxAngle = 180;
 	this->safeAngle = (minAngle + maxAngle) / 2;
 	this->sensorPin = -1;
-	this->sensorSlope = 1.0;
-	this->sensorOffset = 0.0;
+	this->sensorLine.m = 1.0;
+	this->sensorLine.b = 0.0;
 }
 
 /*
@@ -64,8 +66,8 @@ TybluServo::TybluServo(int pwmPin, int min, int max, int safe,
 	this->maxAngle = max;
 	this->safeAngle = safe;
 	this->sensorPin = sensorPin;
-	this->sensorSlope = sensorSlope;
-	this->sensorOffset = sensorOffset;
+	this->sensorLine.m = sensorSlope;
+	this->sensorLine.b = sensorOffset;
 }
 
 /**
@@ -88,9 +90,9 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 		return false;
 
 	{	// ensure angleA <= angleB
-		int temp = min(angleA, angleB);
+		int temp1 = min(angleA, angleB);
 		angleB = max(angleA, angleB);
-		angleA = temp;
+		angleA = temp1;
 	}
 
 	// invalid sensor pin or calibration test range outside of servo min/max
@@ -124,6 +126,7 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 				&& measurements[iterator] < MODE_UPPER_LIMIT)
 			iterator++;
 
+		// don't try to get angles[-1], below
 		if (iterator == 0)
 			continue;
 
@@ -137,8 +140,6 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 	} while (iterator < CALIB_STEPS && total_iterations < CALIB_MAX_ITERATIONS);
 
 	DEBUG1("finished do-while loop");
-	DEBUG2("iterator=",iterator);
-	DEBUG2("CALIB_STEPS=",CALIB_STEPS);
 
 	if (total_iterations >= CALIB_MAX_ITERATIONS)
 		Serial.println("CALIB_MAX_ITERATIONS reached!");
@@ -146,15 +147,16 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 	// least squares fit
 	float a, b;
 
-	DEBUG1("Going into TybluLsq::llsq()...");
-
 	// void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 	TybluLsq::llsq(CALIB_STEPS, measurements, angles, a, b);
 
-	DEBUG1("Got out of TybluLsq::llsq()");
+	this->sensorLine.m = a;
+	this->sensorLine.b = b;
 
-	sensorSlope = a;
-	sensorOffset = b;
+	DEBUG2("a=", a);
+	DEBUG2("sensorSlope=", sensorLine.m);
+	DEBUG2("b=", b);
+	DEBUG2("sensorOffset=", sensorLine.b);
 
 	return true;
 }
@@ -189,8 +191,8 @@ void TybluServo::setSensorPin(int sensorPin)
 
 void TybluServo::setSensorConstants(float slope, float offset)
 {
-	this->sensorSlope = slope;
-	this->sensorOffset = offset;
+	this->sensorLine.m = slope;
+	this->sensorLine.b = offset;
 }
 
 int TybluServo::getMinAngle()
@@ -215,7 +217,7 @@ int TybluServo::getSensorPin()
 
 int TybluServo::getAnalogAngle()
 {
-		return (int)( this->getAnalogRaw() * sensorSlope + sensorOffset );
+		return (int)( this->getAnalogRaw() * sensorLine.m + sensorLine.b );
 }
 
 int TybluServo::getAnalogRaw()
@@ -229,18 +231,9 @@ int TybluServo::getAnalogRaw()
 			measurements[i] = analogRead(sensorPin);
 		qs.bubbleSort(measurements, MEASUREMENTS_COUNT);
 		stDev = qs.stdev(measurements, MEASUREMENTS_COUNT);
-//		Serial.print(" STDEV=");
-//		Serial.println(stDev);
 	}
 
 	float mode = qs.mode(measurements, MEASUREMENTS_COUNT, MODE_EPSILON);
-//	Serial.print(" MODE=");
-//	Serial.print(mode);
-//	Serial.print(" SLOPE=");
-//	Serial.print( sensorSlope );
-//	Serial.print(" OFFSET=");
-//	Serial.print( sensorOffset );
-//	Serial.write(' ');
 
 	if (mode < MODE_LOWER_LIMIT || mode > MODE_UPPER_LIMIT)
 		return 0;
@@ -250,12 +243,12 @@ int TybluServo::getAnalogRaw()
 
 float TybluServo::getSensorSlope()
 {
-	return sensorSlope;
+	return this->sensorLine.m;
 }
 
 float TybluServo::getSensorOffset()
 {
-	return sensorOffset;
+	return this->sensorLine.b;
 }
 
 /**
@@ -327,4 +320,17 @@ void TybluServo::smooth(int targetAngle)
 		delay(SMOOTH_ADJUSTMENT_DELAY);
 		isMoving = true;
 	}
+}
+
+void TybluServo::printSensorLine()
+{
+	Serial.print("y = ");
+	Serial.print(this->sensorLine.m);
+	Serial.print(" * x");
+	if (this->sensorLine.b < 0)
+		Serial.print(" - ");
+	else
+		Serial.print(" + ");
+	Serial.print(abs(this->sensorLine.b));
+	return;
 }

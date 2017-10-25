@@ -28,8 +28,18 @@ public:
 
 	/*
 	 * As TybluLsq::llsq, but with arrays of ints instead of floats.
+	 * 
+	 * At the moment it doesn't do anything.
 	 */
 	static void llsqInt( int n, int x[], int y[], float &a, float &b );
+
+	/*
+	 * As TybluLsq::llsq, but reads data sequentially from SD card instead of
+	 * potentially large local arrays.
+	 * 
+	 * At the moment it doesn't do anything.
+	 */
+	static void llsqSd( /* Not sure what this will need, yet. */);
 };
 
 #endif /* TYBLULSQ_H_ */
