@@ -1,0 +1,3 @@
+TybluLsq	KEYWORD1
+llsq		KEYWORD2
+llsqInt     KEYWORD3

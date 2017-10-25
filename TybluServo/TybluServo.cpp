@@ -5,10 +5,10 @@
  *      Author: tyblu
  */
 
-#include "TybluServo.h"
-#include "TybluLsq.h"
 #include <inttypes.h>
-#include "QuickStats.h"
+#include "C:\Users\tyblu\Documents\repos\comp444-random\TybluServo\TybluServo.h"
+#include "C:\Users\tyblu\Documents\repos\comp444-random\TybluLsq\TybluLsq.h"
+#include "C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h"
 
 /* This should probably be put somewhere else. */
 template <typename T> int sgn(T val) {
@@ -18,6 +18,7 @@ template <typename T> int sgn(T val) {
 // used in getAnalogAngle, calibrateSensor, and smooth
 #define MODE_LOWER_LIMIT 10		// 5V *  10/1024 = 49mV
 #define MODE_UPPER_LIMIT 512	// 5V * 512/1024 = 2.5V, max in equal voltage divider
+#define MODE_EPSILON 1.0
 #define CALIB_STEP_SIZE 3
 #define CALIB_STEPS 12
 #define CALIB_STEP_DELAY 25
@@ -230,7 +231,7 @@ int TybluServo::getAnalogRaw()
 //		Serial.println(stDev);
 	}
 
-	float mode = qs.mode(measurements, MEASUREMENTS_COUNT);
+	float mode = qs.mode(measurements, MEASUREMENTS_COUNT, MODE_EPSILON);
 //	Serial.print(" MODE=");
 //	Serial.print(mode);
 //	Serial.print(" SLOPE=");

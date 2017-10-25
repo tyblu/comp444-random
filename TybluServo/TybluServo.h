@@ -9,9 +9,9 @@
 #define TYBLUSERVO_H_
 
 #include <Arduino.h>
-#include <Servo.h>
 #include <inttypes.h>
-#include "QuickStats.h"
+#include <Servo.h>
+#include "C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h"
 
 class TybluServo : public Servo
 {
@@ -36,7 +36,7 @@ public:
 	void write(int value);	// extends Servo::write(int)
 	uint8_t attach();
 	uint8_t attach(int pwmPin);
-	void detach();
+//	void detach();
 
 	/*
 	 * Preconditions: [optional] Servo is attached and at its currently set angle.
