@@ -42,13 +42,16 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IncludePath>$(UserProfile)\Documents\repos\SdFat\;$(IncludePath)</IncludePath>
+    <SourcePath>$(VC_SourcePath);$(UserProfile)\Documents\repos\SdFat\</SourcePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\AutoMove;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\libraries\Servo\src;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\libraries;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\libraries;$(ProjectDir)..\..\..\..\AppData\Local\arduino15\packages\SparkFun\hardware\avr\1.1.7\libraries;$(ProjectDir)..\libraries;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard;$(ProjectDir)..\TybluLsq;$(ProjectDir)..\TybluServo;$(ProjectDir)..\..\QuickStats;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\avr\include\;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\avr\include\avr\;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\lib\gcc\avr\4.8.1\include;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\lib\gcc\avr\4.9.2\include;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\lib\gcc\avr\4.9.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\AutoMove;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\libraries\Servo\src;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\libraries\SPI\src;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\libraries\SD\src;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\libraries\SD\src\utility;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\libraries;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\libraries;$(ProjectDir)..\..\..\..\AppData\Local\arduino15\packages\SparkFun\hardware\avr\1.1.7\libraries;$(ProjectDir)..\libraries;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\cores\arduino;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\arduino\avr\variants\standard;$(ProjectDir)..\TybluLsq;$(ProjectDir)..\TybluServo;$(ProjectDir)..\..\QuickStats;$(ProjectDir)..\..\SdFat\src;$(ProjectDir)..\..\SdFat\src\FatLib;$(ProjectDir)..\..\SdFat\src\SdCard;$(ProjectDir)..\..\SdFat\src\SpiDriver\boards;$(ProjectDir)..\..\SdFat\src\SpiDriver;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\avr\include\;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\avr\include\avr\;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\lib\gcc\avr\4.8.1\include;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\lib\gcc\avr\4.9.2\include;$(ProjectDir)..\..\..\..\..\..\Program Files (x86)\Arduino\hardware\tools\avr\lib\gcc\avr\4.9.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(ProjectDir)__vm\.AutoMove.vsarduino.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <IgnoreStandardIncludePath>false</IgnoreStandardIncludePath>
       <PreprocessorDefinitions>__AVR_ATmega328p__;__AVR_ATmega328P__;_VMDEBUG=1;F_CPU=16000000L;ARDUINO=10804;ARDUINO_REDBOARD;ARDUINO_ARCH_AVR;__cplusplus=201103L;_VMICRO_INTELLISENSE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -78,7 +81,10 @@
     <ClInclude Include="..\..\QuickStats\QuickStats.h" />
     <ClInclude Include="..\TybluLsq\TybluLsq.h" />
     <ClInclude Include="..\TybluServo\TybluServo.h" />
+    <ClInclude Include="limits.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="SonarSensor.h" />
+    <ClInclude Include="TopoScan.h" />
     <ClInclude Include="__vm\.AutoMove.vsarduino.h" />
   </ItemGroup>
   <ItemGroup>
@@ -86,6 +92,8 @@
     <ClCompile Include="..\TybluLsq\TybluLsq.cpp" />
     <ClCompile Include="..\TybluServo\TybluServo.cpp" />
     <ClCompile Include="AutoMove.cpp" />
+    <ClCompile Include="SonarSensor.cpp" />
+    <ClCompile Include="TopoScan.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="AutoMove.rc" />
@@ -99,4 +107,9 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties arduino.build.auto_discover_includes="0" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>

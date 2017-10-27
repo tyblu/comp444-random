@@ -1,5 +1,7 @@
 #include <Arduino.h>
-#include "C:\Users\tyblu\Documents\repos\comp444-random\TybluServo\TybluServo.h"
+#include "TybluServo.h"
+#include "SonarSensor.h"
+#include "SdFat.h"
 
 #define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
@@ -10,6 +12,9 @@
 #	define DEBUG2(x,y)
 #endif
 
+// Servo stuff.
+//#define SERVO_ON
+#ifdef SERVO_ON
 #define BOOM1_PWM_PIN 6
 #define BOOM2_PWM_PIN 9
 #define CLAW_PWM_PIN 5
@@ -24,19 +29,38 @@
  */
 TybluServo boom1Servo(BOOM1_PWM_PIN, 100, 150,  110, A1, 0.557, -49.64);	// TowerPro 946R, sensor needs verification
 TybluServo boom2Servo(BOOM2_PWM_PIN, 70, 115,  80, A0, 1.113, -147.1);	// Power HD 1501MG
-//TybluServo turretServo (TURRET_PWM_PIN, 30, 150,  90, A3, 1.000, -1.000);	// not measured
+TybluServo turretServo (TURRET_PWM_PIN, 30, 150,  90, A3, 1.000, -1.000);	// not measured
 TybluServo clawServo (CLAW_PWM_PIN, 60, 130, 100, A2, 0.557, -61.38);	// TowerPro 946R, angles need verification
-#define NUM_ACTIVE_SERVOS 1
-TybluServo * servos[NUM_ACTIVE_SERVOS] = { /*&boom1Servo , &boom2Servo,*/ &clawServo };
+#define NUM_ACTIVE_SERVOS 4
+TybluServo * servos[NUM_ACTIVE_SERVOS] = 
+		{ &boom2Servo , &boom1Servo, &turretServo, &clawServo };
+#endif // SERVO_ON
+
+// Sonar stuff.
+#define SONAR_ON
+#ifdef SONAR_ON
+#define SONAR_TRIGGER_PIN 4
+#define SONAR_ECHO_PIN 7
+SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
+#endif	// SONAR_ON
+
+// SPI SD card stuff.
+#define SD_ON
+#ifdef SD_ON
+#define SD_CS_PIN 10
+#define SD_SCK_PIN 13	// ICSP #3
+#define SD_MOSI_PIN 11	// ICSP #4
+#define SD_MISO_PIN 12	// ICSP #1
+#endif // SD_ON
 
 void setup()
 {
-	delay(2000);
-
 	Serial.begin(9600);
 	Serial.println(__FILE__ " compiled " __DATE__ " at " __TIME__);
 	Serial.println();
 
+	// Servo stuff.
+#ifdef SERVO_ON
 	for (int i=0; i<NUM_ACTIVE_SERVOS; i++)
 	{
 		unsigned int servoAttachAttempts = 0;
@@ -56,15 +80,22 @@ void setup()
 		servos[i]->smooth(servos[i]->getSafeAngle());
 
 		DEBUG1("Next servo (if any)...");
-		Serial.println();
 	}
 	Serial.println();
+#endif // SERVO_ON
 
-	delay(2000);
+	// SD Card stuff
+#ifdef SONAR_ON
+
+#endif // SONAR_ON
+
 }
 
 void loop()
 {
-	DEBUG1("Made it!");
-	delay(5000);
+	// SD Card stuff
+#ifdef SONAR_ON
+
+#endif // SONAR_ON
+
 }

@@ -30,6 +30,15 @@
     <ClInclude Include="..\TybluLsq\TybluLsq.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SonarSensor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TopoScan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="limits.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AutoMove.cpp">
@@ -42,6 +51,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\TybluLsq\TybluLsq.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SonarSensor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TopoScan.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
