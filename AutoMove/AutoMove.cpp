@@ -2,6 +2,7 @@
 #include "TybluServo.h"
 #include "SonarSensor.h"
 #include "SdFat.h"
+#include "limits.h"
 
 #define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
@@ -173,12 +174,12 @@ void setup()
 	}
 
 	char filename[13];
-	getUniqueShortFileName(filename, sd, "TopoMaps", "txt");
+	getUniqueShortFileName(filename, sd, "/TopoMaps", "txt");
 	DEBUG2(F("Unique short file name: "), filename);
 
 #ifdef AutoMove_DEBUG_MODE
 	if (!sd.chdir("/TopoMaps")) { DEBUG1(F("Change directory to \"TopoMaps\" failed.")); }
-	if (!file.open(filename, O_CREAT)) { DEBUG2(F("Open file failed: "), filename); }
+	if (!file.open(filename, O_CREAT | O_WRITE )) { DEBUG2(F("Open file failed: "), filename); }
 #else
 	sd.chdir("/TopoMaps");
 	file.open(filename, O_CREAT);
@@ -233,17 +234,15 @@ void loop()
  */
 void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, const char * folder, const char * extension)
 {
-	String strTimestamp = String(millis(), DEC);
-	String newFilename = "01234567.ext";
+	String newFilename = String(ULONG_MAX, DEC);
 
 	arg_sd.chdir(true);	// go to root dir
 	arg_sd.chdir(folder, true); // go to folder
 	do {
-		newFilename = String(millis(), DEC).substring(strTimestamp.length() - newFilename.length());
+		newFilename = newFilename.substring(newFilename.length() - String("01234567").length());
 		newFilename.concat('.');
 		newFilename.concat(extension);
 		newFilename.toCharArray(filename, 13);
-
 	} while (arg_sd.exists(filename));
 	arg_sd.chdir(true);	// back to root dir
 	return;
