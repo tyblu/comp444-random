@@ -16,6 +16,10 @@
 #	define DEBUG3(f,xT,xF)
 #endif
 
+// Random stuff that should definitely go somewhere else.
+float deg2rad(int16_t degrees);
+int16_t rad2deg(float radians);
+
 // Servo stuff.
 #define SERVO_ON
 #ifdef SERVO_ON
@@ -35,8 +39,6 @@ class TybluServoList
 {
 public:
 	TybluServo boom1, boom2, turret, claw;
-
-	struct Positions { uint16_t boom1, boom2, turret, claw; };
 
 	TybluServoList(TybluServo argBoom1, TybluServo argBoom2, TybluServo argTurret, TybluServo argClaw)
 		: boom1(argBoom1)
@@ -78,9 +80,9 @@ public:
 		iterator = 0;
 	}
 
-	Positions getPositions()
+	RobotArmState::ServoAngles getServoAngles()
 	{
-		return Positions{ boom1.read(), boom2.read(), turret.read(), claw.read() };
+		return RobotArmState::ServoAngles{ boom1.read(), boom2.read(), turret.read(), claw.read() };
 	}
 
 private:
@@ -94,6 +96,110 @@ TybluServoList robotArmServos(
 	TybluServo(CLAW_PWM_PIN, 60, 130, 100, A2, 0.557, -61.38) // TowerPro 946R, angles need verification
 );
 
+class RobotArmState		// should put most of these states into TybluServo object
+{
+public:
+	struct ServoAngles { uint16_t boom1, boom2, turret, claw; };
+	enum ServoName { Boom1, Boom2, Turret, Claw };
+	enum EndEffectorState { P45Deg, P00Deg, N45Deg, N90Deg, N135Deg };
+
+	RobotArmState(TybluServoList * arg_servos, EndEffectorState state)
+		: list(arg_servos)
+		, endEffectorState(state)
+		, k1(-1)
+		, k2(1)
+		//		, k3(1)
+		, k4(1)
+		, p1(0)
+		, p2(0)
+		//		, p3(0)
+		, p4(0)
+	{
+		angles = list->getServoAngles();
+		setTweaks();	// k and p values
+	}
+
+	TybluServo getServo(ServoName servoName)
+	{
+		switch (servoName)
+		{
+		case ServoName::Boom1: return list->boom1;
+		case ServoName::Boom2: return list->boom2;
+		case ServoName::Turret: return list->turret;
+		case ServoName::Claw: return list->claw;
+		default:
+			return;
+		}
+	}
+
+	uint16_t getRadius()
+	{
+		return getR1() + getR2() + getR3();
+	}
+
+	uint16_t getHeight()
+	{
+		return getH1() + getH2() + getH3();
+	}
+
+	uint16_t getTheta()
+	{
+		angles.turret = list->turret.read();
+		return k3 * angles.turret + p3;
+	}
+
+private:
+	TybluServoList * list;
+	EndEffectorState endEffectorState;
+	int16_t h1, h2, h3, r1, r2, r3, k1, k11, k2, k3, k4, p1, p11, p2, p3, p4;
+	ServoAngles angles;
+
+	void setTweaks()
+	{
+		switch (endEffectorState)
+		{
+		case EndEffectorState::P45Deg:
+			p3 = 32 + 140 * cos(deg2rad(45));
+			break;
+		case EndEffectorState::P00Deg:
+			p3 = 32 + 140;
+			break;
+		case EndEffectorState::N45Deg:
+			p3 = 32 + 140 * cos(deg2rad(-45));
+			break;
+		case EndEffectorState::N90Deg:
+			p3 = 32;
+			break;
+		case EndEffectorState::N135Deg:
+			p3 = 32 + 140 * cos(deg2rad(-135));
+			break;
+		default:
+			break;
+		}
+	}
+
+	int16_t getR1()
+	{
+		angles.boom1 = list->boom1.read();
+		return k11 * cos(deg2rad(k1 * angles.boom1 + p1)) + p11;
+	}
+
+	int16_t getR2()
+	{
+		angles.boom2 = list->boom2.read();
+		return k2 * angles.boom2 + p2;
+	}
+
+	int16_t getR3()
+	{
+		angles.claw = list->claw.read();
+		return k4 * angles.claw + p4;
+	}
+
+	int16_t getH1() { return 0; }
+	int16_t getH2() { return 0; }
+	int16_t getH3() { return 0; }
+};
 #endif // SERVO_ON
 
 // Sonar stuff.
@@ -101,7 +207,7 @@ TybluServoList robotArmServos(
 #ifdef SONAR_ON
 #define SONAR_TRIGGER_PIN 4
 #define SONAR_ECHO_PIN 7
-void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, TybluServoList::Positions pos);
+void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, RobotArmState::ServoAngles pos);
 void logSonarDataHeader(SdFile & arg_file);
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
 #endif	// SONAR_ON
@@ -210,7 +316,7 @@ void loop()
 	// Check for data rate too high.
 	DEBUG3(diff > 10, F("Data rate too high."), F("Data rate good."));
 
-	logSonarData(sonar, file, robotArmServos.getPositions());
+	logSonarData(sonar, file, robotArmServos.getServoAngles());
 
 	DEBUG3(!file.sync() || file.getWriteError(), F("Write error."), F("Write success."));
 #ifndef AutoMove_DEBUG_MODE
@@ -248,7 +354,7 @@ void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, const char * fold
 	return;
 }
 
-void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, TybluServoList::Positions pos)
+void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, RobotArmState::ServoAngles pos)
 {
 	arg_file.print(pos.boom1);
 	arg_file.print(',');
@@ -267,4 +373,14 @@ void logSonarDataHeader(SdFile & arg_file)
 	arg_file.print(F("boom1,boom2,turret,claw,sonar"));
 	arg_file.println();
 	DEBUG1(F("Header printed to SD card... I think."));
+}
+
+float deg2rad(int16_t degrees)
+{
+	return degrees * PI / (float)180;
+}
+
+int16_t rad2deg(float radians)
+{
+	return (int16_t)(radians * 180 / PI);
 }
