@@ -36,7 +36,6 @@ public:
 	void write(int value);	// extends Servo::write(int)
 	uint8_t attach();
 	uint8_t attach(int pwmPin);
-//	void detach();
 
 	/*
 	 * Preconditions: [optional] Servo is attached and at its currently set angle.
@@ -66,6 +65,7 @@ public:
 	 * Same as calibrateSensor(int angleA, int angleB), using max/min angles.
 	 */
 	bool calibrateSensor();
+
 
 	/* Prints y = m * x + b string. */
 	void printSensorLine();

@@ -251,7 +251,7 @@ float TybluServo::getSensorOffset()
 	return this->sensorLine.b;
 }
 
-/**
+/*
  * If value is < 200 its treated as an angle, otherwise as pulse width in
  * microseconds. If value is < minAngle then it's set to minAngle; if > maxAngle and
  * < 200 then it's set to maxAngle.

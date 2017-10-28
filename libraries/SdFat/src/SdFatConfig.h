@@ -56,7 +56,7 @@
  * These classes used extended multi-block SD I/O for better performance.
  * the SPI bus may not be shared with other devices in this mode.
  */
-#define ENABLE_EXTENDED_TRANSFER_CLASS 0
+#define ENABLE_EXTENDED_TRANSFER_CLASS 1
 //-----------------------------------------------------------------------------
 /**
  * If the symbol USE_STANDARD_SPI_LIBRARY is nonzero, the classes SdFat and
@@ -77,7 +77,7 @@
  * updated.  This will increase the speed of the freeClusterCount() call
  * after the first call.  Extra flash will be required.
  */
-#define MAINTAIN_FREE_CLUSTER_COUNT 0
+#define MAINTAIN_FREE_CLUSTER_COUNT 1
 //------------------------------------------------------------------------------
 /**
  * To enable SD card CRC checking set USE_SD_CRC nonzero.
