@@ -18,12 +18,15 @@ public:
 
 	class RobotArmMemberIterator {
 	public:
+		RobotArmMemberIterator() : iterator(0), iteratorHasWrapped(false) {}
+
 		RobotArmMember::ServoName next()
 		{
 			iterator++;
 			iteratorHasWrapped = false;
 			return current();
 		}
+
 		RobotArmMember::ServoName current()
 		{
 			switch (iterator)
@@ -38,10 +41,17 @@ public:
 				return current();
 			}
 		}
-		void restart() { iterator = 0; }
-		bool isFinished() { return iteratorHasWrapped; }
+		
+		void restart()
+		{
+			iterator = 0;
+			iteratorHasWrapped = false;
+		}
 
-		RobotArmMemberIterator() : iterator(0), iteratorHasWrapped(false) {}
+		bool isFinished()
+		{
+			return iteratorHasWrapped;
+		}
 
 	private:
 		uint8_t iterator;

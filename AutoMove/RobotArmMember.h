@@ -48,7 +48,7 @@ public:
 	 */
 	void write(int value);	// extends Servo::write(int)
 	uint8_t attach();
-	uint8_t attach(int pwmPin);
+//	uint8_t attach(int pwmPin);
 
 	/*
 	 * Preconditions: [optional] Servo is attached and at its currently set angle.

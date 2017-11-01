@@ -295,20 +295,20 @@ void RobotArmMember::write(int value)
 		Servo::write(value);
 }
 
-/*
- * Attempts to pre-set servo position to avoid initial jolts, than attaches.
- * Servo::attach(int) description:
- * 	Attach the given pin to the next free channel, sets pinMode, returns channel
- * 	number or 0 if failure.
- */
-uint8_t RobotArmMember::attach(int pin)
-{
-	this->pwmPin = pin;
-	int currentAnalogAngle = getAnalogAngle();
-	if ( currentAnalogAngle >= minAngle && currentAnalogAngle <= maxAngle )
-		write(currentAnalogAngle);
-	return Servo::attach(pin);
-}
+///*
+// * Attempts to pre-set servo position to avoid initial jolts, than attaches.
+// * Servo::attach(int) description:
+// * 	Attach the given pin to the next free channel, sets pinMode, returns channel
+// * 	number or 0 if failure.
+// */
+//uint8_t RobotArmMember::attach(int pin)
+//{
+//	this->pwmPin = pin;
+//	int currentAnalogAngle = getAnalogAngle();
+//	if ( currentAnalogAngle >= minAngle && currentAnalogAngle <= maxAngle )
+//		write(currentAnalogAngle);
+//	return Servo::attach(pin);
+//}
 
 /*
  * Preconditions: pwmPin must have been set either in the [full] constructor or
@@ -319,7 +319,7 @@ uint8_t RobotArmMember::attach(int pin)
  */
 uint8_t RobotArmMember::attach()
 {
-	return this->attach(this->pwmPin);
+	return Servo::attach(this->pwmPin);
 }
 
 void RobotArmMember::smooth(int targetAngle)

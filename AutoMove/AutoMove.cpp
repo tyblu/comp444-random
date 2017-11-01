@@ -20,6 +20,7 @@
 // Random stuff that should definitely go somewhere else.
 float deg2rad(int16_t degrees);
 int16_t rad2deg(float radians);
+int digitalRead100(uint8_t pin);
 
 // Servo stuff.
 #define SERVO_ON
@@ -28,8 +29,8 @@ int16_t rad2deg(float radians);
 #define BOOM2_PWM_PIN 9
 #define CLAW_PWM_PIN 5
 #define TURRET_PWM_PIN 3
-#define SERVO_POWER_CONTROL_PIN 2
-#define SERVO_POWER_FEEDBACK_PIN 1
+#define SERVO_POWER_CONTROL_PIN 8
+//#define SERVO_POWER_FEEDBACK_PIN 1
 
 //class RobotArmStateDefunct		// should put most of these states into RobotArmMember object
 //{
@@ -240,7 +241,7 @@ uint32_t logTime;							// time for next data record [us]
 #ifdef FORCE_SENSORS_ON
 #define FORCE_SENSOR_ANALOG_A_PIN A4
 #define FORCE_SENSOR_ANALOG_B_PIN A5
-#define FORCE_SENSORS_POWER_PIN 0
+#define FORCE_SENSORS_POWER_PIN 2
 #endif
 
 void setup()
@@ -253,8 +254,7 @@ void setup()
 #ifdef SERVO_ON
 	digitalWrite(SERVO_POWER_CONTROL_PIN, LOW);	// ensure servo power is off
 	pinMode(SERVO_POWER_CONTROL_PIN, OUTPUT);
-	pinMode(SERVO_POWER_FEEDBACK_PIN, INPUT);
-	DEBUG3(digitalRead(SERVO_POWER_FEEDBACK_PIN) == HIGH, "Servos turned on.", "Servos still off.");
+	//pinMode(SERVO_POWER_FEEDBACK_PIN, INPUT);
 
 	while (!state.list.isFinished())
 	{
@@ -267,7 +267,13 @@ void setup()
 		state.list.next();
 	}
 
-	digitalWrite(SERVO_POWER_CONTROL_PIN, HIGH);	// power on servos
+	// power on servos
+	digitalWrite(SERVO_POWER_CONTROL_PIN, HIGH);
+	//do {	// USB programming issue only
+	//	DEBUG1("Waiting for user to plug servo feedback wire to pin 0.");
+	//	delay(1000);
+	//} while (digitalRead100(SERVO_POWER_FEEDBACK_PIN) == LOW);
+	//DEBUG3(digitalRead100(SERVO_POWER_FEEDBACK_PIN) == HIGH, "Servos turned on.", "Servos still off.");
 
 	state.list.restart();
 	while (!state.list.isFinished())
@@ -467,4 +473,16 @@ float deg2rad(int16_t degrees)
 int16_t rad2deg(float radians)
 {
 	return (int16_t)(radians * 180 / PI);
+}
+
+int digitalRead100(uint8_t pin)
+{
+	uint32_t sum = 0;
+	for (uint8_t i = 0; i < 100; i++)
+		sum += digitalRead(pin);
+
+	if (sum > 50)
+		return HIGH;
+	else
+		return LOW;
 }
