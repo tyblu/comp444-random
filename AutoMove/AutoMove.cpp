@@ -21,6 +21,9 @@
 float deg2rad(int16_t degrees);
 int16_t rad2deg(float radians);
 int digitalRead100(uint8_t pin);
+class StringPlus : public String {
+	StringPlus substring(uint8_t fromIndex);
+};
 
 // Servo stuff.
 #define SERVO_ON
@@ -333,15 +336,12 @@ void loop()
 {
 	// SD Card stuff
 #ifdef SD_ON
+	logTime += 1000UL * SAMPLE_INTERVAL_MS;	// time for next record
 
-	// Time for next record.
-	logTime += 1000UL * SAMPLE_INTERVAL_MS;
-
-	// Wait for log time.
 	int32_t diff;
 	do {
 		diff = micros() - logTime;
-	} while (diff < 0);
+	} while (diff < 0); // wait for log time
 
 	// Check for data rate too high.
 	DEBUG3(diff > 10, F("Data rate too high."), F("Data rate good."));
@@ -371,12 +371,24 @@ void loop()
  */
 void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, const char * folder, const char * extension)
 {
-	String newFilename = String(ULONG_MAX, DEC);
+//	String newFilename = String(ULONG_MAX, DEC);
+	String str = "01234567";
+	String newFilename = str + ".ext";
+	uint8_t fileNumber = 0;
 
 	arg_sd.chdir(true);	// go to root dir
 	arg_sd.chdir(folder, true); // go to folder
 	do {
-		newFilename = newFilename.substring(newFilename.length() - String("01234567").length());
+		if (fileNumber > 999)
+			return;		// quit, too many files
+		else if (fileNumber > 100)
+			newFilename = "sonar";
+		else if (fileNumber > 10)
+			newFilename = "sonar0";
+		else
+			newFilename = "sonar00";
+
+		newFilename.concat(fileNumber++);
 		newFilename.concat('.');
 		newFilename.concat(extension);
 		newFilename.toCharArray(filename, 13);
