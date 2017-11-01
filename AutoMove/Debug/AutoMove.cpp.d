@@ -11,15 +11,16 @@ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\Auto
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/USBAPI.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\cores\arduino/Arduino.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\variants\standard/pins_arduino.h \
- C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\TybluServo.h \
+ C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h \
  C:\Program\ Files\ (x86)\Arduino\libraries\Servo\src/Servo.h \
  C:\Program\ Files\ (x86)\Arduino\libraries\Servo\src/avr/ServoTimers.h \
  C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h \
+ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\RobotArmState.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\SonarSensor.h \
- C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\SdFat.h \
- C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\SysCall.h \
+ C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/SdFat.h \
+ C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/SysCall.h \
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\libraries\SPI\src/SPI.h \
- C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\BlockDriver.h \
+ C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/BlockDriver.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/BaseBlockDriver.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/FatLibConfig.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/SdFatConfig.h \

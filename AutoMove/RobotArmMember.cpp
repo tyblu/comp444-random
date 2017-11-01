@@ -1,19 +1,20 @@
 /*
- * TybluServo.cpp
+ * RobotArmMember.cpp
  *
  *  Created on: Oct 14, 2017
- *      Author: tyblu
+ *      Author: Tyler Lucas
  */
 
 #include <inttypes.h>
-#include "C:\Users\tyblu\Documents\repos\comp444-random\TybluServo\TybluServo.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\TybluLsq\TybluLsq.h"
 #include "C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h"
+#include "IntegerGeometry.h"
+#include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 
-#define TybluServo_DEBUG_MODE
-#ifdef TybluServo_DEBUG_MODE
-#	define DEBUG1(x) Serial.print("TybluServo : "); Serial.println(x); delay(2)	// note missing ';'
-#	define DEBUG2(x,y) Serial.print("TybluServo : "); Serial.print(x); Serial.println(y); delay(2)	// note missing ';'
+#define RobotArmMember_DEBUG_MODE
+#ifdef RobotArmMember_DEBUG_MODE
+#	define DEBUG1(x) Serial.print("RobotArmMember : "); Serial.println(x); delay(2)	// note missing ';'
+#	define DEBUG2(x,y) Serial.print("RobotArmMember : "); Serial.print(x); Serial.println(y); delay(2)	// note missing ';'
 #else
 #	define DEBUG1(x)
 #	define DEBUG2(x,y)
@@ -37,18 +38,9 @@ template <typename T> int sgn(T val) {
 #define SMOOTH_ADJUSTMENT_ANGLE 2
 #define SMOOTH_ADJUSTMENT_ANGLE_STOPPED 1
 #define SMOOTH_ADJUSTMENT_DELAY 25
+#define SMOOTH_TIMEOUT_MS 500;		// 500ms timeout for changing angle
 #define MEASUREMENTS_COUNT 40
-
-TybluServo::TybluServo() : Servo()
-{
-	this->pwmPin = -1;
-	this->minAngle = 0;
-	this->maxAngle = 180;
-	this->safeAngle = (minAngle + maxAngle) / 2;
-	this->sensorPin = -1;
-	this->sensorLine.m = 1.0;
-	this->sensorLine.b = 0.0;
-}
+#define ANALOG_RAW_TIMEOUT_MS 100;	// 100ms timeout for getting analog angle
 
 /*
  * Constructor arguments:
@@ -58,23 +50,20 @@ TybluServo::TybluServo() : Servo()
  * int sensorPin 							Angle sensor pin (A0, A1, ...).
  * float sensorSlope, float sensorOffset	Initial angle sensor linear coefficients.
  */
-TybluServo::TybluServo(int pwmPin, int min, int max, int safe,
-		int sensorPin, float sensorSlope, float sensorOffset) : Servo()
-{
-	this->pwmPin = pwmPin;
-	this->minAngle = min;
-	this->maxAngle = max;
-	this->safeAngle = safe;
-	this->sensorPin = sensorPin;
-	this->sensorLine.m = sensorSlope;
-	this->sensorLine.b = sensorOffset;
-}
+RobotArmMember::RobotArmMember(ServoName name, uint16_t length, int angleOffset,
+	int pwmPin, int min, int max, int safe,
+	int sensorPin, float sensorSlope, float sensorOffset)
+	: Servo()
+	, name(name), length(length), angleOffset(angleOffset), pwmPin(pwmPin)
+	, minAngle(min), maxAngle(max), safeAngle(safe)
+	, sensorPin(sensorPin), sensorLine(sensorSlope, sensorOffset)
+{}
 
 /**
  * Pre-conditions: Servo must be attached, have max/min angles set, and have valid
  * sensor pin.
  * Post-conditions: In addition to preconditions, sensor slope and offset variables
- * are set, allowing for accurate returns from TybluServo::getAnalogAngle.
+ * are set, allowing for accurate returns from RobotArmMember::getAnalogAngle.
  *
  * Returns true if it completes successfully, false otherwise. No variables changed.
  *
@@ -84,7 +73,7 @@ TybluServo::TybluServo(int pwmPin, int min, int max, int safe,
  * minAngle and maxAngle limits, so make sure angleA and angleB are within them or
  * the calibration will not work (returns false).
  */
-bool TybluServo::calibrateSensor(int angleA, int angleB)
+bool RobotArmMember::calibrateSensor(int angleA, int angleB)
 {
 	if (!this->attached())
 		return false;
@@ -164,66 +153,103 @@ bool TybluServo::calibrateSensor(int angleA, int angleB)
 /*
  * Same as calibrateSensor(int angleA, int angleB), using max/min angles.
  */
-bool TybluServo::calibrateSensor()
+bool RobotArmMember::calibrateSensor()
 {
 	return calibrateSensor(this->minAngle, this->maxAngle);
 }
 
-void TybluServo::setMinAngle(int minAngle)
+void RobotArmMember::setName(ServoName name)
+{
+	this->name = name;
+}
+
+void RobotArmMember::setAngleOffset(int angleOffset)
+{
+	this->angleOffset = angleOffset;
+}
+
+void RobotArmMember::setMinAngle(int minAngle)
 {
 	this->minAngle = minAngle;
 }
 
-void TybluServo::setMaxAngle(int maxAngle)
+void RobotArmMember::setMaxAngle(int maxAngle)
 {
 	this->maxAngle = maxAngle;
 }
 
-void TybluServo::setSafeAngle(int safeAngle)
+void RobotArmMember::setSafeAngle(int safeAngle)
 {
 	this->safeAngle = safeAngle;
 }
 
-void TybluServo::setSensorPin(int sensorPin)
+void RobotArmMember::setSensorPin(int sensorPin)
 {
 	this->sensorPin = sensorPin;
 }
 
-void TybluServo::setSensorConstants(float slope, float offset)
+void RobotArmMember::setSensorConstants(float slope, float offset)
 {
 	this->sensorLine.m = slope;
 	this->sensorLine.b = offset;
 }
 
-int TybluServo::getMinAngle()
+RobotArmMember::ServoName RobotArmMember::getName()
+{
+	return this->name;
+}
+
+int RobotArmMember::getAngleOffset()
+{
+	return this->angleOffset;
+}
+
+int RobotArmMember::getAngle()
+{
+	return this->read() + angleOffset;
+}
+
+int RobotArmMember::getHeight()
+{
+	return IntegerGeometry::intDiv(this->length * IntegerGeometry::bigSin(this->getAngle()), 1000);
+}
+
+int RobotArmMember::getRadius()
+{
+	return IntegerGeometry::intDiv(this->length * IntegerGeometry::bigCos(this->getAngle()), 1000);
+}
+
+int RobotArmMember::getMinAngle()
 {
 	return this->minAngle;
 }
 
-int TybluServo::getMaxAngle()
+int RobotArmMember::getMaxAngle()
 {
 	return this->maxAngle;
 }
 
-int TybluServo::getSafeAngle()
+int RobotArmMember::getSafeAngle()
 {
 	return this->safeAngle;
 }
 
-int TybluServo::getSensorPin()
+int RobotArmMember::getSensorPin()
 {
 	return this->sensorPin;
 }
 
-int TybluServo::getAnalogAngle()
+int RobotArmMember::getAnalogAngle()
 {
 		return (int)( this->getAnalogRaw() * sensorLine.m + sensorLine.b );
 }
 
-int TybluServo::getAnalogRaw()
+int RobotArmMember::getAnalogRaw()
 {
 	float measurements[MEASUREMENTS_COUNT];
 	float stDev = analogDeviationLimit + 1.0;
+
+	unsigned long timeout = millis() + ANALOG_RAW_TIMEOUT_MS;
 
 	while ( stDev > analogDeviationLimit)
 	{
@@ -231,6 +257,9 @@ int TybluServo::getAnalogRaw()
 			measurements[i] = analogRead(sensorPin);
 		qs.bubbleSort(measurements, MEASUREMENTS_COUNT);
 		stDev = qs.stdev(measurements, MEASUREMENTS_COUNT);
+
+		if (millis() > timeout)
+			return 0;	// ruf, ruf, watchdog chases you out!
 	}
 
 	float mode = qs.mode(measurements, MEASUREMENTS_COUNT, MODE_EPSILON);
@@ -241,12 +270,12 @@ int TybluServo::getAnalogRaw()
 		return (int)mode;
 }
 
-float TybluServo::getSensorSlope()
+float RobotArmMember::getSensorSlope()
 {
 	return this->sensorLine.m;
 }
 
-float TybluServo::getSensorOffset()
+float RobotArmMember::getSensorOffset()
 {
 	return this->sensorLine.b;
 }
@@ -256,7 +285,7 @@ float TybluServo::getSensorOffset()
  * microseconds. If value is < minAngle then it's set to minAngle; if > maxAngle and
  * < 200 then it's set to maxAngle.
  */
-void TybluServo::write(int value)
+void RobotArmMember::write(int value)
 {
 	if (value < minAngle)
 		Servo::write(minAngle);
@@ -272,7 +301,7 @@ void TybluServo::write(int value)
  * 	Attach the given pin to the next free channel, sets pinMode, returns channel
  * 	number or 0 if failure.
  */
-uint8_t TybluServo::attach(int pin)
+uint8_t RobotArmMember::attach(int pin)
 {
 	this->pwmPin = pin;
 	int currentAnalogAngle = getAnalogAngle();
@@ -283,17 +312,17 @@ uint8_t TybluServo::attach(int pin)
 
 /*
  * Preconditions: pwmPin must have been set either in the [full] constructor or
- * TybluServo::attach(int pin) (presumably later followed by a 'detach()).
+ * RobotArmMember::attach(int pin) (presumably later followed by a 'detach()).
  *
- * Attaches to previously set pwmPin, calling TybluServo::attach(pwmPin). Returns
+ * Attaches to previously set pwmPin, calling RobotArmMember::attach(pwmPin). Returns
  * uint8_t 0 on fail (i.e. bad pwmPin), channel number otherwise.
  */
-uint8_t TybluServo::attach()
+uint8_t RobotArmMember::attach()
 {
 	return this->attach(this->pwmPin);
 }
 
-void TybluServo::smooth(int targetAngle)
+void RobotArmMember::smooth(int targetAngle)
 {
 	int currentAngle = this->read();
 
@@ -305,6 +334,7 @@ void TybluServo::smooth(int targetAngle)
 
 	bool isMoving = false;
 	int lastCurrentAngle = currentAngle;
+	unsigned long timeout = millis() + SMOOTH_TIMEOUT_MS;
 	while (currentAngle != targetAngle)
 	{
 //		Serial.print("current="); Serial.print(currentAngle); Serial.print(", target="); Serial.print(targetAngle); Serial.print(", dir="); Serial.println(sgn(targetAngle - currentAngle));
@@ -319,10 +349,16 @@ void TybluServo::smooth(int targetAngle)
 		this->write(currentAngle);
 		delay(SMOOTH_ADJUSTMENT_DELAY);
 		isMoving = true;
+
+		if (millis() > timeout)	// took too long, probably stuck for some reason
+		{
+			this->write(targetAngle);
+			return;
+		}
 	}
 }
 
-void TybluServo::printSensorLine()
+void RobotArmMember::printSensorLine()
 {
 	Serial.print("y = ");
 	Serial.print(this->sensorLine.m);

@@ -9,6 +9,8 @@
 
 #define MAX_ECHO_TIME 2915L	// 2 * 0.5 meters / speed of sound = 2915.4519 uS
 
+#define log, logComma(arg_file);
+
 //#define TybluLsq_DEBUG_MODE
 #ifdef TybluLsq_DEBUG_MODE
 #	include <Arduino.h>	// only for Serial debug messages
@@ -43,3 +45,4 @@ long SonarSensor::getMeasurement()
 
 	return pulseIn(echoPin, HIGH, MAX_ECHO_TIME);
 }
+

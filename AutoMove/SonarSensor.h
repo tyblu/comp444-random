@@ -20,7 +20,6 @@ class SonarSensor
 {
 public:
 	SonarSensor(int triggerPin, int echoPin);
-
 	long getMeasurement();
 
 private:
