@@ -51,4 +51,7 @@ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\Auto
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\limits.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\ForceSensor.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\AutoMovePinDefinitions.h \
+ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\TopoScan.h \
+ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\RobotArmMember.h \
+ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\IntegerGeometry.h \
  C:\Program\ Files\ (x86)\Microsoft\ Visual\ Studio\2017\Community\Common7\IDE\Extensions\53ggn0bh.0i3\Micro\ Platforms\default\debuggers\VM_DBG/VM_DBG.h

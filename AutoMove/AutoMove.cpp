@@ -7,6 +7,7 @@
 #include "limits.h"
 #include "ForceSensor.h"
 #include "AutoMovePinDefinitions.h"
+#include "TopoScan.h"
 
 #define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
@@ -37,22 +38,14 @@ RobotArmMember memberClaw(RobotArmMember::ServoName::Claw,
 RobotArmState state(RobotArmState::EndEffectorState::P00Deg, memberBoom1, 
 	memberBoom2, memberTurret, memberClaw);
 
-// Sonar stuff.
-/* The following should probably be moved to a class. TopoScan? */
-void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, 
-	RobotArmState& state);
-void logSonarDataHeader(SdFile & arg_file);
-void logSonarDataEverything(SonarSensor & arg_sonar, SdFile & arg_file, 
-	RobotArmState& state);
-void logSonarDataHeaderEverything(SdFile & arg_file);
+// Sonar and SPI SD card stuff.
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
-
-// SPI SD card stuff.
 /* The following should probably be moved to a class. AutoMoveSD? */
 void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, 
 	const char * folder, const char * extension);
 SdFatEX sd;
 SdFile file;
+TopoScan topoScan(state, sonar);
 
 // Force sensor stuff.
 ForceSensor sensorL(FORCE_SENSOR_ANALOG_A_PIN, FORCE_SENSORS_POWER_PIN, 10);
@@ -132,7 +125,8 @@ void setup()
 #endif
 	
 	//logSonarDataHeader(file);
-	logSonarDataHeaderEverything(file);
+	//logSonarDataHeaderEverything(file);
+	topoScan.logSonarDataHeaderEverything(file);
 
 	// Force sensor stuff.
 	DEBUG2("LHS sensor reading: ", sensorL.read());
@@ -172,14 +166,16 @@ void loop()
 		for (uint8_t theta = memberTurret.getMinAngle(); theta < memberTurret.getMaxAngle(); theta += 5)
 		{
 			memberTurret.smooth(theta);
-			logSonarDataEverything(sonar, file, state);
+			//logSonarDataEverything(sonar, file, state);
+			topoScan.logSonarDataEverything(file);
 			file.sync();
 		}
 
 		for (uint8_t theta = memberTurret.getMaxAngle(); theta > memberTurret.getMinAngle(); theta -= 5)
 		{
 			memberTurret.smooth(theta);
-			logSonarDataEverything(sonar, file, state);
+			//logSonarDataEverything(sonar, file, state);
+			topoScan.logSonarDataEverything(file);
 			file.sync();
 		}
 	}
@@ -224,84 +220,4 @@ void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, const char * fold
 	} while (arg_sd.exists(filename));
 	arg_sd.chdir(true);	// back to root dir
 	return;
-}
-
-void logSonarData(SonarSensor& arg_sonar, SdFile& arg_file, RobotArmState& state)
-{
-	arg_file.print(state.getHeight());
-	arg_file.write(',');
-	arg_file.print(state.getRadius());
-	arg_file.write(',');
-	arg_file.print(state.getTheta());
-	arg_file.write(',');
-	arg_file.print(arg_sonar.getMeasurement());
-	arg_file.println();
-}
-
-void logSonarDataEverything(SonarSensor& arg_sonar, SdFile& arg_file, RobotArmState& state)
-{
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Boom1).read());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Boom1).getAngle());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Boom1).getHeight());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Boom1).getRadius());
-	arg_file.write(',');
-
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Boom2).read());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Boom2).getAngle());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Boom2).getHeight());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Boom2).getRadius());
-	arg_file.write(',');
-
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Turret).read());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Turret).getAngle());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Turret).getHeight());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Turret).getRadius());
-	arg_file.write(',');
-
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Claw).read());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Claw).getAngle());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Claw).getHeight());
-	arg_file.write(',');
-	arg_file.print(state.getServo(RobotArmMember::ServoName::Claw).getRadius());
-	arg_file.write(',');
-
-	arg_file.print(state.getHeight());
-	arg_file.write(',');
-	arg_file.print(state.getRadius());
-	arg_file.write(',');
-	arg_file.print(state.getTheta());
-	arg_file.write(',');
-
-	arg_file.print(arg_sonar.getMeasurement());
-
-	arg_file.println();
-}
-
-void logSonarDataHeaderEverything(SdFile& arg_file)
-{
-	arg_file.print(F("boom1 servo angle, boom1 adj angle, boom1 height, boom1 radius,"));
-	arg_file.print(F("boom2 servo angle, boom2 adj angle, boom2 height, boom2 radius,"));
-	arg_file.print(F("turrent servo angle, turret adj angle, turret height, turret radius,"));
-	arg_file.print(F("claw servo angle, claw adj angle, claw height, claw radius,"));
-	arg_file.print(F("height, radius, theta, sonar measurement"));
-	arg_file.println();
-	DEBUG1(F("Header (everything) printed to SD card... I think."));
-}
-
-void logSonarDataHeader(SdFile& arg_file)
-{
-	arg_file.print(F("height, radius, theta, sonar measurement"));
-	arg_file.println();
-	DEBUG1(F("Header printed to SD card... I think."));
 }
