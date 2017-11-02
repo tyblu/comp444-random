@@ -23,21 +23,22 @@
 // Servo stuff.
 // TowerPro 946R, sensor needs verification
 RobotArmMember memberBoom1(RobotArmMember::ServoName::Boom1, 
-	135, -60, BOOM1_PWM_PIN, 100, 150, 110, A1, 0.557, -49.64);
+	135, -60, BOOM1_PWM_PIN, 100, 150, 110, BOOM1_ADC_PIN, 0.557, -49.64);
 // Power HD 1501MG
 RobotArmMember memberBoom2(RobotArmMember::ServoName::Boom2, 
-	142, -90, BOOM2_PWM_PIN, 70, 115, 80, A0, 1.113, -147.1);
+	142, -90, BOOM2_PWM_PIN, 70, 115, 80, BOOM2_ADC_PIN, 1.113, -147.1);
 // SG90 (micro), not measured -- will probably swap for TowerPro 946R
 RobotArmMember memberTurret(RobotArmMember::ServoName::Turret, 
-	0, 0, TURRET_PWM_PIN, 30, 150, 90, A3, 1.000, -1.000);
+	0, 0, TURRET_PWM_PIN, 30, 150, 90, TURRET_ADC_PIN, 1.000, -1.000);
 // TowerPro 946R, angles need verification
 RobotArmMember memberClaw(RobotArmMember::ServoName::Claw, 
-	0, 0, CLAW_PWM_PIN, 60, 130, 100, A2, 0.557, -61.28);
+	0, 0, CLAW_PWM_PIN, 60, 130, 100, CLAW_ADC_PIN, 0.557, -61.28);
 
 RobotArmState state(RobotArmState::EndEffectorState::P00Deg, memberBoom1, 
 	memberBoom2, memberTurret, memberClaw);
 
 // Sonar stuff.
+/* The following should probably be moved to a class. TopoScan? */
 void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, 
 	RobotArmState& state);
 void logSonarDataHeader(SdFile & arg_file);
@@ -47,6 +48,7 @@ void logSonarDataHeaderEverything(SdFile & arg_file);
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
 
 // SPI SD card stuff.
+/* The following should probably be moved to a class. AutoMoveSD? */
 void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, 
 	const char * folder, const char * extension);
 SdFatEX sd;
@@ -63,10 +65,12 @@ void setup()
 	Serial.println();
 
 	// Servo stuff.
+	/* The following should probably be moved to RobotArmState constructor. */
 	digitalWrite(SERVO_POWER_CONTROL_PIN, LOW);	// ensure servo power is off
 	pinMode(SERVO_POWER_CONTROL_PIN, OUTPUT);
 	//pinMode(SERVO_POWER_FEEDBACK_PIN, INPUT);
 
+	/* The following should probably be moved to a RobotArmState function. */
 	while (!state.list.isFinished())
 	{
 		RobotArmMember servo = state.getServo(state.list.current());
@@ -79,13 +83,10 @@ void setup()
 	}
 
 	// power on servos
+	/* The following should probably be moved to a RobotArmState function. */
 	digitalWrite(SERVO_POWER_CONTROL_PIN, HIGH);
-	//do {	// USB programming issue only
-	//	DEBUG1("Waiting for user to plug servo feedback wire to pin 0.");
-	//	delay(1000);
-	//} while (digitalRead100(SERVO_POWER_FEEDBACK_PIN) == LOW);
-	//DEBUG3(digitalRead100(SERVO_POWER_FEEDBACK_PIN) == HIGH, "Servos turned on.", "Servos still off.");
 
+	/* The following should probably be moved to a RobotArmState function. */
 	state.list.restart();
 	while (!state.list.isFinished())
 	{
@@ -100,6 +101,7 @@ void setup()
 	}
 
 	// SD Card stuff
+	/* The following should probably be moved to a class. AutoMoveSD? */
 	DEBUG1(F("Starting SPI SD card stuff."));
 	/* Initialize at the highest speed supported by the board that is
 	// not over 50 MHz. Try a lower speed if SPI errors occur. */
@@ -140,11 +142,14 @@ void setup()
 void loop()
 {
 	// Go to middle of paper and calibrate height.
+	/* The following should probably be moved to a class function.
+	 * RobotArmState or TopoScan? Proabably TopoScan. */
 	memberBoom2.smooth(100);
 	memberBoom1.smooth(115);
 	delay(500);
 	uint32_t heightZero = sonar.getMeasurement();
 
+	/* The following should probably be moved to TopoScan. */
 	for (uint8_t rad = memberBoom1.getMinAngle(); rad < memberBoom1.getMaxAngle(); rad += 5)
 	{
 		memberBoom1.smooth(rad);
@@ -299,27 +304,4 @@ void logSonarDataHeader(SdFile& arg_file)
 	arg_file.print(F("height, radius, theta, sonar measurement"));
 	arg_file.println();
 	DEBUG1(F("Header printed to SD card... I think."));
-}
-
-float deg2rad(int16_t degrees)
-{
-	return degrees * PI / (float)180;
-}
-
-int16_t rad2deg(float radians)
-{
-	return (int16_t)(radians * 180 / PI);
-}
-
-// naive debouncing
-int digitalRead100(uint8_t pin)
-{
-	uint32_t sum = 0;
-	for (uint8_t i = 0; i < 100; i++)
-		sum += digitalRead(pin);
-
-	if (sum > 50)
-		return HIGH;
-	else
-		return LOW;
 }

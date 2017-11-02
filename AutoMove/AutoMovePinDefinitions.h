@@ -10,9 +10,13 @@
 
  // Servo stuff.
 #define BOOM1_PWM_PIN 6
+#define BOOM1_ADC_PIN A1
 #define BOOM2_PWM_PIN 9
-#define CLAW_PWM_PIN 5
+#define BOOM2_ADC_PIN A0
 #define TURRET_PWM_PIN 3
+#define TURRET_ADC_PIN A3	// currently unused
+#define CLAW_PWM_PIN 5
+#define CLAW_ADC_PIN A2
 #define SERVO_POWER_CONTROL_PIN 8
  //#define SERVO_POWER_FEEDBACK_PIN 1
 

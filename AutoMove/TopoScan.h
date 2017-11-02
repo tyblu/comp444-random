@@ -1,7 +1,12 @@
-// TopoScan.h
+/*
+ * TopoScan.h
+ *
+ *  Created on: October something, 2017
+ *      Author: Tyler Lucas
+ */
 
-#ifndef _TOPOSCAN_h
-#define _TOPOSCAN_h
+#ifndef TopoScan_h
+#define TopoScan_h
 
 #if defined(ARDUINO) && ARDUINO >= 100
 	#include "Arduino.h"
@@ -9,14 +14,24 @@
 	#include "WProgram.h"
 #endif
 
+#include "SonarSensor.h"
+#include "RobotArmMember.h"
+#include "RobotArmState.h"
+#include "IntegerGeometry.h"
+#include <SdFat.h>
+
 class TopoScan
 {
+public:
+	TopoScan(RobotArmState& state, SonarSensor& sonar);
+
+	void logSonarData(/*SonarSensor & sonar,*/ SdFile & file/*, RobotArmState& state*/);
+	void logSonarDataHeader(SdFile & file);
+	void logSonarDataEverything(/*SonarSensor & sonar,*/ SdFile & file/*, RobotArmState& state*/);
+	void logSonarDataHeaderEverything(SdFile & file);
 private:
-	// map struct on SD card
- public:
-	 TopoScan();
+	RobotArmState& state;
+	SonarSensor& sonar;
 };
 
-
-#endif
-
+#endif	// TopoScan_h
