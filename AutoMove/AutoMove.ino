@@ -15,6 +15,7 @@
 #include "TopoScan.h"
 #include "SonarSensor.h"
 #include <Servo.h>
+#include "ForceSensor.h"
 
 void setup() {}
 

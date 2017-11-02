@@ -1,9 +1,11 @@
 #include <Arduino.h>
+#include "inttypes.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 #include "RobotArmState.h"
 #include "SonarSensor.h"
 #include "SdFat.h"
 #include "limits.h"
+#include "ForceSensor.h"
 
 #define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
@@ -21,9 +23,6 @@
 float deg2rad(int16_t degrees);
 int16_t rad2deg(float radians);
 int digitalRead100(uint8_t pin);
-class StringPlus : public String {
-	StringPlus substring(uint8_t fromIndex);
-};
 
 // Servo stuff.
 #define SERVO_ON
@@ -34,168 +33,6 @@ class StringPlus : public String {
 #define TURRET_PWM_PIN 3
 #define SERVO_POWER_CONTROL_PIN 8
 //#define SERVO_POWER_FEEDBACK_PIN 1
-
-//class RobotArmStateDefunct		// should put most of these states into RobotArmMember object
-//{
-//public:
-//	struct ServoAngles { uint16_t boom1, boom2, turret, claw; };
-//	enum ServoName { Boom1, Boom2, Turret, Claw };
-//	enum EndEffectorState { P45Deg, P00Deg, N45Deg, N90Deg, N135Deg };
-//
-//public:
-//
-//	RobotArmState(TybluServoList * arg_servos, EndEffectorState state)
-//		: list(arg_servos)
-//		, endEffectorState(state)
-//		, k1(-1)
-//		, k2(1)
-//		//		, k3(1)
-//		, k4(1)
-//		, p1(0)
-//		, p2(0)
-//		//		, p3(0)
-//		, p4(0)
-//	{
-//		angles = list->getServoAngles();
-//		setTweaks();	// k and p values
-//	}
-//
-//	RobotArmMember getServo(ServoName servoName)
-//	{
-//		switch (servoName)
-//		{
-//		case ServoName::Boom1: return list->boom1;
-//		case ServoName::Boom2: return list->boom2;
-//		case ServoName::Turret: return list->turret;
-//		case ServoName::Claw: return list->claw;
-//		default:
-//			return;
-//		}
-//	}
-//
-//	uint16_t getRadius()
-//	{
-//		return getR1() + getR2() + getR3();
-//	}
-//
-//	uint16_t getHeight()
-//	{
-//		return getH1() + getH2() + getH3();
-//	}
-//
-//	uint16_t getTheta()
-//	{
-//		angles.turret = list->turret.read();
-//		return k3 * angles.turret + p3;
-//	}
-//
-//private:
-//	TybluServoList * list;
-//	EndEffectorState endEffectorState;
-//	int16_t h1, h2, h3, r1, r2, r3, k1, k11, k2, k3, k4, p1, p11, p2, p3, p4;
-//	ServoAngles angles;
-//
-//	void setTweaks()
-//	{
-//		switch (endEffectorState)
-//		{
-//		case EndEffectorState::P45Deg:
-//			p3 = 32 + 140 * cos(deg2rad(45));
-//			break;
-//		case EndEffectorState::P00Deg:
-//			p3 = 32 + 140;
-//			break;
-//		case EndEffectorState::N45Deg:
-//			p3 = 32 + 140 * cos(deg2rad(-45));
-//			break;
-//		case EndEffectorState::N90Deg:
-//			p3 = 32;
-//			break;
-//		case EndEffectorState::N135Deg:
-//			p3 = 32 + 140 * cos(deg2rad(-135));
-//			break;
-//		default:
-//			break;
-//		}
-//	}
-//
-//	int16_t getR1()
-//	{
-//		angles.boom1 = list->boom1.read();
-//		return k11 * cos(deg2rad(k1 * angles.boom1 + p1)) + p11;
-//	}
-//
-//	int16_t getR2()
-//	{
-//		angles.boom2 = list->boom2.read();
-//		return k2 * angles.boom2 + p2;
-//	}
-//
-//	int16_t getR3()
-//	{
-//		angles.claw = list->claw.read();
-//		return k4 * angles.claw + p4;
-//	}
-//
-//	int16_t getH1() { return 0; }
-//	int16_t getH2() { return 0; }
-//	int16_t getH3() { return 0; }
-//};
-
-//class TybluServoList
-//{
-//public:
-//	RobotArmMember boom1, boom2, turret, claw;
-//
-//	TybluServoList(RobotArmMember argBoom1, RobotArmMember argBoom2, RobotArmMember argTurret, RobotArmMember argClaw)
-//		: boom1(argBoom1)
-//		, boom2(argBoom2)
-//		, turret(argTurret)
-//		, claw(argClaw)
-//	{}
-//
-//	RobotArmMember current()
-//	{
-//		switch (iterator)
-//		{
-//		case 0:	return boom1;
-//		case 1: return boom2;
-//		case 2: return turret;
-//		case 3: return claw;
-//		default:
-//			iterator = 0;
-//			listIteratorHasWrapped = true;
-//			return current();
-//		}
-//	}
-//
-//	RobotArmMember next()
-//	{
-//		iterator++;
-//		listIteratorHasWrapped = false;
-//		return current();
-//	}
-//
-//	bool listFinished()
-//	{
-//		return listIteratorHasWrapped;
-//	}
-//
-//	void restartList()
-//	{
-//		listIteratorHasWrapped = false;
-//		iterator = 0;
-//	}
-//
-//	RobotArmState::ServoAngles getServoAngles()
-//	{
-//		return RobotArmState::ServoAngles{ boom1.read(), boom2.read(), turret.read(), claw.read() };
-//	}
-//
-//private:
-//	uint8_t iterator = 0;
-//	bool listIteratorHasWrapped = false;
-//};
 
 // TowerPro 946R, sensor needs verification
 RobotArmMember memberBoom1(RobotArmMember::ServoName::Boom1, 
@@ -210,7 +47,8 @@ RobotArmMember memberTurret(RobotArmMember::ServoName::Turret,
 RobotArmMember memberClaw(RobotArmMember::ServoName::Claw, 
 	0, 0, CLAW_PWM_PIN, 60, 130, 100, A2, 0.557, -61.28);
 
-RobotArmState state(RobotArmState::EndEffectorState::P00Deg, memberBoom1, memberBoom2, memberTurret, memberClaw);
+RobotArmState state(RobotArmState::EndEffectorState::P00Deg, memberBoom1, 
+	memberBoom2, memberTurret, memberClaw);
 #endif // SERVO_ON
 
 // Sonar stuff.
@@ -218,9 +56,11 @@ RobotArmState state(RobotArmState::EndEffectorState::P00Deg, memberBoom1, member
 #ifdef SONAR_ON
 #define SONAR_TRIGGER_PIN 4
 #define SONAR_ECHO_PIN 7
-void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, RobotArmState& state);
+void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, 
+	RobotArmState& state);
 void logSonarDataHeader(SdFile & arg_file);
-void logSonarDataEverything(SonarSensor & arg_sonar, SdFile & arg_file, RobotArmState& state);
+void logSonarDataEverything(SonarSensor & arg_sonar, SdFile & arg_file, 
+	RobotArmState& state);
 void logSonarDataHeaderEverything(SdFile & arg_file);
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
 #endif	// SONAR_ON
@@ -232,7 +72,8 @@ SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
 #define SD_SCK_PIN 13	// ICSP #3
 #define SD_MOSI_PIN 11	// ICSP #4
 #define SD_MISO_PIN 12	// ICSP #1
-void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, const char * folder, const char * extension);
+void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, 
+	const char * folder, const char * extension);
 SdFatEX sd;
 SdFile file;
 const uint32_t SAMPLE_INTERVAL_MS = 500;	// interval between data records [us]
@@ -245,7 +86,9 @@ uint32_t logTime;							// time for next data record [us]
 #define FORCE_SENSOR_ANALOG_A_PIN A4
 #define FORCE_SENSOR_ANALOG_B_PIN A5
 #define FORCE_SENSORS_POWER_PIN 2
-#endif
+ForceSensor sensorL(FORCE_SENSOR_ANALOG_A_PIN, FORCE_SENSORS_POWER_PIN, 10);
+ForceSensor sensorR(FORCE_SENSOR_ANALOG_B_PIN, FORCE_SENSORS_POWER_PIN, 10);
+#endif // FORCE_SENSORS_ON
 
 void setup()
 {
@@ -297,7 +140,7 @@ void setup()
 	DEBUG1(F("Starting SPI SD card stuff."));
 	/* Initialize at the highest speed supported by the board that is
 	// not over 50 MHz. Try a lower speed if SPI errors occur. */
-	DEBUG3(!sd.begin(SD_CS_PIN, SD_SCK_MHZ(50)), F("SD init failed."), F("SD init success."));
+	DEBUG3(!sd.begin(SD_CS_PIN, SD_SCK_MHZ(50)), F("begin failed."), F("begin success."));
 #ifndef AutoMove_DEBUG_MODE
 	if (!sd.begin(SD_CS_PIN, SD_SCK_MHZ(50))
 		sd.initErrorHalt();
@@ -330,30 +173,54 @@ void setup()
 	logTime = micros() / (1000UL * SAMPLE_INTERVAL_MS) + 1;
 	logTime *= 1000UL * SAMPLE_INTERVAL_MS;
 #endif // SD_ON
+
+	// Force sensor stuff.
+#ifdef FORCE_SENSORS_ON
+	DEBUG2("LHS sensor reading: ", sensorL.read());
+	DEBUG2("RHS sensor reading: ", sensorR.read());
+#endif FORCE_SENSORS_ON
 }
 
 void loop()
 {
-	// SD Card stuff
-#ifdef SD_ON
-	logTime += 1000UL * SAMPLE_INTERVAL_MS;	// time for next record
+	// Go to middle of paper and calibrate height.
+	memberBoom2.smooth(100);
+	memberBoom1.smooth(115);
+	uint32_t heightZero = sonar.getMeasurement();
 
-	int32_t diff;
-	do {
-		diff = micros() - logTime;
-	} while (diff < 0); // wait for log time
+	for (uint8_t rad = memberBoom1.getMinAngle(); rad < memberBoom1.getMaxAngle(); rad += 5)
+	{
+		memberBoom1.smooth(rad);
+		memberTurret.smooth(90);
 
-	// Check for data rate too high.
-	DEBUG3(diff > 10, F("Data rate too high."), F("Data rate good."));
+		// zero height with boom2
+		int32_t heightDiff = sonar.getMeasurement() - heightZero;
+		uint32_t timeout = millis() + 500;
+		while (heightDiff > 25 && millis() < timeout)
+		{
+			memberBoom2.smooth((heightDiff > 0) ? -1 : 1);
+			heightDiff = sonar.getMeasurement() - heightZero;
+		}
 
-	//logSonarData(sonar, file, state);
-	logSonarDataEverything(sonar, file, state);
+		//int32_t timeDiff;
+		//do {
+		//	timeDiff = micros() - logTime;
+		//} while (timeDiff < 0); // wait for log time
 
-	DEBUG3(!file.sync() || file.getWriteError(), F("Write error."), F("Write success."));
-#ifndef AutoMove_DEBUG_MODE
-	file.sync();
-#endif
-#endif // SD_ON
+		for (uint8_t theta = memberTurret.getMinAngle(); theta < memberTurret.getMaxAngle(); theta += 5)
+		{
+			memberTurret.smooth(theta);
+			logSonarDataEverything(sonar, file, state);
+			file.sync();
+		}
+
+		for (uint8_t theta = memberTurret.getMaxAngle(); theta > memberTurret.getMinAngle(); theta -= 5)
+		{
+			memberTurret.smooth(theta);
+			logSonarDataEverything(sonar, file, state);
+			file.sync();
+		}
+	}
 }
 
 /* 
@@ -487,6 +354,7 @@ int16_t rad2deg(float radians)
 	return (int16_t)(radians * 180 / PI);
 }
 
+// naive debouncing
 int digitalRead100(uint8_t pin)
 {
 	uint32_t sum = 0;
