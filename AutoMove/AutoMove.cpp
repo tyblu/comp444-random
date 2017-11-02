@@ -76,8 +76,6 @@ void getUniqueShortFileName(char * filename, SdFatEX & arg_sd,
 	const char * folder, const char * extension);
 SdFatEX sd;
 SdFile file;
-const uint32_t SAMPLE_INTERVAL_MS = 500;	// interval between data records [us]
-uint32_t logTime;							// time for next data record [us]
 #endif // SD_ON
 
 // Force sensor stuff.
@@ -168,10 +166,6 @@ void setup()
 	
 	//logSonarDataHeader(file);
 	logSonarDataHeaderEverything(file);
-	
-	// Start on a multiple of the sample interval.
-	logTime = micros() / (1000UL * SAMPLE_INTERVAL_MS) + 1;
-	logTime *= 1000UL * SAMPLE_INTERVAL_MS;
 #endif // SD_ON
 
 	// Force sensor stuff.
@@ -186,6 +180,7 @@ void loop()
 	// Go to middle of paper and calibrate height.
 	memberBoom2.smooth(100);
 	memberBoom1.smooth(115);
+	delay(500);
 	uint32_t heightZero = sonar.getMeasurement();
 
 	for (uint8_t rad = memberBoom1.getMinAngle(); rad < memberBoom1.getMaxAngle(); rad += 5)

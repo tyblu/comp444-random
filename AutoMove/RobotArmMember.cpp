@@ -38,7 +38,7 @@ template <typename T> int sgn(T val) {
 #define SMOOTH_ADJUSTMENT_ANGLE 2
 #define SMOOTH_ADJUSTMENT_ANGLE_STOPPED 1
 #define SMOOTH_ADJUSTMENT_DELAY 25
-#define SMOOTH_TIMEOUT_MS 500;		// 500ms timeout for changing angle
+#define SMOOTH_TIMEOUT_MS 750;		// 750ms timeout for changing angle
 #define MEASUREMENTS_COUNT 40
 #define ANALOG_RAW_TIMEOUT_MS 100;	// 100ms timeout for getting analog angle
 
