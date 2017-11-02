@@ -84,6 +84,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\QuickStats\QuickStats.h" />
     <ClInclude Include="..\TybluLsq\TybluLsq.h" />
+    <ClInclude Include="AutoMovePinDefinitions.h" />
     <ClInclude Include="ForceSensor.h" />
     <ClInclude Include="IntegerGeometry.h" />
     <ClInclude Include="limits.h" />

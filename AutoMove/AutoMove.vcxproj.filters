@@ -48,6 +48,9 @@
     <ClInclude Include="ForceSensor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AutoMovePinDefinitions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AutoMove.cpp">

@@ -6,6 +6,7 @@
 #include "SdFat.h"
 #include "limits.h"
 #include "ForceSensor.h"
+#include "AutoMovePinDefinitions.h"
 
 #define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
@@ -19,21 +20,9 @@
 #	define DEBUG3(f,xT,xF)
 #endif
 
-// Random stuff that should definitely go somewhere else.
-float deg2rad(int16_t degrees);
-int16_t rad2deg(float radians);
-int digitalRead100(uint8_t pin);
-
 // Servo stuff.
 #define SERVO_ON
 #ifdef SERVO_ON
-#define BOOM1_PWM_PIN 6
-#define BOOM2_PWM_PIN 9
-#define CLAW_PWM_PIN 5
-#define TURRET_PWM_PIN 3
-#define SERVO_POWER_CONTROL_PIN 8
-//#define SERVO_POWER_FEEDBACK_PIN 1
-
 // TowerPro 946R, sensor needs verification
 RobotArmMember memberBoom1(RobotArmMember::ServoName::Boom1, 
 	135, -60, BOOM1_PWM_PIN, 100, 150, 110, A1, 0.557, -49.64);
@@ -54,8 +43,6 @@ RobotArmState state(RobotArmState::EndEffectorState::P00Deg, memberBoom1,
 // Sonar stuff.
 #define SONAR_ON
 #ifdef SONAR_ON
-#define SONAR_TRIGGER_PIN 4
-#define SONAR_ECHO_PIN 7
 void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, 
 	RobotArmState& state);
 void logSonarDataHeader(SdFile & arg_file);
@@ -68,10 +55,6 @@ SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
 // SPI SD card stuff.
 #define SD_ON
 #ifdef SD_ON
-#define SD_CS_PIN 10
-#define SD_SCK_PIN 13	// ICSP #3
-#define SD_MOSI_PIN 11	// ICSP #4
-#define SD_MISO_PIN 12	// ICSP #1
 void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, 
 	const char * folder, const char * extension);
 SdFatEX sd;
@@ -81,9 +64,6 @@ SdFile file;
 // Force sensor stuff.
 #define FORCE_SENSORS_ON
 #ifdef FORCE_SENSORS_ON
-#define FORCE_SENSOR_ANALOG_A_PIN A4
-#define FORCE_SENSOR_ANALOG_B_PIN A5
-#define FORCE_SENSORS_POWER_PIN 2
 ForceSensor sensorL(FORCE_SENSOR_ANALOG_A_PIN, FORCE_SENSORS_POWER_PIN, 10);
 ForceSensor sensorR(FORCE_SENSOR_ANALOG_B_PIN, FORCE_SENSORS_POWER_PIN, 10);
 #endif // FORCE_SENSORS_ON
