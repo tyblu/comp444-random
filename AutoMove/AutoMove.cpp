@@ -21,8 +21,6 @@
 #endif
 
 // Servo stuff.
-#define SERVO_ON
-#ifdef SERVO_ON
 // TowerPro 946R, sensor needs verification
 RobotArmMember memberBoom1(RobotArmMember::ServoName::Boom1, 
 	135, -60, BOOM1_PWM_PIN, 100, 150, 110, A1, 0.557, -49.64);
@@ -38,11 +36,8 @@ RobotArmMember memberClaw(RobotArmMember::ServoName::Claw,
 
 RobotArmState state(RobotArmState::EndEffectorState::P00Deg, memberBoom1, 
 	memberBoom2, memberTurret, memberClaw);
-#endif // SERVO_ON
 
 // Sonar stuff.
-#define SONAR_ON
-#ifdef SONAR_ON
 void logSonarData(SonarSensor & arg_sonar, SdFile & arg_file, 
 	RobotArmState& state);
 void logSonarDataHeader(SdFile & arg_file);
@@ -50,23 +45,16 @@ void logSonarDataEverything(SonarSensor & arg_sonar, SdFile & arg_file,
 	RobotArmState& state);
 void logSonarDataHeaderEverything(SdFile & arg_file);
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
-#endif	// SONAR_ON
 
 // SPI SD card stuff.
-#define SD_ON
-#ifdef SD_ON
 void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, 
 	const char * folder, const char * extension);
 SdFatEX sd;
 SdFile file;
-#endif // SD_ON
 
 // Force sensor stuff.
-#define FORCE_SENSORS_ON
-#ifdef FORCE_SENSORS_ON
 ForceSensor sensorL(FORCE_SENSOR_ANALOG_A_PIN, FORCE_SENSORS_POWER_PIN, 10);
 ForceSensor sensorR(FORCE_SENSOR_ANALOG_B_PIN, FORCE_SENSORS_POWER_PIN, 10);
-#endif // FORCE_SENSORS_ON
 
 void setup()
 {
@@ -75,7 +63,6 @@ void setup()
 	Serial.println();
 
 	// Servo stuff.
-#ifdef SERVO_ON
 	digitalWrite(SERVO_POWER_CONTROL_PIN, LOW);	// ensure servo power is off
 	pinMode(SERVO_POWER_CONTROL_PIN, OUTPUT);
 	//pinMode(SERVO_POWER_FEEDBACK_PIN, INPUT);
@@ -111,10 +98,8 @@ void setup()
 
 		state.list.next();
 	}
-#endif // SERVO_ON
 
 	// SD Card stuff
-#ifdef SD_ON
 	DEBUG1(F("Starting SPI SD card stuff."));
 	/* Initialize at the highest speed supported by the board that is
 	// not over 50 MHz. Try a lower speed if SPI errors occur. */
@@ -146,13 +131,10 @@ void setup()
 	
 	//logSonarDataHeader(file);
 	logSonarDataHeaderEverything(file);
-#endif // SD_ON
 
 	// Force sensor stuff.
-#ifdef FORCE_SENSORS_ON
 	DEBUG2("LHS sensor reading: ", sensorL.read());
 	DEBUG2("RHS sensor reading: ", sensorR.read());
-#endif FORCE_SENSORS_ON
 }
 
 void loop()
