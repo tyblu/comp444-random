@@ -20,30 +20,56 @@
  * Post-conditions: char * filename changed to unique filename.
  *	arg_sd working directory changed to volume root directory.
  */
-void getUniqueShortFileName(char * filename, SdFatEX & arg_sd, const char * folder, const char * extension)
+void getUniqueFileNameIndex(char * filename, SdFatEX & arg_sd, 
+	const char * folder, const char * prefix, const char * extension)
 {
-	//	String newFilename = String(ULONG_MAX, DEC);
-	String str = "01234567";
-	String newFilename = str + ".ext";
-	uint8_t fileNumber = 0;
+	size_t prefixLength = strlen(prefix);
+	if (prefixLength > 8)	// no room for index
+		return;
+
+	uint16_t indexNumber = 0;
+	char index[8] = "0000000";
+	uint8_t indexLength = (uint8_t)(13 - 4 - prefixLength);
+
+	char newFilename[13];
 
 	arg_sd.chdir(true);	// go to root dir
 	arg_sd.chdir(folder, true); // go to folder
 	do {
-		if (fileNumber > 999)
-			return;		// quit, too many files
-		else if (fileNumber > 100)
-			newFilename = "sonar";
-		else if (fileNumber > 10)
-			newFilename = "sonar0";
-		else
-			newFilename = "sonar00";
+		strcpy(newFilename, prefix);
+		
+		if (indexNumber > pow((uint8_t)10, indexLength - 1)) // max index
+			return;		// quit, no unique indices left
 
-		newFilename.concat(fileNumber++);
-		newFilename.concat('.');
-		newFilename.concat(extension);
-		newFilename.toCharArray(filename, 13);
-	} while (arg_sd.exists(filename));
+		itoa(indexNumber, index, 10);
+
+		uint16_t pow10 = pow((uint8_t)10, indexLength - 1);
+		if (indexNumber < pow10 && pow10 > 0)
+		{
+			strcat(newFilename, "0");
+			pow10 /= 10;
+		}
+
+		strcat(newFilename, index);
+		strcat(newFilename, ".");
+		strcat(newFilename, extension);
+
+		indexNumber++;
+	} while (arg_sd.exists(newFilename));
+
+	strcpy(filename, newFilename);
+	
 	arg_sd.chdir(true);	// back to root dir
+
 	return;
+}
+
+uint16_t pow(uint8_t base, uint8_t exponent)
+{
+	uint16_t result = (uint16_t)base;
+	while (--exponent > 0)
+	{
+		result *= result;
+	}
+	return result;
 }

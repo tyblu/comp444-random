@@ -111,12 +111,12 @@ void setup()
 	}
 
 	char filename[13];
-	getUniqueShortFileName(filename, sd, folderDir, "txt");
-	DEBUG2(F("Unique short file name: "), filename);
+	getUniqueFileNameIndex(filename, sd, folderDir, "sonar", "txt");
+	DEBUG2(F("Unique file name: "), filename);
 
 #ifdef AutoMove_DEBUG_MODE
-	if (!sd.chdir(folderDir)) { DEBUG1(F("Change directory to \"TopoMaps\" failed.")); }
-	if (!file.open(filename, O_CREAT | O_WRITE )) { DEBUG2(F("Open file failed: "), filename); }
+	DEBUG3(!sd.chdir(folderDir), F("chdir to \"TopoMaps\" failed."), F("chdir success."));
+	DEBUG3(!file.open(filename, O_CREAT | O_WRITE), F("Open failed."), F("Open success."));
 #else
 	sd.chdir(folderDir);
 	file.open(filename, O_CREAT);

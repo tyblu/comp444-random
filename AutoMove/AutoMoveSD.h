@@ -15,9 +15,11 @@
 #endif
 
 #include "SdFat.h"
+#include "inttypes.h"
 
-void getUniqueShortFileName(char * filename, SdFatEX & arg_sd,
-	const char * folder, const char * extension);
+void getUniqueFileNameIndex(char * filename, SdFatEX & arg_sd,
+	const char * folder, const char * prefix, const char * extension);
 
+uint16_t pow(uint8_t base, uint8_t exponent);
 #endif // AutoMoveSD_h
 
