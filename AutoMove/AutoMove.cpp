@@ -32,7 +32,7 @@ RobotArmMember memberBoom2(RobotArmMember::ServoName::Boom2,
 	142, -90, BOOM2_PWM_PIN, 70, 115, 80, BOOM2_ADC_PIN, 1.113, -147.1);
 // SG90 (micro), not measured -- will probably swap for TowerPro 946R
 RobotArmMember memberTurret(RobotArmMember::ServoName::Turret, 
-	0, 0, TURRET_PWM_PIN, 30, 150, 90, TURRET_ADC_PIN, 1.000, -1.000);
+	0, 0, TURRET_PWM_PIN, 10, 170, 90, TURRET_ADC_PIN, 1.000, -1.000);
 // TowerPro 946R, angles need verification
 RobotArmMember memberClaw(RobotArmMember::ServoName::Claw, 
 	0, 0, CLAW_PWM_PIN, 60, 130, 100, CLAW_ADC_PIN, 0.557, -61.28);
