@@ -28,8 +28,10 @@ void getUniqueFileNameIndex(char * filename, SdFatEX & arg_sd,
 		return;
 
 	uint16_t indexNumber = 0;
-	char index[8] = "0000000";
-	uint8_t indexLength = (uint8_t)(13 - 4 - prefixLength);
+	char index[8];
+	char indexPadding[8];
+	uint8_t indexLength = (uint8_t)(13 - 4 - prefixLength - 1);
+	const static char padding[] PROGMEM = "0000000000";
 
 	char newFilename[13];
 
@@ -37,19 +39,15 @@ void getUniqueFileNameIndex(char * filename, SdFatEX & arg_sd,
 	arg_sd.chdir(folder, true); // go to folder
 	do {
 		strcpy(newFilename, prefix);
+		newFilename[prefixLength] = '\0';	// ensure NULL termination
 		
 		if (indexNumber > pow((uint8_t)10, indexLength - 1)) // max index
 			return;		// quit, no unique indices left
 
+		strncpy_P(indexPadding, padding, indexLength - log10(indexNumber) - 2);
+		indexPadding[indexLength - log10(indexNumber) - 1] = '\0';
+		strcat(newFilename, indexPadding);
 		itoa(indexNumber, index, 10);
-
-		uint16_t pow10 = pow((uint8_t)10, indexLength - 1);
-		if (indexNumber < pow10 && pow10 > 0)
-		{
-			strcat(newFilename, "0");
-			pow10 /= 10;
-		}
-
 		strcat(newFilename, index);
 		strcat(newFilename, ".");
 		strcat(newFilename, extension);
@@ -70,6 +68,17 @@ uint16_t pow(uint8_t base, uint8_t exponent)
 	while (--exponent > 0)
 	{
 		result *= result;
+	}
+	return result;
+}
+
+uint8_t log10(uint16_t number)
+{
+	uint8_t result = 0;
+	while (number >= 10)
+	{
+		result++;
+		number /= 10;
 	}
 	return result;
 }
