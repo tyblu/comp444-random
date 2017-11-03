@@ -101,23 +101,24 @@ void setup()
 		sd.initErrorHalt();
 #endif
 
-	if (!sd.exists("TopoMaps"))
+	char folderDir[] = "/TopoMaps";
+	if (!sd.exists(folderDir))
 	{
-		DEBUG3(sd.mkdir("TopoMaps"), F("Create \"TopoMaps\" succeeded."), F("Create \"TopoMaps\" failed."));
+		DEBUG3(sd.mkdir(folderDir), F("Create \"TopoMaps\" succeeded."), F("Create \"TopoMaps\" failed."));
 #ifndef AutoMove_DEBUG_MODE
-		sd.mkdir("TopoMaps");
+		sd.mkdir(folderName);
 #endif
 	}
 
 	char filename[13];
-	getUniqueShortFileName(filename, sd, "/TopoMaps", "txt");
+	getUniqueShortFileName(filename, sd, folderDir, "txt");
 	DEBUG2(F("Unique short file name: "), filename);
 
 #ifdef AutoMove_DEBUG_MODE
-	if (!sd.chdir("/TopoMaps")) { DEBUG1(F("Change directory to \"TopoMaps\" failed.")); }
+	if (!sd.chdir(folderDir)) { DEBUG1(F("Change directory to \"TopoMaps\" failed.")); }
 	if (!file.open(filename, O_CREAT | O_WRITE )) { DEBUG2(F("Open file failed: "), filename); }
 #else
-	sd.chdir("/TopoMaps");
+	sd.chdir(folderDir);
 	file.open(filename, O_CREAT);
 #endif
 	
@@ -126,8 +127,8 @@ void setup()
 	topoScan.logSonarDataHeaderEverything(file);
 
 	// Force sensor stuff.
-	DEBUG2("LHS sensor reading: ", sensorL.read());
-	DEBUG2("RHS sensor reading: ", sensorR.read());
+	DEBUG2(F("LHS sensor reading: "), sensorL.read());
+	DEBUG2(F("RHS sensor reading: "), sensorR.read());
 }
 
 void loop()
