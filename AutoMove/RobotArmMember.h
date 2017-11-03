@@ -83,6 +83,8 @@ public:
 	/* Prints y = m * x + b string. */
 	void printSensorLine();
 
+	void sweep();
+
 	void setName(ServoName name);
 	void setAngleOffset(int angleOffset);
 	void setMinAngle(int minAngle);

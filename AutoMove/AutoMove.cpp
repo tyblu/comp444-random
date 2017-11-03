@@ -59,36 +59,10 @@ void setup()
 	Serial.println();
 
 	// Servo stuff.
-
-	/* The following should probably be moved to a RobotArmState function. */
-	while (!state.list.isFinished())
-	{
-		RobotArmMember servo = state.getServo(state.list.current());
-		servo.write(servo.getSafeAngle());
-		servo.attach();
-
-		DEBUG3(servo.attached(), F("Servo attached."), F("Servo failed to attach."));
-
-		state.list.next();
-	}
-
-	// power on servos
-	/* The following should probably be moved to a RobotArmState function. */
-	digitalWrite(SERVO_POWER_CONTROL_PIN, HIGH);
-
-	/* The following should probably be moved to a RobotArmState function. */
-	state.list.restart();
-	while (!state.list.isFinished())
-	{
-		RobotArmMember servo = state.getServo(state.list.current());
-		servo.smooth(servo.getMinAngle());
-		servo.smooth(servo.getMaxAngle());
-		servo.smooth(servo.getSafeAngle());
-
-		DEBUG1(F("Finished wiggling a servo."));
-
-		state.list.next();
-	}
+	state.attachSafe();
+	state.servoPowerOn();
+	state.sweep();
+	DEBUG1("Finished powering and wiggling servos.");
 
 	// SD Card stuff
 	/* The following should probably be moved to a class. AutoMoveSD? */
@@ -122,8 +96,6 @@ void setup()
 	file.open(filename, O_CREAT);
 #endif
 	
-	//logSonarDataHeader(file);
-	//logSonarDataHeaderEverything(file);
 	topoScan.logSonarDataHeaderEverything(file);
 
 	// Force sensor stuff.

@@ -370,3 +370,11 @@ void RobotArmMember::printSensorLine()
 	Serial.print(abs(this->sensorLine.b));
 	return;
 }
+
+void RobotArmMember::sweep()
+{
+	int initialAngle = this->read();
+	this->smooth(minAngle);
+	this->smooth(maxAngle);
+	this->smooth(initialAngle);
+}

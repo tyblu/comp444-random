@@ -73,10 +73,18 @@ public:
 	uint16_t getHeight();	// endeffector working height
 	uint16_t getTheta();	// turret angle
 
+	bool isServoPowerOn();
+	void servoPowerOn();
+	void servoPowerOff();
+
+	void sweep();
+	void attachSafe();
+
 private:
 	EndEffectorState endEffectorState;
 	const uint8_t pwrEnablePin, pwrFeedbackPin;
 	RobotArmMember & boom1, boom2, turret, claw;
+	RobotArmMember* memberList[4];
 };
 
 #endif // RobotArmState_h
