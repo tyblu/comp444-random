@@ -1,19 +1,28 @@
 #include "RobotArmState.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 
-RobotArmState::RobotArmState(EndEffectorState endEffectorState,
+RobotArmState::RobotArmState(
+	EndEffectorState endEffectorState,
+	uint8_t pwrEnablePin,
+	uint8_t pwrFeedbackPin,
 	RobotArmMember& boom1,
 	RobotArmMember& boom2,
 	RobotArmMember& turret,
 	RobotArmMember& claw
 )
 	: endEffectorState(endEffectorState)
+	, pwrEnablePin(pwrEnablePin)
+	, pwrFeedbackPin(pwrFeedbackPin)
 	, list()
 	, boom1(boom1)
 	, boom2(boom2)
 	, turret(turret)
 	, claw(claw)
-{}
+{
+	digitalWrite(pwrEnablePin, LOW);	// ensure servo power is off
+	pinMode(pwrEnablePin, OUTPUT);
+	pinMode(pwrFeedbackPin, INPUT);
+}
 
 RobotArmMember& RobotArmState::getServo(RobotArmMember::ServoName name)
 {

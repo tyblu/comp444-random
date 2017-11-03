@@ -58,7 +58,9 @@ public:
 		bool iteratorHasWrapped;
 	} list;
 
-	RobotArmState(EndEffectorState endEffectorState,
+	RobotArmState(EndEffectorState endEffectorState, 
+		uint8_t pwrEnablePin,
+		uint8_t pwrFeedbackPin,
 		RobotArmMember& boom1,
 		RobotArmMember& boom2,
 		RobotArmMember& turret,
@@ -73,6 +75,7 @@ public:
 
 private:
 	EndEffectorState endEffectorState;
+	const uint8_t pwrEnablePin, pwrFeedbackPin;
 	RobotArmMember & boom1, boom2, turret, claw;
 };
 

@@ -18,7 +18,7 @@
 #define CLAW_PWM_PIN 5
 #define CLAW_ADC_PIN A2
 #define SERVO_POWER_CONTROL_PIN 8
- //#define SERVO_POWER_FEEDBACK_PIN 1
+#define SERVO_POWER_FEEDBACK_PIN 1	// disconnected, interferes with USB TX/RX
 
  // Sonar stuff.
 #define SONAR_TRIGGER_PIN 4

@@ -11,10 +11,11 @@
 
 #define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
-#	define PRE F("AutoMove : ")
-#	define DEBUG1(x) Serial.print(PRE); Serial.println(x); delay(2)	// note missing ';'
-#	define DEBUG2(x,y) Serial.print(PRE); Serial.print(x); Serial.println(y); delay(2)	// note missing ';'
-#	define DEBUG3(f,xT,xF) Serial.print(PRE); if (f) { Serial.println(xT); } else { Serial.println(xF); } delay(2)	// note mising ';'
+#	define PRE Serial.print(F("AutoMove : "))
+#	define POST delay(2) // note missing ';'
+#	define DEBUG1(x) PRE; Serial.println(x); POST
+#	define DEBUG2(x,y) PRE; Serial.print(x); Serial.println(y); POST
+#	define DEBUG3(f,xT,xF) PRE; if(f) { Serial.println(xT); } else { Serial.println(xF); } POST
 #else
 #	define DEBUG1(x)
 #	define DEBUG2(x,y)
@@ -35,8 +36,10 @@ RobotArmMember memberTurret(RobotArmMember::ServoName::Turret,
 RobotArmMember memberClaw(RobotArmMember::ServoName::Claw, 
 	0, 0, CLAW_PWM_PIN, 60, 130, 100, CLAW_ADC_PIN, 0.557, -61.28);
 
-RobotArmState state(RobotArmState::EndEffectorState::P00Deg, memberBoom1, 
-	memberBoom2, memberTurret, memberClaw);
+RobotArmState state(
+	RobotArmState::EndEffectorState::P00Deg,
+	SERVO_POWER_CONTROL_PIN, SERVO_POWER_FEEDBACK_PIN,
+	memberBoom1, memberBoom2, memberTurret, memberClaw);
 
 // Sonar and SPI SD card stuff.
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
@@ -58,10 +61,6 @@ void setup()
 	Serial.println();
 
 	// Servo stuff.
-	/* The following should probably be moved to RobotArmState constructor. */
-	digitalWrite(SERVO_POWER_CONTROL_PIN, LOW);	// ensure servo power is off
-	pinMode(SERVO_POWER_CONTROL_PIN, OUTPUT);
-	//pinMode(SERVO_POWER_FEEDBACK_PIN, INPUT);
 
 	/* The following should probably be moved to a RobotArmState function. */
 	while (!state.list.isFinished())
