@@ -85,6 +85,7 @@
     <ClInclude Include="..\..\QuickStats\QuickStats.h" />
     <ClInclude Include="..\TybluLsq\TybluLsq.h" />
     <ClInclude Include="AutoMovePinDefinitions.h" />
+    <ClInclude Include="AutoMoveSD.h" />
     <ClInclude Include="ForceSensor.h" />
     <ClInclude Include="IntegerGeometry.h" />
     <ClInclude Include="limits.h" />
@@ -99,6 +100,7 @@
     <ClCompile Include="..\..\QuickStats\QuickStats.cpp" />
     <ClCompile Include="..\TybluLsq\TybluLsq.cpp" />
     <ClCompile Include="AutoMove.cpp" />
+    <ClCompile Include="AutoMoveSD.cpp" />
     <ClCompile Include="ForceSensor.cpp" />
     <ClCompile Include="IntegerGeometry.cpp" />
     <ClCompile Include="RobotArmMember.cpp" />
