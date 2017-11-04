@@ -10,6 +10,11 @@
 #include "TopoScan.h"
 #include "AutoMoveSD.h"
 
+//#define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
+#ifndef AUTONOMOUS_OPERATION
+#	define SERIAL_CONTROL_MODE
+#endif
+
 #define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
 #	define PRE Serial.print(F("AutoMove : "))
@@ -26,16 +31,16 @@
 // Servo stuff.
 // TowerPro 946R, sensor needs verification
 RobotArmMember memberBoom1(RobotArmMember::ServoName::Boom1, 
-	135, -60, BOOM1_PWM_PIN, 100, 150, 110, BOOM1_ADC_PIN, 0.557, -49.64);
+	135, -60, BOOM1_PWM_PIN, 90, 180, 110, BOOM1_ADC_PIN, 0.557, -49.64);
 // Power HD 1501MG
 RobotArmMember memberBoom2(RobotArmMember::ServoName::Boom2, 
-	142, -90, BOOM2_PWM_PIN, 70, 115, 80, BOOM2_ADC_PIN, 1.113, -147.1);
+	142, -90, BOOM2_PWM_PIN, 70, 145, 80, BOOM2_ADC_PIN, 1.113, -147.1);
 // SG90 (micro), not measured -- will probably swap for TowerPro 946R
 RobotArmMember memberTurret(RobotArmMember::ServoName::Turret, 
-	0, 0, TURRET_PWM_PIN, 10, 170, 90, TURRET_ADC_PIN, 1.000, -1.000);
+	0, 0, TURRET_PWM_PIN, 0, 180, 135, TURRET_ADC_PIN, 1.000, -1.000);
 // TowerPro 946R, angles need verification
 RobotArmMember memberClaw(RobotArmMember::ServoName::Claw, 
-	0, 0, CLAW_PWM_PIN, 60, 130, 100, CLAW_ADC_PIN, 0.557, -61.28);
+	0, 0, CLAW_PWM_PIN, 90, 140, 90, CLAW_ADC_PIN, 0.557, -61.28);
 
 RobotArmState state(
 	RobotArmState::EndEffectorState::P00Deg,
@@ -103,6 +108,91 @@ void setup()
 	DEBUG2(F("RHS sensor reading: "), sensorR.read());
 }
 
+#ifdef SERIAL_CONTROL_MODE		// arm controlled by USB serial commands
+#define PLN(x) Serial.println(F(x)); delay(2)
+#define PLN2(x,y) Serial.print(F(x)); delay(2); Serial.println(y); delay(2)
+#define P(x) Serial.print(F(x)); delay(2)
+void loop()
+{
+	if (!state.list.isFinished())
+		PLN("WARNING: SETTING ALL SERVO LIMITS TO MAXIMUM [0-180].");
+
+	while (!state.list.isFinished())	// only runs once without ..restart()
+	{
+		state.getServo(state.list.current()).setMinAngle(0);
+		state.getServo(state.list.current()).setMaxAngle(180);
+		state.list.next();
+	}
+
+	Serial.println();
+	PLN2("Select member: [1] boom1  : ", memberBoom1.read());
+	PLN2(".              [2] boom2  : ", memberBoom2.read());
+	PLN2(".              [3] turret : ", memberTurret.read());
+	PLN2(".              [4] claw   : ", memberClaw.read());
+	
+	uint32_t timeout;
+	
+	timeout = millis();
+	while (!Serial.available())
+	{
+		if (millis() > timeout)
+		{
+			timeout = millis() + 10000;
+			Serial.println();
+			P("Enter member number: ");
+		}
+	}
+
+	int memberSelection = Serial.parseInt();
+	Serial.println(memberSelection);
+
+	RobotArmMember* member;
+	switch (memberSelection)
+	{
+	case 1:
+		member = &state.getServo(RobotArmMember::ServoName::Boom1);
+		break;
+	case 2:
+		member = &state.getServo(RobotArmMember::ServoName::Boom2);
+		break;
+	case 3:
+		member = &state.getServo(RobotArmMember::ServoName::Turret);
+		break;
+	case 4:
+		member = &state.getServo(RobotArmMember::ServoName::Claw);
+		break;
+	default:
+		PLN("Try again.");
+		Serial.println();
+		Serial.flush();
+		return;
+	}
+
+	timeout = millis();
+	while (!Serial.available())
+	{
+		if (millis() > timeout)
+		{
+			timeout = millis() + 10000;
+			Serial.println();
+			P("Enter target angle: ");
+		}
+	}
+
+	int inputAngle = Serial.parseInt();
+	Serial.println(inputAngle);
+
+	Serial.print(inputAngle);
+	P(" degrees entered. ");
+
+	member->write(inputAngle);
+
+	Serial.print(member->read());
+	PLN(" degrees written.");
+}
+#endif // SERIAL_CONTROL_MODE
+
+#ifdef AUTONOMOUS_OPERATION		// regular behaviour loop()
 void loop()
 {
 	// Go to middle of paper and calibrate height.
@@ -150,3 +240,4 @@ void loop()
 		}
 	}
 }
+#endif // AUTONOMOUS_OPERATION
