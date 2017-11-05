@@ -76,7 +76,7 @@ void setup()
 	state.attachSafe();
 	state.servoPowerOn();
 	state.sweep();
-	DEBUG1("Finished powering and wiggling servos.");
+	DEBUG1(F("Finished powering and wiggling servos."));
 
 	// SD Card stuff
 	/* The following should probably be moved to a class. AutoMoveSD? */
@@ -208,8 +208,9 @@ void loop()
 	// Go to middle of paper and calibrate height.
 	/* The following should probably be moved to a class function.
 	 * RobotArmState or TopoScan? Proabably TopoScan. */
-	memberBoom2.smooth(100);
-	memberBoom1.smooth(115);
+	//memberBoom2.smooth(100);
+	//memberBoom1.smooth(115);
+	state.goToPos(RobotArmState::NamedPosition::CenterSonar);
 	delay(500);
 	uint32_t heightZero = sonar.getMeasurement();
 
