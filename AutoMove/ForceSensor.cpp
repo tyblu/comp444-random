@@ -37,11 +37,13 @@ uint8_t ForceSensor::read()
 void ForceSensor::on()
 {
 	digitalWrite(powerPin, HIGH);
+	delayMicroseconds(2);
 }
 
 void ForceSensor::off()
 {
 	digitalWrite(powerPin, LOW);
+	delayMicroseconds(2);
 }
 
 bool ForceSensor::isActive()

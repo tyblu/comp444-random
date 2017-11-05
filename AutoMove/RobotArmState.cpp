@@ -20,6 +20,8 @@ RobotArmState::RobotArmState(
 	, boom2(boom2)
 	, turret(turret)
 	, claw(claw)
+	, boom2min()
+	, posCenterSonar(), posCenter(), posRest(), posOff()
 {
 	digitalWrite(pwrEnablePin, LOW);	// ensure servo power is off
 	pinMode(pwrEnablePin, OUTPUT);
@@ -29,6 +31,59 @@ RobotArmState::RobotArmState(
 	memberList[1] = &boom2;
 	memberList[2] = &turret;
 	memberList[3] = &claw;
+}
+
+// should make this a variadic input to simplify use
+// e.g. setBoom2MinMap(90, 83, 100, 68, 110, 55), or ...({90, 83}, {100, 68})
+void RobotArmState::setBoom2MinMap(nsTyblu::Pair pairArray[], uint8_t count)
+{
+	for (uint8_t i = 0; i < count; i++)
+		boom2min.put(pairArray[i].key, pairArray[i].val);
+}
+
+void RobotArmState::setStoredPosition(NamedPosition posName, int a, int b, int c, int d)
+{
+	switch (posName)
+	{
+	case NamedPosition::Center:
+		posCenter.set(a, b, c, d);
+		break;
+	case NamedPosition::CenterSonar:
+		posCenterSonar.set(a, b, c, d);
+		break;
+	case NamedPosition::Rest:
+		posRest.set(a, b, c, d);
+		break;
+	default:
+		break;
+	}
+}
+
+void RobotArmState::goToPos(NamedPosition posName)
+{
+	boom2.smooth(boom2.getSafeAngle());	// replace with vertical lift function
+
+	switch (posName)
+	{
+	case NamedPosition::Center:			// don't change claw angle
+		boom1.smooth(posCenter.boom1);
+		turret.slow(posCenter.turret);
+		boom2.smooth(posCenter.boom2);
+		break;
+	case NamedPosition::CenterSonar:	// don't change claw angle
+		boom1.smooth(posCenterSonar.boom1);
+		turret.slow(posCenterSonar.turret);
+		boom2.smooth(posCenterSonar.boom2);
+		break;
+	case NamedPosition::Rest:
+		claw.write(posRest.claw);
+		boom1.smooth(posRest.boom1);
+		turret.slow(posRest.turret);
+		boom2.smooth(posRest.boom2);
+		break;
+	default:
+		break;
+	}
 }
 
 RobotArmMember& RobotArmState::getServo(RobotArmMember::ServoName name)

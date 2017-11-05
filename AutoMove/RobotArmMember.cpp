@@ -11,7 +11,7 @@
 #include "IntegerGeometry.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 
-#define RobotArmMember_DEBUG_MODE
+//#define RobotArmMember_DEBUG_MODE
 #ifdef RobotArmMember_DEBUG_MODE
 #	define DEBUG1(x) Serial.print("RobotArmMember : "); Serial.println(x); delay(2)	// note missing ';'
 #	define DEBUG2(x,y) Serial.print("RobotArmMember : "); Serial.print(x); Serial.println(y); delay(2)	// note missing ';'
@@ -38,9 +38,10 @@ template <typename T> int sgn(T val) {
 #define SMOOTH_ADJUSTMENT_ANGLE 2
 #define SMOOTH_ADJUSTMENT_ANGLE_STOPPED 1
 #define SMOOTH_ADJUSTMENT_DELAY 25
-#define SMOOTH_TIMEOUT_MS 1000;		// timeout for changing angle
+#define SMOOTH_TIMEOUT_MS 1000		// timeout for changing angle
 #define MEASUREMENTS_COUNT 40
-#define ANALOG_RAW_TIMEOUT_MS 100;	// 100ms timeout for getting analog angle
+#define ANALOG_RAW_TIMEOUT_MS 100	// 100ms timeout for getting analog angle
+#define SLOW_TIMEOUT_MS 15
 
 /*
  * Constructor arguments:
@@ -293,6 +294,24 @@ void RobotArmMember::write(int value)
 		Servo::write(maxAngle);
 	else							// minAngle > value > maxAngle || value > 200
 		Servo::write(value);
+}
+
+void RobotArmMember::slow(int value)
+{
+	if (value < 0 || value > 180)
+	{
+		DEBUG2("Bad angle input: ", value);
+		return;
+	}
+
+	int8_t delta = value - this->read();
+	uint32_t writeTimeout;
+	while (delta != 0)
+	{
+		this->write(sgn(delta));	// 1 degree at a time
+		writeTimeout = millis() + SLOW_TIMEOUT_MS;
+		while (millis() < writeTimeout) {}
+	}
 }
 
 ///*

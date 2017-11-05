@@ -58,6 +58,9 @@ public:
 	 */
 	void smooth(int value);
 
+	// Moves servo to target angle at minimum speed.
+	void slow(int value);
+
 	/*
 	 * Pre-conditions: Servo must be attached, have max/min angles set, and have
 	 * valid sensor pin.

@@ -10,7 +10,7 @@
 #include "TopoScan.h"
 #include "AutoMoveSD.h"
 
-//#define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
+#define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
 #ifndef AUTONOMOUS_OPERATION
 #	define SERIAL_CONTROL_MODE
 #endif
@@ -31,10 +31,10 @@
 // Servo stuff.
 // TowerPro 946R, sensor needs verification
 RobotArmMember memberBoom1(RobotArmMember::ServoName::Boom1, 
-	135, -60, BOOM1_PWM_PIN, 90, 180, 110, BOOM1_ADC_PIN, 0.557, -49.64);
+	135, -60, BOOM1_PWM_PIN, 90, 180, 135, BOOM1_ADC_PIN, 0.557, -49.64);
 // Power HD 1501MG
 RobotArmMember memberBoom2(RobotArmMember::ServoName::Boom2, 
-	142, -90, BOOM2_PWM_PIN, 70, 145, 80, BOOM2_ADC_PIN, 1.113, -147.1);
+	142, -90, BOOM2_PWM_PIN, 20, 145, 95, BOOM2_ADC_PIN, 1.113, -147.1);
 // SG90 (micro), not measured -- will probably swap for TowerPro 946R
 RobotArmMember memberTurret(RobotArmMember::ServoName::Turret, 
 	0, 0, TURRET_PWM_PIN, 0, 180, 135, TURRET_ADC_PIN, 1.000, -1.000);
@@ -46,6 +46,11 @@ RobotArmState state(
 	RobotArmState::EndEffectorState::P00Deg,
 	SERVO_POWER_CONTROL_PIN, SERVO_POWER_FEEDBACK_PIN,
 	memberBoom1, memberBoom2, memberTurret, memberClaw);
+
+#define BOOM2MINS_COUNT 10
+nsTyblu::Pair boom2mins[BOOM2MINS_COUNT] = {
+	{90, 83}, {100, 68}, {110, 55}, {120, 50}, {130, 40}, 
+	{140, 30}, {150, 20}, {160, 25}, {170, 26}, {180, 26} };
 
 // Sonar and SPI SD card stuff.
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
@@ -64,6 +69,10 @@ void setup()
 	Serial.println();
 
 	// Servo stuff.
+	state.setBoom2MinMap(boom2mins, BOOM2MINS_COUNT);
+	state.setStoredPosition(RobotArmState::NamedPosition::CenterSonar, 125, 120, 135, 90);
+	//state.setPosition(RobotArmState::NamedPosition::Center, 0, 0, 0, 0);	// not sure
+	state.setStoredPosition(RobotArmState::NamedPosition::Rest, 90, 70, 135, 90);
 	state.attachSafe();
 	state.servoPowerOn();
 	state.sweep();
@@ -185,7 +194,8 @@ void loop()
 	Serial.print(inputAngle);
 	P(" degrees entered. ");
 
-	member->write(inputAngle);
+	//member->write(inputAngle);
+	member->slow(inputAngle);
 
 	Serial.print(member->read());
 	PLN(" degrees written.");
