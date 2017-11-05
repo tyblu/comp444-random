@@ -20,9 +20,9 @@ namespace IntegerGeometry
 		int16_t result;
 		
 		if (abs(angle % 180) <= 90)
-			result = sin[angle];
+			result = pgm_read_word(&IntegerGeometry::sin[angle]);
 		else
-			result = sin[180 - angle % 180];
+			result = pgm_read_word(&IntegerGeometry::sin[180 - angle % 180]);
 
 		if (angle < 0)
 			return -result;
@@ -41,7 +41,7 @@ namespace IntegerGeometry
 		int16_t angle = 0;
 		int16_t lastAngle = 0;
 
-		while (angle < 90 && sin[angle] < div)
+		while (angle < 90 && pgm_read_word(&IntegerGeometry::sin[angle]) < div)
 			angle++;
 
 		if (intDiv(1000 * opposite, hypotenuse) < 0)

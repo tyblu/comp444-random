@@ -11,6 +11,7 @@
 #define IntegerGeomtry_h
 
 #include "inttypes.h"
+#include "avr/pgmspace.h"
 
 namespace IntegerGeometry
 {
@@ -22,7 +23,7 @@ namespace IntegerGeometry
 
 	int16_t intDiv(int numerator, int divisor); // integer division with rounding to nearest
 
-	const uint16_t sin[91] =
+	const static uint16_t sin[/*91*/] PROGMEM =
 	{
 		0,
 		17,
