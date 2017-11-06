@@ -40,11 +40,11 @@ namespace IntegerGeometry
 		if (reducedAngle >= 180)			// quad III : sin(x) = -sin(pi+x)
 			return -bigSin(180 + reducedAngle);
 		if (reducedAngle > 90)				// quad II  : sin(x) = -sin(pi-x)
-			return -bigSin(180 - reducedAngle);
+			return bigSin(180 - reducedAngle);
 		
 		DEBUG3((reducedAngle < 0) || (reducedAngle > 90), F("ERROR: reducedAngle="), reducedAngle);
 
-		return pgm_read_word(&IntegerGeometry::sin1000[angle]);
+		return pgm_read_word(&IntegerGeometry::sin1000[reducedAngle]);
 	}
 
 	int16_t bigCos(int angle)
