@@ -15,4 +15,6 @@ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\Robo
  C:\Program\ Files\ (x86)\Arduino\hardware\arduino\avr\variants\standard/pins_arduino.h \
  C:\Program\ Files\ (x86)\Arduino\libraries\Servo\src/Servo.h \
  C:\Program\ Files\ (x86)\Arduino\libraries\Servo\src/avr/ServoTimers.h \
- C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h
+ C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h \
+ C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\limits.h \
+ C:\Users\tyblu\Documents\repos\comp444-random\AutoMove/limits.h

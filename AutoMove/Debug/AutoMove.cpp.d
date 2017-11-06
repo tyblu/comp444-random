@@ -16,6 +16,8 @@ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\Auto
  C:\Program\ Files\ (x86)\Arduino\libraries\Servo\src/avr/ServoTimers.h \
  C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\RobotArmState.h \
+ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\limits.h \
+ C:\Users\tyblu\Documents\repos\comp444-random\AutoMove/limits.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\SonarSensor.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/SdFat.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/SysCall.h \
@@ -33,7 +35,6 @@ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\Auto
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/FatLib.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/ArduinoFiles.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/FatFile.h \
- C:\Users\tyblu\Documents\repos\comp444-random\AutoMove/limits.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/FatApiConstants.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/FatStructs.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/FatVolume.h \
@@ -48,10 +49,10 @@ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\Auto
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/StdioStream.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/FatLib/fstream.h \
  C:\Users\tyblu\Documents\repos\comp444-random\libraries\SdFat\src/SdCard/SdioCard.h \
- C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\limits.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\ForceSensor.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\AutoMovePinDefinitions.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\TopoScan.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\RobotArmMember.h \
  C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\IntegerGeometry.h \
+ C:\Users\tyblu\AppData\Local\Temp\VMBuilds\AutoMove\SparkFun_RedBoard\Debug\AutoMoveSD.h \
  C:\Program\ Files\ (x86)\Microsoft\ Visual\ Studio\2017\Community\Common7\IDE\Extensions\53ggn0bh.0i3\Micro\ Platforms\default\debuggers\VM_DBG/VM_DBG.h
