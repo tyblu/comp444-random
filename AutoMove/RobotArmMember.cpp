@@ -219,7 +219,6 @@ int RobotArmMember::getHeight()
 
 int RobotArmMember::getRadius()
 {
-	DEBUG2(F("Member: "), this->getName);
 	DEBUG2(F("this->length = "), this->length);
 	//return IntegerGeometry::intDiv(this->length * IntegerGeometry::bigCos(this->getAngle()), 1000);
 	return this->length * IntegerGeometry::bigCos(this->getAngle()) / 1000;

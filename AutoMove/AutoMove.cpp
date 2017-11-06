@@ -68,6 +68,19 @@ void setup()
 	Serial.println(__FILE__ " compiled " __DATE__ " at " __TIME__);
 	Serial.println();
 
+	for (int angle = -720; angle <= 720; angle++)
+	{
+		Serial.println();
+		Serial.print(IntegerGeometry::bigSin(angle));
+		Serial.write(',');
+		Serial.print(IntegerGeometry::bigCos(angle));
+		delay(3);
+	}
+	Serial.println();
+	Serial.println();
+
+	delay(5000);
+
 	// Servo stuff.
 	state.setBoom2MinMap(boom2mins, BOOM2MINS_COUNT);
 	state.setStoredPosition(RobotArmState::NamedPosition::CenterSonar, 125, 120, 135, 90);

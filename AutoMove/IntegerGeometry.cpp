@@ -10,7 +10,7 @@
 #include "IntegerGeometry.h"
 #include <Arduino.h>
 
-#define IntegerGeometry_DEBUG_MODE
+//#define IntegerGeometry_DEBUG_MODE
 #ifdef IntegerGeometry_DEBUG_MODE
 #	define PRE Serial.print(F("IntegerGeometry: "));
 #	define POST delay(2) // note missing ';'
@@ -32,25 +32,24 @@ namespace IntegerGeometry
 	int16_t bigSin(int angle)
 	{
 		int16_t result;
+
+		// map angle to 1st quadrant
+		int reducedAngle = ((angle % 360) + 360) % 360;
+		if (reducedAngle >= 270)			// quad IV  : sin(x) = -sin(-x)
+			return -bigSin(-reducedAngle);
+		if (reducedAngle >= 180)			// quad III : sin(x) = -sin(pi+x)
+			return -bigSin(180 + reducedAngle);
+		if (reducedAngle > 90)				// quad II  : sin(x) = -sin(pi-x)
+			return -bigSin(180 - reducedAngle);
 		
-		if (abs(angle % 180) <= 90)
-			result = pgm_read_word(&IntegerGeometry::sin1000[angle]);
-		else
-			result = pgm_read_word(&IntegerGeometry::sin1000[180 - angle % 180]);
+		DEBUG3((reducedAngle < 0) || (reducedAngle > 90), F("ERROR: reducedAngle="), reducedAngle);
 
-		DEBUG2(F("bigSin(angle) angle = "), angle);
-		DEBUG2(F("bigSin(angle) result= "), result);
-		DEBUG1(F("(Result *-1 if angle < 0.)"));
-
-		if (angle < 0)
-			return -result;
-		else
-			return result;
+		return pgm_read_word(&IntegerGeometry::sin1000[angle]);
 	}
 
 	int16_t bigCos(int angle)
 	{
-		return bigSin(90 - angle % 180);
+		return bigSin(angle + 90);
 	}
 
 	int16_t arcSin(int opposite, int hypotenuse)
