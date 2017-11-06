@@ -10,7 +10,7 @@
 #include "TopoScan.h"
 #include "AutoMoveSD.h"
 
-#define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
+//#define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
 #ifndef AUTONOMOUS_OPERATION
 #	define SERIAL_CONTROL_MODE
 #endif
@@ -71,7 +71,7 @@ void setup()
 	// Servo stuff.
 	state.setBoom2MinMap(boom2mins, BOOM2MINS_COUNT);
 	state.setStoredPosition(RobotArmState::NamedPosition::CenterSonar, 125, 120, 135, 90);
-	//state.setPosition(RobotArmState::NamedPosition::Center, 0, 0, 0, 0);	// not sure
+	state.setStoredPosition(RobotArmState::NamedPosition::Center, 125, 120, 135, 90); // not confirmed
 	state.setStoredPosition(RobotArmState::NamedPosition::Rest, 90, 70, 135, 90);
 	state.attachSafe();
 	state.servoPowerOn();
@@ -199,6 +199,12 @@ void loop()
 
 	Serial.print(member->read());
 	PLN(" degrees written.");
+
+	PLN2("Sonar measurement: ", sonar.getMeasurement());
+
+	PLN2("Height = ", state.getHeight());
+	PLN2("Radius = ", state.getRadius());
+	PLN2("Theta  = ", state.getTheta());
 }
 #endif // SERIAL_CONTROL_MODE
 
@@ -211,30 +217,44 @@ void loop()
 	//memberBoom2.smooth(100);
 	//memberBoom1.smooth(115);
 	state.goToPos(RobotArmState::NamedPosition::CenterSonar);
+	DEBUG1(F("Sonar sensor centered."));
 	delay(500);
 	uint32_t heightZero = sonar.getMeasurement();
+	DEBUG2(F("Height zeroed to h="), heightZero);
 
 	/* The following should probably be moved to TopoScan. */
 	for (uint8_t rad = memberBoom1.getMinAngle(); rad < memberBoom1.getMaxAngle(); rad += 5)
 	{
+		//memberBoom1.smooth(rad);
+		//memberTurret.smooth(90);
+		DEBUG1(F("Centering sonar."));
+		state.goToPos(RobotArmState::NamedPosition::CenterSonar);
 		memberBoom1.smooth(rad);
-		memberTurret.smooth(90);
 
 		// zero height with boom2
 		int32_t heightDiff = sonar.getMeasurement() - heightZero;
-		uint32_t timeout = millis() + 500;
-		while (heightDiff > 25 && millis() < timeout)
+		uint32_t timeout = millis() + 2000;
+		while (abs(heightDiff) > 25 && millis() < timeout)
 		{
 			memberBoom2.smooth((heightDiff > 0) ? -1 : 1);
 			heightDiff = sonar.getMeasurement() - heightZero;
 		}
+		DEBUG2(F("Sonar height adjusted to zero-level. heightDiff="), heightDiff);
 
 		//int32_t timeDiff;
 		//do {
 		//	timeDiff = micros() - logTime;
 		//} while (timeDiff < 0); // wait for log time
 
-		for (uint8_t theta = memberTurret.getMinAngle(); theta < memberTurret.getMaxAngle(); theta += 5)
+		for (uint8_t theta = memberTurret.getMinAngle(); theta < memberTurret.getMaxAngle(); theta += 2)
+		{
+			memberTurret.smooth(theta); 
+			//logSonarDataEverything(sonar, file, state);
+			topoScan.logSonarDataEverything(file);
+			file.sync();
+		}
+
+		for (uint8_t theta = memberTurret.getMaxAngle(); theta > memberTurret.getMinAngle(); theta -= 2)
 		{
 			memberTurret.smooth(theta);
 			//logSonarDataEverything(sonar, file, state);
@@ -242,13 +262,7 @@ void loop()
 			file.sync();
 		}
 
-		for (uint8_t theta = memberTurret.getMaxAngle(); theta > memberTurret.getMinAngle(); theta -= 5)
-		{
-			memberTurret.smooth(theta);
-			//logSonarDataEverything(sonar, file, state);
-			topoScan.logSonarDataEverything(file);
-			file.sync();
-		}
+		DEBUG1(F("Completed scan line."));
 	}
 }
 #endif // AUTONOMOUS_OPERATION

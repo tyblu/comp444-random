@@ -8,6 +8,20 @@
 */
 
 #include "IntegerGeometry.h"
+#include <Arduino.h>
+
+#define IntegerGeometry_DEBUG_MODE
+#ifdef IntegerGeometry_DEBUG_MODE
+#	define PRE Serial.print(F("IntegerGeometry: "));
+#	define POST delay(2) // note missing ';'
+#	define DEBUG1(x) PRE; Serial.println(x); POST
+#	define DEBUG2(x,y) PRE; Serial.print(x); Serial.println(y); POST
+#	define DEBUG3(f,xT,xF) PRE; if(f) { Serial.println(xT); } else { Serial.println(xF); } POST
+#else
+#	define DEBUG1(x)
+#	define DEBUG2(x,y)
+#	define DEBUG3(f,xT,xF)
+#endif
 
 #ifndef abs(x)
 #define abs(x) ((x)>0?(x):-(x))
@@ -20,9 +34,13 @@ namespace IntegerGeometry
 		int16_t result;
 		
 		if (abs(angle % 180) <= 90)
-			result = pgm_read_word(&IntegerGeometry::sin[angle]);
+			result = pgm_read_word(&IntegerGeometry::sin1000[angle]);
 		else
-			result = pgm_read_word(&IntegerGeometry::sin[180 - angle % 180]);
+			result = pgm_read_word(&IntegerGeometry::sin1000[180 - angle % 180]);
+
+		DEBUG2(F("bigSin(angle) angle = "), angle);
+		DEBUG2(F("bigSin(angle) result= "), result);
+		DEBUG1(F("(Result *-1 if angle < 0.)"));
 
 		if (angle < 0)
 			return -result;
@@ -41,7 +59,7 @@ namespace IntegerGeometry
 		int16_t angle = 0;
 		int16_t lastAngle = 0;
 
-		while (angle < 90 && pgm_read_word(&IntegerGeometry::sin[angle]) < div)
+		while (angle < 90 && pgm_read_word(&IntegerGeometry::sin1000[angle]) < div)
 			angle++;
 
 		if (intDiv(1000 * opposite, hypotenuse) < 0)

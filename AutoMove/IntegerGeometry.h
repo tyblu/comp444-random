@@ -23,7 +23,8 @@ namespace IntegerGeometry
 
 	int16_t intDiv(int numerator, int divisor); // integer division with rounding to nearest
 
-	const static uint16_t sin[/*91*/] PROGMEM =
+	// 1000 times sin(angle) from 0 to 90
+	const static uint16_t sin1000[/*91*/] PROGMEM =
 	{
 		0,
 		17,

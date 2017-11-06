@@ -1,6 +1,19 @@
 #include "RobotArmState.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 
+#define RobotArmState_DEBUG_MODE
+#ifdef RobotArmState_DEBUG_MODE
+#	define PRE Serial.print(F("RobotArmState : "))
+#	define POST delay(2) // note missing ';'
+#	define DEBUG1(x) PRE; Serial.println(x); POST
+#	define DEBUG2(x,y) PRE; Serial.print(x); Serial.println(y); POST
+#	define DEBUG3(f,xT,xF) PRE; if(f) { Serial.println(xT); } else { Serial.println(xF); } POST
+#else
+#	define DEBUG1(x)
+#	define DEBUG2(x,y)
+#	define DEBUG3(f,xT,xF)
+#endif
+
 #define SERVO_PWR_FEEDBACK_ANALOGREAD_POINTS 20	// < uint8_t max and even
 
 RobotArmState::RobotArmState(
@@ -84,6 +97,11 @@ void RobotArmState::goToPos(NamedPosition posName)
 	default:
 		break;
 	}
+
+	DEBUG2(F("Boom1 angle set to/at:  "), boom1.read());
+	DEBUG2(F("Boom2 angle set to/at:  "), boom2.read());
+	DEBUG2(F("Turret angle set to/at: "), turret.read());
+	DEBUG2(F("Claw angle set to/at:   "), claw.read());
 }
 
 RobotArmMember& RobotArmState::getServo(RobotArmMember::ServoName name)
@@ -101,11 +119,17 @@ RobotArmMember& RobotArmState::getServo(RobotArmMember::ServoName name)
 
 uint16_t RobotArmState::getRadius()
 {
+	DEBUG2(F(": boom1 radius: "), boom1.getRadius());
+	DEBUG2(F(": boom2 radius: "), boom2.getRadius());
+	DEBUG2(F(": claw radius:  "), claw.getRadius());
 	return boom1.getRadius() + boom2.getRadius() + claw.getRadius();
 }
 
 uint16_t RobotArmState::getHeight()
 {
+	DEBUG2(F(": boom1 height: "), boom1.getHeight());
+	DEBUG2(F(": boom2 height: "), boom2.getHeight());
+	DEBUG2(F(": claw height:  "), claw.getHeight());
 	return boom1.getHeight() + boom2.getHeight() + claw.getHeight();
 }
 

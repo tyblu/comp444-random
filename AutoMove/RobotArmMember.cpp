@@ -11,7 +11,7 @@
 #include "IntegerGeometry.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 
-//#define RobotArmMember_DEBUG_MODE
+#define RobotArmMember_DEBUG_MODE
 #ifdef RobotArmMember_DEBUG_MODE
 #	define DEBUG1(x) Serial.print("RobotArmMember : "); Serial.println(x); delay(2)	// note missing ';'
 #	define DEBUG2(x,y) Serial.print("RobotArmMember : "); Serial.print(x); Serial.println(y); delay(2)	// note missing ';'
@@ -100,7 +100,7 @@ bool RobotArmMember::calibrateSensor(int angleA, int angleB)
 	unsigned int iterator = 0;
 	unsigned int total_iterations = 0;
 
-	DEBUG1("starting do-while...");
+	DEBUG1(F("starting do-while..."));
 
 	do {
 		total_iterations++;
@@ -129,10 +129,10 @@ bool RobotArmMember::calibrateSensor(int angleA, int angleB)
 
 	} while (iterator < CALIB_STEPS && total_iterations < CALIB_MAX_ITERATIONS);
 
-	DEBUG1("finished do-while loop");
+	DEBUG1(F("finished do-while loop"));
 
 	if (total_iterations >= CALIB_MAX_ITERATIONS)
-		Serial.println("CALIB_MAX_ITERATIONS reached!");
+		Serial.println(F("CALIB_MAX_ITERATIONS reached!"));
 
 	// least squares fit
 	float a, b;
@@ -143,10 +143,10 @@ bool RobotArmMember::calibrateSensor(int angleA, int angleB)
 	this->sensorLine.m = a;
 	this->sensorLine.b = b;
 
-	DEBUG2("a=", a);
-	DEBUG2("sensorSlope=", sensorLine.m);
-	DEBUG2("b=", b);
-	DEBUG2("sensorOffset=", sensorLine.b);
+	DEBUG2(F("a="), a);
+	DEBUG2(F("sensorSlope="), sensorLine.m);
+	DEBUG2(F("b="), b);
+	DEBUG2(F("sensorOffset="), sensorLine.b);
 
 	return true;
 }
@@ -212,12 +212,17 @@ int RobotArmMember::getAngle()
 
 int RobotArmMember::getHeight()
 {
-	return IntegerGeometry::intDiv(this->length * IntegerGeometry::bigSin(this->getAngle()), 1000);
+	DEBUG2(F("this->length = "), this->length);
+	//return IntegerGeometry::intDiv(this->length * IntegerGeometry::bigSin(this->getAngle()), 1000);
+	return this->length * IntegerGeometry::bigSin(this->getAngle()) / 1000;
 }
 
 int RobotArmMember::getRadius()
 {
-	return IntegerGeometry::intDiv(this->length * IntegerGeometry::bigCos(this->getAngle()), 1000);
+	DEBUG2(F("Member: "), this->getName);
+	DEBUG2(F("this->length = "), this->length);
+	//return IntegerGeometry::intDiv(this->length * IntegerGeometry::bigCos(this->getAngle()), 1000);
+	return this->length * IntegerGeometry::bigCos(this->getAngle()) / 1000;
 }
 
 int RobotArmMember::getMinAngle()
@@ -300,15 +305,25 @@ void RobotArmMember::slow(int value)
 {
 	if (value < 0 || value > 180)
 	{
-		DEBUG2("Bad angle input: ", value);
+		DEBUG2(F("Bad angle input: "), value);
 		return;
 	}
 
-	int8_t delta = value - this->read();
+	int currentAngle = this->read();
+	int delta = value - currentAngle;
+	DEBUG2(F("delta="), delta);
 	uint32_t writeTimeout;
 	while (delta != 0)
 	{
-		this->write(sgn(delta));	// 1 degree at a time
+		if (delta > 0)
+			currentAngle++;
+		else
+			currentAngle--;
+
+		this->write(currentAngle);
+		delta = value - currentAngle;
+		DEBUG2(F("Moved to "), currentAngle);
+
 		writeTimeout = millis() + SLOW_TIMEOUT_MS;
 		while (millis() < writeTimeout) {}
 	}
@@ -379,13 +394,13 @@ void RobotArmMember::smooth(int targetAngle)
 
 void RobotArmMember::printSensorLine()
 {
-	Serial.print("y = ");
+	Serial.print(F("y = "));
 	Serial.print(this->sensorLine.m);
-	Serial.print(" * x");
+	Serial.print(F(" * x"));
 	if (this->sensorLine.b < 0)
-		Serial.print(" - ");
+		Serial.print(F(" - "));
 	else
-		Serial.print(" + ");
+		Serial.print(F(" + "));
 	Serial.print(abs(this->sensorLine.b));
 	return;
 }
