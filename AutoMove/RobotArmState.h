@@ -145,6 +145,29 @@ public:
 	};
 	enum NamedPosition { CenterSonar, Center, Rest };
 
+	//// Maintains range 0-360 degrees.
+	//struct Angle
+	//{
+	//	Angle& add(const Angle& other);
+	//	Angle& operator+(const Angle& other);
+	//	Angle& operator-(const Angle& other);
+	//	Angle& add(Angle&& other);
+	//	Angle& operator+(Angle&& other);
+	//	Angle& operator-(Angle&& other);
+	//	Angle& add(int angleInt);
+	//	Angle& operator+(int angleInt);
+	//	Angle& operator-(int angleInt);
+	//	Angle& operator++();
+	//	Angle& operator--();
+	//	// continues... http://en.cppreference.com/w/cpp/language/operators
+
+	//	bool equals(const Angle& other);
+	//	bool operator==(const Angle& other);
+
+	//	int value;
+	//};
+
+
 	class RobotArmMemberIterator {
 	public:
 		RobotArmMemberIterator() : iterator(0), iteratorHasWrapped(false) {}
