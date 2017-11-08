@@ -20,9 +20,9 @@ class RobotArmMember;	// declaration only, for use in class PositionVector
 class PositionVector
 {
 public:
-	PositionVector(int length, int angle, int theta);
+	PositionVector(RobotArmMember& ram);
 
-	void update(RobotArmMember& ram);
+	void update();
 
 	int getHeight();
 	int getHeight(int angle);
@@ -31,9 +31,9 @@ public:
 	int getTheta();
 
 private:
-	void updateHeight();
-	void updateRadius();
 	int height, radius, theta, angle, length;
+	RobotArmMember& member;
+	RobotArmMember::Name name;
 };
 
 class RobotArmMember : public Servo
@@ -131,6 +131,7 @@ private:
 
 	Name name;		// Boom1, Boom2, Turret, or Claw
 	const uint16_t length;	// from axis to axis
+	PositionVector pos;
 	long angleOffset, angleScale1000;	// y=ax+b from servo to true angle
 	long sensorOffset, sensorScale1000;	// y=ax+b from sensor to servo angle
 	int pwmPin = -1;

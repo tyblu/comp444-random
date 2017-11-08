@@ -66,6 +66,7 @@ RobotArmMember::RobotArmMember(Name name, uint16_t length,
 	, sensorPin(sensorPin)
 	, angleOffset(0), angleScale1000(1000)
 	, sensorOffset(0), sensorScale1000(1000)
+	, pos(*this)
 {}
 
 /**
@@ -167,10 +168,10 @@ bool RobotArmMember::calibrateSensor()
 	return calibrateSensor(this->minAngle, this->maxAngle);
 }
 
-void RobotArmMember::setName(Name name)
-{
-	this->name = name;
-}
+//void RobotArmMember::setName(Name name)
+//{
+//	this->name = name;
+//}
 
 void RobotArmMember::setMinServoAngle(int minAngle)
 {
@@ -187,10 +188,10 @@ void RobotArmMember::setSafeServoAngle(int safeAngle)
 	this->safeAngle = safeAngle;
 }
 
-void RobotArmMember::setSensorPin(int sensorPin)
-{
-	this->sensorPin = sensorPin;
-}
+//void RobotArmMember::setSensorPin(int sensorPin)
+//{
+//	this->sensorPin = sensorPin;
+//}
 
 void RobotArmMember::setSensorConstants(long sensorScale1000, long sensorOffset)
 {
@@ -461,36 +462,46 @@ int RobotArmMember::trueAngleToServoAngle(int angle)
 }
 
 
-PositionVector::PositionVector(int length, int angle, int theta)
-	: length(length), angle(angle), theta(theta)
+PositionVector::PositionVector(RobotArmMember& member)
+	: member(member)
 {
-	updateHeight();
-	updateRadius();
-}
-
-void PositionVector::update(RobotArmMember& ram)
-{
-	switch (ram.getName)
+	this->length = member.getLength();
+	this->name = member.getName();
+	
+	switch (name)
 	{
 	case RobotArmMember::Name::Turret:
-		this->theta = ram.getAngle;
+		this->angle = 0;
+		this->radius = 0;
+		this->height = 0;
 		break;
 	case RobotArmMember::Name::Claw:
-		this->
+		this->theta = 0;
+		this->height = member.getHeight();	// constant for each claw position
+		break;
+	default:
+		break;
+	}
+	
+	update();
+}
 
-	}
-	if (ram.getName == RobotArmMember::Name::Turret)
+void PositionVector::update()
+{
+	switch (name)
 	{
-		this->theta = ram.getAngle;
-		this->angle = 0;
-		height = 0;
-		radius = 0;
-	}
-	else
-	{
-		this->angle = ram.getAngle;
-		updateHeight();
-		updateRadius();
+	case RobotArmMember::Name::Turret:
+		this->theta = member.getAngle();
+		break;
+	case RobotArmMember::Name::Claw:
+		this->angle = member.getAngle();
+		this->radius = member.getRadius();
+		break;
+	default:	// Boom1 and Boom2
+		this->angle = member.getAngle();
+		this->radius = member.getRadius();
+		this->height = member.getHeight();
+		break;
 	}
 }
 
@@ -514,24 +525,20 @@ int PositionVector::getRadius()
 
 int PositionVector::getRadius(int angle)
 {
-	long radiusL = (long)this->length;
-	radiusL = radiusL * IntegerGeometry::cos1000(angle);
-	radiusL = radiusL / 1000L;
-	return (int)radiusL;
+	switch (name)
+	{
+	case RobotArmMember::Name::Claw:
+		// claw radius
+		return 1;
+	default:
+		long radiusL = (long)this->length;
+		radiusL = radiusL * IntegerGeometry::cos1000(angle);
+		radiusL = radiusL / 1000L;
+		return (int)radiusL;
+	}
 }
 
 int PositionVector::getTheta()
 {
 	return this->theta;
 }
-
-void PositionVector::updateHeight()
-{
-	height = getHeight(this->angle);
-}
-void PositionVector::updateRadius()
-{
-	radius = getRadius(this->angle);
-}
-
-	//int height, radius, theta, angle, length;
