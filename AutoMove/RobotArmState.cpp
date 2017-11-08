@@ -1,7 +1,7 @@
 #include "RobotArmState.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 
-#define RobotArmState_DEBUG_MODE
+//#define RobotArmState_DEBUG_MODE
 #ifdef RobotArmState_DEBUG_MODE
 #	define PRE Serial.print(F("RobotArmState : "))
 #	define POST delay(2) // note missing ';'
@@ -34,7 +34,6 @@ RobotArmState::RobotArmState(
 	, turret(turret)
 	, claw(claw)
 	, boom2min()
-	, posCenterSonar(), posCenter(), posRest(), posOff()
 {
 	digitalWrite(pwrEnablePin, LOW);	// ensure servo power is off
 	pinMode(pwrEnablePin, OUTPUT);
@@ -54,45 +53,60 @@ void RobotArmState::setBoom2MinMap(nsTyblu::Pair pairArray[], uint8_t count)
 		boom2min.put(pairArray[i].key, pairArray[i].val);
 }
 
-void RobotArmState::setStoredPosition(NamedPosition posName, int a, int b, int c, int d)
+void RobotArmState::setStoredPosition(NamedPosition posName, Position p)
 {
+	//PositionAngles pAngles = p.toPositionAngles();
+	PositionAngles pAngles = positionToMemberAngles(p);
+
 	switch (posName)
 	{
 	case NamedPosition::Center:
-		posCenter.set(a, b, c, d);
+		posCenter.pAngles = pAngles;
+		posCenter.pos = p;
 		break;
 	case NamedPosition::CenterSonar:
-		posCenterSonar.set(a, b, c, d);
+		posCenter.pAngles = pAngles;
+		posCenter.pos = p;
 		break;
-	case NamedPosition::Rest:
-		posRest.set(a, b, c, d);
+	case NamedPosition::CenterSonar:
+		posCenter.pAngles = pAngles;
+		posCenter.pos = p;
 		break;
 	default:
 		break;
 	}
 }
 
-void RobotArmState::goToPos(NamedPosition posName)
+void RobotArmState::setStoredPosition(NamedPosition pName, Position p)
 {
-	boom2.smooth(boom2.getSafeAngle());	// replace with vertical lift function
+	switch (pName)
+	{
+	case NamedPosition::Center:
+
+	}
+}
+
+void RobotArmState::goToPresetPosition(NamedPosition posName)
+{
+	boom2.smooth(boom2.getSafeServoAngle());	// replace with vertical lift function
 
 	switch (posName)
 	{
 	case NamedPosition::Center:			// don't change claw angle
-		boom1.smooth(posCenter.boom1);
+		boom1.slow(posCenter.boom1);
 		turret.slow(posCenter.turret);
-		boom2.smooth(posCenter.boom2);
+		boom2.slow(posCenter.boom2);
 		break;
 	case NamedPosition::CenterSonar:	// don't change claw angle
-		boom1.smooth(posCenterSonar.boom1);
+		boom1.slow(posCenterSonar.boom1);
 		turret.slow(posCenterSonar.turret);
-		boom2.smooth(posCenterSonar.boom2);
+		boom2.slow(posCenterSonar.boom2);
 		break;
 	case NamedPosition::Rest:
 		claw.write(posRest.claw);
-		boom1.smooth(posRest.boom1);
+		boom1.slow(posRest.boom1);
 		turret.slow(posRest.turret);
-		boom2.smooth(posRest.boom2);
+		boom2.slow(posRest.boom2);
 		break;
 	default:
 		break;
@@ -104,20 +118,20 @@ void RobotArmState::goToPos(NamedPosition posName)
 	DEBUG2(F("Claw angle set to/at:   "), claw.read());
 }
 
-RobotArmMember& RobotArmState::getServo(RobotArmMember::ServoName name)
+RobotArmMember& RobotArmState::getServo(RobotArmMember::Name name)
 {
 	switch (name)
 	{
-	case RobotArmMember::ServoName::Boom1: return boom1;
-	case RobotArmMember::ServoName::Boom2: return boom2;
-	case RobotArmMember::ServoName::Turret: return turret;
-	case RobotArmMember::ServoName::Claw: return claw;
+	case RobotArmMember::Name::Boom1: return boom1;
+	case RobotArmMember::Name::Boom2: return boom2;
+	case RobotArmMember::Name::Turret: return turret;
+	case RobotArmMember::Name::Claw: return claw;
 	default:
 		return;
 	}
 }
 
-uint16_t RobotArmState::getRadius()
+int RobotArmState::getRadius()
 {
 	DEBUG2(F(": boom1 radius: "), boom1.getRadius());
 	DEBUG2(F(": boom2 radius: "), boom2.getRadius());
@@ -125,7 +139,7 @@ uint16_t RobotArmState::getRadius()
 	return boom1.getRadius() + boom2.getRadius() + claw.getRadius();
 }
 
-uint16_t RobotArmState::getHeight()
+int RobotArmState::getHeight()
 {
 	DEBUG2(F(": boom1 height: "), boom1.getHeight());
 	DEBUG2(F(": boom2 height: "), boom2.getHeight());
@@ -133,9 +147,25 @@ uint16_t RobotArmState::getHeight()
 	return boom1.getHeight() + boom2.getHeight() + claw.getHeight();
 }
 
-uint16_t RobotArmState::getTheta()
+int RobotArmState::getTheta()
 {
 	return turret.getAngle();
+}
+
+RobotArmState::Position RobotArmState::getPosition()
+{
+	this->pos.set(getHeight(), getRadius(), getTheta());
+	return pos;
+}
+
+void RobotArmState::goToPosition(Position p)
+{
+	verifyPosition(p);
+}
+
+void RobotArmState::goToPosition(int h, int r, int th)
+{
+	goToPosition(Position({ h, r, th }));
 }
 
 bool RobotArmState::isServoPowerOn()
@@ -162,7 +192,7 @@ void RobotArmState::sweep()
 		{ boom1.read(), boom2.read(), turret.read(), claw.read() };
 	
 	for (uint8_t i = 0; i < 4; i++)
-		memberList[i]->smooth(memberList[i]->getSafeAngle());
+		memberList[i]->smooth(memberList[i]->getSafeServoAngle());
 
 	for (uint8_t i = 0; i < 4; i++)
 		memberList[i]->sweep();
@@ -177,10 +207,30 @@ void RobotArmState::attachSafe()
 	{
 		if (!memberList[i]->attached())
 		{
-			memberList[i]->write(memberList[i]->getSafeAngle());
+			memberList[i]->write(memberList[i]->getSafeServoAngle());
 			memberList[i]->attach();
 		}
 		else
-			memberList[i]->smooth(memberList[i]->getSafeAngle());
+			memberList[i]->smooth(memberList[i]->getSafeServoAngle());
 	}
+}
+
+void RobotArmState::verifyPosition(Position& position)
+{
+	//
+}
+
+RobotArmState::Position RobotArmState::memberAnglesToPosition(PositionAngles pAngles)
+{
+	//
+}
+
+RobotArmState::Position RobotArmState::memberAnglesToPosition(int b1, int b2, int turret)
+{
+	//
+}
+
+RobotArmState::PositionAngles RobotArmState::positionToMemberAngles(Position p)
+{
+	//
 }

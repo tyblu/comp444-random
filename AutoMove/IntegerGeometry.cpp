@@ -29,51 +29,49 @@
 
 namespace IntegerGeometry
 {
-	int16_t bigSin(int angle)
+	int sin1000(int angle)
 	{
-		int16_t result;
-
 		// map angle to 1st quadrant
 		int reducedAngle = ((angle % 360) + 360) % 360;
 		if (reducedAngle >= 270)			// quad IV  : sin(x) = -sin(-x)
-			return -bigSin(-reducedAngle);
+			return -sin1000(-reducedAngle);
 		if (reducedAngle >= 180)			// quad III : sin(x) = -sin(pi+x)
-			return -bigSin(180 + reducedAngle);
+			return -sin1000(180 + reducedAngle);
 		if (reducedAngle > 90)				// quad II  : sin(x) = -sin(pi-x)
-			return bigSin(180 - reducedAngle);
+			return sin1000(180 - reducedAngle);
 		
 		DEBUG3((reducedAngle < 0) || (reducedAngle > 90), F("ERROR: reducedAngle="), reducedAngle);
 
-		return pgm_read_word(&IntegerGeometry::sin1000[reducedAngle]);
+		return pgm_read_word(&IntegerGeometry::sin1000table[reducedAngle]);
 	}
 
-	int16_t bigCos(int angle)
+	int cos1000(int angle)
 	{
-		return bigSin(angle + 90);
+		return sin1000(angle + 90);
 	}
 
-	int16_t arcSin(int opposite, int hypotenuse)
-	{
-		uint16_t div = abs(intDiv(1000 * opposite, hypotenuse));
-		int16_t angle = 0;
-		int16_t lastAngle = 0;
+	//int16_t arcSin(int opposite, int hypotenuse)
+	//{
+	//	uint16_t div = abs(intDiv(1000 * opposite, hypotenuse));
+	//	int16_t angle = 0;
+	//	int16_t lastAngle = 0;
 
-		while (angle < 90 && pgm_read_word(&IntegerGeometry::sin1000[angle]) < div)
-			angle++;
+	//	while (angle < 90 && pgm_read_word(&IntegerGeometry::sin1000[angle]) < div)
+	//		angle++;
 
-		if (intDiv(1000 * opposite, hypotenuse) < 0)
-			return -(angle - 1);
-		else
-			return angle - 1;
-	}
+	//	if (intDiv(1000 * opposite, hypotenuse) < 0)
+	//		return -(angle - 1);
+	//	else
+	//		return angle - 1;
+	//}
 
-	int16_t arcCos(int adjacent, int hypotenuse)
-	{
-		return ( 90 - arcSin(adjacent, hypotenuse) ) % 180;
-	}
+	//int16_t arcCos(int adjacent, int hypotenuse)
+	//{
+	//	return ( 90 - arcSin(adjacent, hypotenuse) ) % 180;
+	//}
 
-	int16_t intDiv(int numerator, int divisor)
-	{
-		return (numerator + divisor / 2) / divisor;
-	}
+	//int16_t intDiv(int numerator, int divisor)
+	//{
+	//	return (numerator + divisor / 2) / divisor;
+	//}
 }

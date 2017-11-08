@@ -15,16 +15,16 @@
 
 namespace IntegerGeometry
 {
-	int16_t bigSin(int angle); // returns 1000*sin(angle)
-	int16_t bigCos(int angle); // returns 1000*cos(angle)
+	int sin1000(int angle); // returns 100*sin(angle)
+	int cos1000(int angle); // returns 100*cos(angle)
 
-	int16_t arcSin(int opposite, int hypotenuse);
-	int16_t arcCos(int adjacent, int hypotenuse);
+	//int16_t arcSin(int opposite, int hypotenuse);
+	//int16_t arcCos(int adjacent, int hypotenuse);
 
-	int16_t intDiv(int numerator, int divisor); // integer division with rounding to nearest
+	//int16_t intDiv(int numerator, int divisor); // integer division with rounding to nearest
 
 	// 1000 times sin(angle) from 0 to 90
-	const static uint16_t sin1000[/*91*/] PROGMEM =
+	const static uint16_t sin1000table[/*91*/] PROGMEM =
 	{
 		0,
 		17,

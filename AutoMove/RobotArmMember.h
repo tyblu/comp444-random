@@ -13,33 +13,46 @@
 #include <Servo.h>
 #include "C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h"
 
+const static char * const servoStr[] PROGMEM = 
+	{ "Boom1", "Boom2", "Turret", "Claw" , "ERROR" };
+
+class RobotArmMember;	// declaration only, for use in class PositionVector
+class PositionVector
+{
+public:
+	PositionVector(int length, int angle, int theta);
+
+	void update(RobotArmMember& ram);
+
+	int getHeight();
+	int getHeight(int angle);
+	int getRadius();
+	int getRadius(int angle);
+	int getTheta();
+
+private:
+	void updateHeight();
+	void updateRadius();
+	int height, radius, theta, angle, length;
+};
+
 class RobotArmMember : public Servo
 {
 public:
-	enum ServoName { Boom1, Boom2, Turret, Claw };
-
-	/* Line equation: y = m * x + b */
-	class Line
-	{
-	public:
-		Line(float m, float b) : m(m), b(b) {}
-		float valueAt(float x) { return m*x + b; }
-		float m, b;
-	};
+	enum Name { Boom1, Boom2, Turret, Claw };
 
 	/*
 	 * Constructor arguments:
-	 * ServoName name							Boom1, Boom2, Turret, or Claw.
-	 * int angleOffset							Offset used for state calculations.
+	 * Name name							Boom1, Boom2, Turret, or Claw.
 	 * int pwmPin								Pin used to control servo.
 	 * int minAngle, int maxAngle 				Allowed range of movement.
 	 * int safeAngle							Nominal position for servo.
 	 * int sensorPin 							Angle sensor pin (A0, A1, ...).
 	 * float sensorSlope, float sensorOffset	Initial angle sensor linear coefficients.
 	 */
-	RobotArmMember(ServoName name, uint16_t length, int angleOffset, int pwmPin, 
+	RobotArmMember(Name name, uint16_t length, int pwmPin, 
 			int minAngle, int maxAngle, int safeAngle,
-			int sensorPin, float sensorSlope, float sensorOffset);
+			int sensorPin);
 
 	/*
 	 * If value is < 200 its treated as an angle, otherwise as pulse width in
@@ -48,7 +61,6 @@ public:
 	 */
 	void write(int value);	// extends Servo::write(int)
 	uint8_t attach();
-//	uint8_t attach(int pwmPin);
 
 	/*
 	 * Preconditions: [optional] Servo is attached and at its currently set angle.
@@ -82,40 +94,45 @@ public:
 	 */
 	bool calibrateSensor();
 
-
-	/* Prints y = m * x + b string. */
-	void printSensorLine();
-
 	void sweep();
 
-	void setName(ServoName name);
-	void setAngleOffset(int angleOffset);
-	void setMinAngle(int minAngle);
-	void setMaxAngle(int maxAngle);
-	void setSafeAngle(int safeAngle);
+	void setName(Name name);
+	void setMinServoAngle(int minAngle);
+	void setMaxServoAngle(int maxAngle);
+	void setSafeServoAngle(int safeAngle);
 	void setSensorPin(int sensorPin);
-	void setSensorConstants(float sensorSlope, float sensorOffset);
+	void setSensorConstants(long sensorScale1000, long sensorOffset);
+	void setAngleConstants(long angleScale1000, long angleOffset);
 
-	ServoName getName();
-	int getAngleOffset();
+	Name getName();
+	void getNameStr(char nameStr[7]);	// returns name in 7 char array
 	int getAngle();		// returns angle from Servo::read() with offset
 	int getHeight();	// height of axis at end from axis at start [mm]
+	int getHeight(int angle);	// height if at this angle
 	int getRadius();	// radius of axis at end from axis at start [mm]
+	int getRadius(int angle);	// radius if at this angle
 	int getMinAngle();
+	int getMinServoAngle();
 	int getMaxAngle();
-	int getSafeAngle();
+	int getMaxServoAngle();
+	int getSafeServoAngle();
+	int getMaxHeight();
+	int getMinHeight();
+	int getMaxRadius();
+	int getMinRadius();
 	int getSensorPin();
 	int getAnalogAngle();
-	float getSensorSlope();
-	float getSensorOffset();
+	uint16_t getLength();
 
 private:
 	int getAnalogRaw();
+	int servoAngleToTrueAngle(int angle);
+	int trueAngleToServoAngle(int angle);
 
-	Line sensorLine;
-	ServoName name;		// Boom1, Boom2, Turret, or Claw
+	Name name;		// Boom1, Boom2, Turret, or Claw
 	const uint16_t length;	// from axis to axis
-	int angleOffset;	// servo angle to member angle from horizontal
+	long angleOffset, angleScale1000;	// y=ax+b from servo to true angle
+	long sensorOffset, sensorScale1000;	// y=ax+b from sensor to servo angle
 	int pwmPin = -1;
 	int minAngle = 0, maxAngle = 180;	// max and min servo angles
 	int safeAngle = 90;					// safe servo angle in all states
@@ -123,6 +140,8 @@ private:
 	const float analogDeviationLimit = 50;
 	unsigned int measurementsCount = 50;
 	QuickStats qs;
+
+	int maxHeight, minHeight, maxRadius, minRadius;
 };
 
 #endif /* RobotArmMember_h */

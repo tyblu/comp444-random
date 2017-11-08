@@ -132,18 +132,75 @@ class RobotArmState
 {
 public:
 	enum EndEffectorState { P45Deg, P00Deg, N45Deg, N90Deg, N135Deg } ;
-	struct Position 
+	enum NamedPosition { 
+		None, 
+		CenterSonar, 
+		Center, 
+		Rest, 
+		MaxHeight, 
+		MinHeight, 
+		MaxRadius, 
+		MinRadius 
+	};
+	struct Position;	// declaration only for use in PositionAngles
+	struct PositionAngles
 	{
-		void set(int boom1, int boom2, int turret, int claw)
+		PositionAngles() : boom1(0), boom2(0), turret(0) {}
+		PositionAngles(int b1, int b2, int th) : boom1(b1), boom2(b2), turret(th) {}
+
+		void set(int boom1, int boom2, int turret)
 		{
 			this->boom1 = boom1;
 			this->boom2 = boom2;
 			this->turret = turret;
-			this->claw = claw;
 		}
-		int boom1, boom2, turret, claw;
+
+		bool equals(PositionAngles& pAngles)
+		{
+			return (this->boom1 == pAngles.boom1
+				&& this->boom2 == pAngles.boom2
+				&& this->turret == pAngles.turret);
+		}
+
+		Position& toPosition()				// not implemented
+		{
+			// convert
+		}
+
+		int boom1, boom2, turret;
 	};
-	enum NamedPosition { CenterSonar, Center, Rest };
+
+	struct Position
+	{
+		Position() : height(0), radius(0), theta(0) {}
+		Position(int h, int r, int th) : height(h), radius(r), theta(th) {}
+
+		void set(int h, int r, int th)
+		{
+			this->height = h;
+			this->radius = r;
+			this->theta = th;
+		}
+
+		bool equals(Position& pos)
+		{
+			return (this->height == pos.height
+				&& this->radius == pos.radius
+				&& this->theta == pos.radius);
+		}
+
+		bool equals(int h, int r, int th)
+		{
+			return equals(Position{ h, r, th });
+		}
+
+		PositionAngles toPositionAngles()	// not implemented
+		{
+			// convert
+		}
+
+		int height, radius, theta;
+	};
 
 	//// Maintains range 0-360 degrees.
 	//struct Angle
@@ -160,33 +217,32 @@ public:
 	//	Angle& operator++();
 	//	Angle& operator--();
 	//	// continues... http://en.cppreference.com/w/cpp/language/operators
-
+	//
 	//	bool equals(const Angle& other);
 	//	bool operator==(const Angle& other);
-
+	//
 	//	int value;
 	//};
-
 
 	class RobotArmMemberIterator {
 	public:
 		RobotArmMemberIterator() : iterator(0), iteratorHasWrapped(false) {}
 
-		RobotArmMember::ServoName next()
+		RobotArmMember::Name next()
 		{
 			iterator++;
 			iteratorHasWrapped = false;
 			return current();
 		}
 
-		RobotArmMember::ServoName current()
+		RobotArmMember::Name current()
 		{
 			switch (iterator)
 			{
-			case 0:	return RobotArmMember::ServoName::Boom1;
-			case 1: return RobotArmMember::ServoName::Boom2;
-			case 2: return RobotArmMember::ServoName::Turret;
-			case 3: return RobotArmMember::ServoName::Claw;
+			case 0:	return RobotArmMember::Name::Boom1;
+			case 1: return RobotArmMember::Name::Boom2;
+			case 2: return RobotArmMember::Name::Turret;
+			case 3: return RobotArmMember::Name::Claw;
 			default:
 				iterator = 0;
 				iteratorHasWrapped = true;
@@ -219,15 +275,20 @@ public:
 		RobotArmMember& claw
 	);
 
-	RobotArmMember& getServo(RobotArmMember::ServoName name);
+	RobotArmMember& getServo(RobotArmMember::Name name);
 
-	uint16_t getRadius();	// endeffector working radius
-	uint16_t getHeight();	// endeffector working height
-	uint16_t getTheta();	// turret angle
+	int getRadius();	// endeffector working radius
+	int getHeight();	// endeffector working height
+	int getTheta();		// turret angle
+	Position getPosition();
 
 	void setBoom2MinMap(nsTyblu::Pair pairArray[], uint8_t count);
-	void RobotArmState::setStoredPosition(NamedPosition posName,
-		int a, int b, int c, int d);
+	void setStoredPosition(NamedPosition posName, Position p);
+
+	Position memberAnglesToPosition(PositionAngles pAngles);
+	Position memberAnglesToPosition(int b1, int b2, int turret);
+	PositionAngles positionToMemberAngles(Position p);
+
 
 	bool isServoPowerOn();
 	void servoPowerOn();
@@ -236,7 +297,11 @@ public:
 	void sweep();
 	void attachSafe();
 
-	void goToPos(NamedPosition pos);
+	void goToPosition(Position p);
+	void goToPosition(int height, int radius, int theta);
+	void goToPresetPosition(NamedPosition namedPos);
+
+	void verifyPosition(Position& pos);
 
 private:
 	EndEffectorState endEffectorState;
@@ -244,7 +309,6 @@ private:
 	RobotArmMember& boom1, boom2, turret, claw;
 	RobotArmMember* memberList[4];
 	nsTyblu::InterpolatedMap boom2min;
-	Position posCenterSonar, posCenter, posRest, posOff;
 };
 
 #endif // RobotArmState_h

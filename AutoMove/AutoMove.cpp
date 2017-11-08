@@ -28,22 +28,29 @@
 #	define DEBUG3(f,xT,xF)
 #endif
 
+#define RAM RobotArmMember
+#define RAS RobotArmState
+
 // Servo stuff.
+#define BOOM1_ANGLE_SCALE -100
+#define BOOM1_ANGLE_OFFSET 225	// 135 + 90
+#define BOOM2_ANGLE_SCALE 100
+#define BOOM2_ANGLE_OFFSET -125
 // TowerPro 946R, sensor needs verification
-RobotArmMember memberBoom1(RobotArmMember::ServoName::Boom1, 
-	135, -60, BOOM1_PWM_PIN, 90, 180, 135, BOOM1_ADC_PIN, 0.557, -49.64);
+RobotArmMember memberBoom1(RAM::Name::Boom1, 
+	135, BOOM1_PWM_PIN, 90, 180, 135, BOOM1_ADC_PIN/*, 0.557, -49.64*/);
 // Power HD 1501MG
-RobotArmMember memberBoom2(RobotArmMember::ServoName::Boom2, 
-	142, -90, BOOM2_PWM_PIN, 20, 145, 95, BOOM2_ADC_PIN, 1.113, -147.1);
+RobotArmMember memberBoom2(RAM::Name::Boom2, 
+	142, BOOM2_PWM_PIN, 20, 145, 95, BOOM2_ADC_PIN/*, 1.113, -147.1*/);
 // SG90 (micro), not measured -- will probably swap for TowerPro 946R
-RobotArmMember memberTurret(RobotArmMember::ServoName::Turret, 
-	0, 0, TURRET_PWM_PIN, 0, 180, 135, TURRET_ADC_PIN, 1.000, -1.000);
+RobotArmMember memberTurret(RAM::Name::Turret,
+	0, TURRET_PWM_PIN, 0, 180, 135, TURRET_ADC_PIN/*, 1.000, -1.000*/);
 // TowerPro 946R, angles need verification
-RobotArmMember memberClaw(RobotArmMember::ServoName::Claw, 
-	0, 0, CLAW_PWM_PIN, 90, 140, 90, CLAW_ADC_PIN, 0.557, -61.28);
+RobotArmMember memberClaw(RAM::Name::Claw,
+	0, CLAW_PWM_PIN, 90, 140, 90, CLAW_ADC_PIN/*, 0.557, -61.28*/);
 
 RobotArmState state(
-	RobotArmState::EndEffectorState::P00Deg,
+	RAS::EndEffectorState::P00Deg,
 	SERVO_POWER_CONTROL_PIN, SERVO_POWER_FEEDBACK_PIN,
 	memberBoom1, memberBoom2, memberTurret, memberClaw);
 
@@ -69,10 +76,12 @@ void setup()
 	Serial.println();
 
 	// Servo stuff.
+	memberBoom1.setAngleConstants(BOOM1_ANGLE_SCALE, BOOM1_ANGLE_OFFSET);
+	memberBoom2.setAngleConstants(BOOM2_ANGLE_SCALE, BOOM2_ANGLE_OFFSET);
 	state.setBoom2MinMap(boom2mins, BOOM2MINS_COUNT);
-	state.setStoredPosition(RobotArmState::NamedPosition::CenterSonar, 125, 120, 135, 90);
-	state.setStoredPosition(RobotArmState::NamedPosition::Center, 125, 120, 135, 90); // not confirmed
-	state.setStoredPosition(RobotArmState::NamedPosition::Rest, 90, 70, 135, 90);
+	state.setStoredPositionAngles(RAS::Name::CenterSonar, 125, 120, 135, 90);
+	state.setStoredPositionAngles(RAS::Name::Center, 125, 120, 125, 90); // not confirmed
+	state.setStoredPositionAngles(RAS::Name::Rest, 90, 70, 135, 90);
 	state.attachSafe();
 	state.servoPowerOn();
 	state.sweep();
@@ -134,14 +143,25 @@ void loop()
 	}
 
 	Serial.println();
-	PLN2("Select member: [1] boom1  : ", memberBoom1.read());
-	PLN2(".              [2] boom2  : ", memberBoom2.read());
+	P("Select member: [1] boom1  : ");
+	Serial.print(memberBoom1.read());
+	P(" (");
+	Serial.print(memberBoom1.getAngle());
+	PLN(")");
+
+	P(".              [2] boom2  : ");
+	Serial.print(memberBoom2.read());
+	P(" (");
+	Serial.print(memberBoom2.getAngle());
+	PLN(")");
+
 	PLN2(".              [3] turret : ", memberTurret.read());
 	PLN2(".              [4] claw   : ", memberClaw.read());
 	
 	uint32_t timeout;
-	
-	timeout = millis();
+
+	P("Enter member number: ");
+	timeout = millis() + 10000;
 	while (!Serial.available())
 	{
 		if (millis() > timeout)
@@ -159,16 +179,16 @@ void loop()
 	switch (memberSelection)
 	{
 	case 1:
-		member = &state.getServo(RobotArmMember::ServoName::Boom1);
+		member = &state.getServo(RobotArmMember::Name::Boom1);
 		break;
 	case 2:
-		member = &state.getServo(RobotArmMember::ServoName::Boom2);
+		member = &state.getServo(RobotArmMember::Name::Boom2);
 		break;
 	case 3:
-		member = &state.getServo(RobotArmMember::ServoName::Turret);
+		member = &state.getServo(RobotArmMember::Name::Turret);
 		break;
 	case 4:
-		member = &state.getServo(RobotArmMember::ServoName::Claw);
+		member = &state.getServo(RobotArmMember::Name::Claw);
 		break;
 	default:
 		PLN("Try again.");
@@ -177,7 +197,8 @@ void loop()
 		return;
 	}
 
-	timeout = millis();
+	timeout = millis() + 10000;
+	P("Enter target angle: ");
 	while (!Serial.available())
 	{
 		if (millis() > timeout)
@@ -199,11 +220,19 @@ void loop()
 
 	Serial.print(member->read());
 	PLN(" degrees written.");
-
+	
 	PLN2("Sonar measurement: ", sonar.getMeasurement());
 
+	PLN2("boom1 height = ", memberBoom1.getHeight());
+	PLN2("boom2 height = ", memberBoom2.getHeight());
+	PLN2(" claw height = ", memberClaw.getHeight());
 	PLN2("Height = ", state.getHeight());
+
+	PLN2("boom1 radius = ", memberBoom1.getRadius());
+	PLN2("boom2 radius = ", memberBoom2.getRadius());
+	PLN2(" claw radius = ", memberClaw.getRadius());
 	PLN2("Radius = ", state.getRadius());
+
 	PLN2("Theta  = ", state.getTheta());
 }
 #endif // SERIAL_CONTROL_MODE

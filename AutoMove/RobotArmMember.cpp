@@ -11,7 +11,7 @@
 #include "IntegerGeometry.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 
-#define RobotArmMember_DEBUG_MODE
+//#define RobotArmMember_DEBUG_MODE
 #ifdef RobotArmMember_DEBUG_MODE
 #	define DEBUG1(x) Serial.print("RobotArmMember : "); Serial.println(x); delay(2)	// note missing ';'
 #	define DEBUG2(x,y) Serial.print("RobotArmMember : "); Serial.print(x); Serial.println(y); delay(2)	// note missing ';'
@@ -33,8 +33,8 @@ template <typename T> int sgn(T val) {
 #define CALIB_STEPS 12
 #define CALIB_STEP_DELAY 25
 #define CALIB_MAX_ITERATIONS 500
-#define SMOOTH_ANGLE_MIN 1
-#define SMOOTH_ANGLE_MAX 179
+#define SMOOTH_ANGLE_MIN 0
+#define SMOOTH_ANGLE_MAX 180
 #define SMOOTH_ADJUSTMENT_ANGLE 2
 #define SMOOTH_ADJUSTMENT_ANGLE_STOPPED 1
 #define SMOOTH_ADJUSTMENT_DELAY 25
@@ -45,19 +45,27 @@ template <typename T> int sgn(T val) {
 
 /*
  * Constructor arguments:
+ * RobotArmMember::Name name			(enum) Boom1, Boom2, Turret, Claw
+ * uint16_t length							Distance between axes.
+ * int offset								Difference between physical angle 
+											with horizontal plane and servo 
+											input angle.
  * int pwmPin								Pin used to control servo.
  * int minAngle, int maxAngle 				Allowed range of movement.
  * int safeAngle							Nominal position for servo.
  * int sensorPin 							Angle sensor pin (A0, A1, ...).
- * float sensorSlope, float sensorOffset	Initial angle sensor linear coefficients.
+ * float sensorSlope, float sensorOffset	Initial angle sensor linear 
+											coefficients.
  */
-RobotArmMember::RobotArmMember(ServoName name, uint16_t length, int angleOffset,
+RobotArmMember::RobotArmMember(Name name, uint16_t length,
 	int pwmPin, int min, int max, int safe,
-	int sensorPin, float sensorSlope, float sensorOffset)
+	int sensorPin)
 	: Servo()
-	, name(name), length(length), angleOffset(angleOffset), pwmPin(pwmPin)
+	, name(name), length(length), pwmPin(pwmPin)
 	, minAngle(min), maxAngle(max), safeAngle(safe)
-	, sensorPin(sensorPin), sensorLine(sensorSlope, sensorOffset)
+	, sensorPin(sensorPin)
+	, angleOffset(0), angleScale1000(1000)
+	, sensorOffset(0), sensorScale1000(1000)
 {}
 
 /**
@@ -140,13 +148,13 @@ bool RobotArmMember::calibrateSensor(int angleA, int angleB)
 	// void TybluLsq::llsq( int n, float x[], float y[], float &a, float &b )
 	TybluLsq::llsq(CALIB_STEPS, measurements, angles, a, b);
 
-	this->sensorLine.m = a;
-	this->sensorLine.b = b;
+	this->sensorScale1000 = (long)( a * 1000 );
+	this->sensorOffset = (long)b;
 
 	DEBUG2(F("a="), a);
-	DEBUG2(F("sensorSlope="), sensorLine.m);
+	DEBUG2(F("sensorScale1000="), sensorScale1000);
 	DEBUG2(F("b="), b);
-	DEBUG2(F("sensorOffset="), sensorLine.b);
+	DEBUG2(F("sensorOffset="), sensorOffset);
 
 	return true;
 }
@@ -159,27 +167,22 @@ bool RobotArmMember::calibrateSensor()
 	return calibrateSensor(this->minAngle, this->maxAngle);
 }
 
-void RobotArmMember::setName(ServoName name)
+void RobotArmMember::setName(Name name)
 {
 	this->name = name;
 }
 
-void RobotArmMember::setAngleOffset(int angleOffset)
-{
-	this->angleOffset = angleOffset;
-}
-
-void RobotArmMember::setMinAngle(int minAngle)
+void RobotArmMember::setMinServoAngle(int minAngle)
 {
 	this->minAngle = minAngle;
 }
 
-void RobotArmMember::setMaxAngle(int maxAngle)
+void RobotArmMember::setMaxServoAngle(int maxAngle)
 {
 	this->maxAngle = maxAngle;
 }
 
-void RobotArmMember::setSafeAngle(int safeAngle)
+void RobotArmMember::setSafeServoAngle(int safeAngle)
 {
 	this->safeAngle = safeAngle;
 }
@@ -189,52 +192,75 @@ void RobotArmMember::setSensorPin(int sensorPin)
 	this->sensorPin = sensorPin;
 }
 
-void RobotArmMember::setSensorConstants(float slope, float offset)
+void RobotArmMember::setSensorConstants(long sensorScale1000, long sensorOffset)
 {
-	this->sensorLine.m = slope;
-	this->sensorLine.b = offset;
+	this->sensorScale1000 = sensorScale1000;
+	this->sensorOffset = sensorOffset;
 }
 
-RobotArmMember::ServoName RobotArmMember::getName()
+void RobotArmMember::setAngleConstants(long angleScale1000, long angleOffset)
+{
+	this->angleScale1000 = angleScale1000;
+	this->angleOffset = angleOffset;
+}
+
+RobotArmMember::Name RobotArmMember::getName()
 {
 	return this->name;
 }
 
-int RobotArmMember::getAngleOffset()
-{
-	return this->angleOffset;
-}
-
 int RobotArmMember::getAngle()
 {
-	return this->read() + angleOffset;
+	return servoAngleToTrueAngle(this->read());
+}
+
+int RobotArmMember::getHeight(int angle)
+{
+	long height = this->length;
+	height *= IntegerGeometry::sin1000(angle);
+	height = (height + 500L) / 1000L;	// int division with rounding to nearest
+	return height;
 }
 
 int RobotArmMember::getHeight()
 {
-	DEBUG2(F("this->length = "), this->length);
-	//return IntegerGeometry::intDiv(this->length * IntegerGeometry::bigSin(this->getAngle()), 1000);
-	return this->length * IntegerGeometry::bigSin(this->getAngle()) / 1000;
+	return getHeight(this->getAngle());
+}
+
+int RobotArmMember::getRadius(int angle)
+{
+	long radius = this->length;
+	radius *= IntegerGeometry::cos1000(angle);
+	radius = (radius + 500L) / 1000L;	// int division with rounding to nearest
+	return radius;
 }
 
 int RobotArmMember::getRadius()
 {
-	DEBUG2(F("this->length = "), this->length);
-	//return IntegerGeometry::intDiv(this->length * IntegerGeometry::bigCos(this->getAngle()), 1000);
-	return this->length * IntegerGeometry::bigCos(this->getAngle()) / 1000;
+	return getRadius(this->getAngle());
 }
 
-int RobotArmMember::getMinAngle()
+int RobotArmMember::getMinServoAngle()
 {
 	return this->minAngle;
 }
 
-int RobotArmMember::getMaxAngle()
+int RobotArmMember::getMinAngle()
+{
+	return servoAngleToTrueAngle(getMinServoAngle());
+}
+
+int RobotArmMember::getMaxServoAngle()
 {
 	return this->maxAngle;
 }
 
-int RobotArmMember::getSafeAngle()
+int RobotArmMember::getMaxAngle()
+{
+	return servoAngleToTrueAngle(getMaxServoAngle());
+}
+
+int RobotArmMember::getSafeServoAngle()
 {
 	return this->safeAngle;
 }
@@ -244,9 +270,14 @@ int RobotArmMember::getSensorPin()
 	return this->sensorPin;
 }
 
+uint16_t RobotArmMember::getLength()
+{
+	return this->length;
+}
+
 int RobotArmMember::getAnalogAngle()
 {
-		return (int)( this->getAnalogRaw() * sensorLine.m + sensorLine.b );
+		return this->getAnalogRaw() * sensorScale1000 / 1000 + sensorOffset;
 }
 
 int RobotArmMember::getAnalogRaw()
@@ -273,16 +304,6 @@ int RobotArmMember::getAnalogRaw()
 		return 0;
 	else
 		return (int)mode;
-}
-
-float RobotArmMember::getSensorSlope()
-{
-	return this->sensorLine.m;
-}
-
-float RobotArmMember::getSensorOffset()
-{
-	return this->sensorLine.b;
 }
 
 /*
@@ -391,19 +412,6 @@ void RobotArmMember::smooth(int targetAngle)
 	}
 }
 
-void RobotArmMember::printSensorLine()
-{
-	Serial.print(F("y = "));
-	Serial.print(this->sensorLine.m);
-	Serial.print(F(" * x"));
-	if (this->sensorLine.b < 0)
-		Serial.print(F(" - "));
-	else
-		Serial.print(F(" + "));
-	Serial.print(abs(this->sensorLine.b));
-	return;
-}
-
 void RobotArmMember::sweep()
 {
 	int initialAngle = this->read();
@@ -411,3 +419,119 @@ void RobotArmMember::sweep()
 	this->smooth(maxAngle);
 	this->smooth(initialAngle);
 }
+
+void RobotArmMember::getNameStr(char nameStr[7])
+{
+	switch (this->name)
+	{
+	case Name::Boom1:
+		strcpy_P(nameStr, servoStr[0]);
+		break;
+	case Name::Boom2:
+		strcpy_P(nameStr, servoStr[1]);
+		break;
+	case Name::Turret:
+		strcpy_P(nameStr, servoStr[2]);
+		break;
+	case Name::Claw:
+		strcpy_P(nameStr, servoStr[3]);
+		break;
+	default:
+		strcpy_P(nameStr, servoStr[4]);
+		break;
+	}
+}
+
+int RobotArmMember::servoAngleToTrueAngle(int angle)
+{
+	long angleL = (long)angle;
+	angleL *= this->angleScale1000;
+	angleL = (angleL + 500L) / 1000L;	// int division with rounding to nearest
+	angleL += this->angleOffset;
+	return (int)angleL;
+}
+
+int RobotArmMember::trueAngleToServoAngle(int angle)
+{
+	long angleL = (long)angle;
+	angleL -= this->angleOffset;
+	angleL = (angleL * 1000L) - 500L;
+	angleL = (angleL + this->angleScale1000 / 2) / this->angleScale1000;
+	return (int)angleL;
+}
+
+
+PositionVector::PositionVector(int length, int angle, int theta)
+	: length(length), angle(angle), theta(theta)
+{
+	updateHeight();
+	updateRadius();
+}
+
+void PositionVector::update(RobotArmMember& ram)
+{
+	switch (ram.getName)
+	{
+	case RobotArmMember::Name::Turret:
+		this->theta = ram.getAngle;
+		break;
+	case RobotArmMember::Name::Claw:
+		this->
+
+	}
+	if (ram.getName == RobotArmMember::Name::Turret)
+	{
+		this->theta = ram.getAngle;
+		this->angle = 0;
+		height = 0;
+		radius = 0;
+	}
+	else
+	{
+		this->angle = ram.getAngle;
+		updateHeight();
+		updateRadius();
+	}
+}
+
+int PositionVector::getHeight()
+{
+	return this->height;
+}
+
+int PositionVector::getHeight(int angle)
+{
+	long heightL = (long)this->length;
+	heightL = heightL * IntegerGeometry::sin1000(angle);
+	heightL = heightL / 1000L;
+	return (int)heightL;
+}
+
+int PositionVector::getRadius()
+{
+	return this->radius;
+}
+
+int PositionVector::getRadius(int angle)
+{
+	long radiusL = (long)this->length;
+	radiusL = radiusL * IntegerGeometry::cos1000(angle);
+	radiusL = radiusL / 1000L;
+	return (int)radiusL;
+}
+
+int PositionVector::getTheta()
+{
+	return this->theta;
+}
+
+void PositionVector::updateHeight()
+{
+	height = getHeight(this->angle);
+}
+void PositionVector::updateRadius()
+{
+	radius = getRadius(this->angle);
+}
+
+	//int height, radius, theta, angle, length;
