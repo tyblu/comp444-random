@@ -131,7 +131,6 @@ namespace nsTyblu
 class RobotArmState
 {
 public:
-	enum EndEffectorState { P45Deg, P00Deg, N45Deg, N90Deg, N135Deg } ;
 	enum NamedPosition { 
 		None, 
 		CenterSonar, 

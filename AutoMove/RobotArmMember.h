@@ -13,136 +13,250 @@
 #include <Servo.h>
 #include "C:\Users\tyblu\Documents\repos\QuickStats\QuickStats.h"
 
-const static char * const servoStr[] PROGMEM = 
-	{ "Boom1", "Boom2", "Turret", "Claw" , "ERROR" };
+/* Declarations only, for use in other classes. Remove when unnecessary. */
+class RobotArmMember;	// for use in class PositionVector
+class Claw;
+class Turret;
+class Boom;
 
-class RobotArmMember;	// declaration only, for use in class PositionVector
 class PositionVector
 {
 public:
-	PositionVector(RobotArmMember& ram);
+	PositionVector() : height(0), radius(0), theta(0) { update(); }
+	PositionVector(int h, int r, int th) : height(h), radius(r), theta(th) { update(); }
 
-	void update();
+	virtual void update() {}									// override this
 
-	int getHeight();
-	int getHeight(int angle);
-	int getRadius();
-	int getRadius(int angle);
-	int getTheta();
+	virtual int getHeight() { return getHeight(this->angle); }
+	virtual int getHeight(int angle) { return this->height; }
+	virtual int getRadius() { return getRadius(this->angle); }
+	virtual int getRadius(int angle) { return this->radius; }
+	int getTheta() { return this->theta; }
 
-private:
-	int height, radius, theta, angle, length;
-	RobotArmMember& member;
-	RobotArmMember::Name name;
+	void add(int h, int r, int th)	// add height, radius, theta to this
+	{
+		this->height += h;
+		this->radius += r;
+		this->theta += th;
+	}
+
+	void add(PositionVector& other)
+	{
+		this->height += other.getHeight();
+		this->radius += other.getRadius();
+		this->theta += other.getTheta();
+	}
+
+	static PositionVector vectorSum(PositionVector * others[], int count)
+	{
+		//int h = 0;
+		//int r = 0;
+		//int th = 0;
+		//for (uint8_t i = 0; i < count; i++)
+		//{
+		//	h += others[i]->getHeight();
+		//	r += others[i]->getRadius();
+		//	th += others[i]->getTheta();
+		//}
+		//return { h, r, th };
+
+		PositionVector result = PositionVector();
+		for (uint8_t i = 0; i < count; i++)
+			result.add(*others[i]);
+		return result;
+	}
+
+protected:
+	int height, radius, theta, angle;
 };
 
-class RobotArmMember : public Servo
+class RobotArmMember
 {
 public:
-	enum Name { Boom1, Boom2, Turret, Claw };
+	RobotArmMember(int pwmPin, Servo servo)
+		: pwmPin(pwmPin)
+		, pos()
+		, servo()
+	{}
 
-	/*
-	 * Constructor arguments:
-	 * Name name							Boom1, Boom2, Turret, or Claw.
-	 * int pwmPin								Pin used to control servo.
-	 * int minAngle, int maxAngle 				Allowed range of movement.
-	 * int safeAngle							Nominal position for servo.
-	 * int sensorPin 							Angle sensor pin (A0, A1, ...).
-	 * float sensorSlope, float sensorOffset	Initial angle sensor linear coefficients.
-	 */
-	RobotArmMember(Name name, uint16_t length, int pwmPin, 
-			int minAngle, int maxAngle, int safeAngle,
-			int sensorPin);
+	void attach();
 
-	/*
-	 * If value is < 200 its treated as an angle, otherwise as pulse width in
-	 * microseconds. If value is < minAngle then it's set to minAngle; if > maxAngle and
-	 * < 200 then it's set to maxAngle.
-	 */
-	void write(int value);	// extends Servo::write(int)
-	uint8_t attach();
-
-	/*
-	 * Preconditions: [optional] Servo is attached and at its currently set angle.
-	 * (Otherwise the servo will jump.) Suggest using calibrated analog angle sensor.
-	 *
-	 * Limits acceleration and speed while moving from current angle to target.
-	 */
-	void smooth(int value);
-
-	// Moves servo to target angle at minimum speed.
-	void slow(int value);
-
-	/*
-	 * Pre-conditions: Servo must be attached, have max/min angles set, and have
-	 * valid sensor pin.
-	 * Post-conditions (if successful/returns true): In addition to preconditions,
-	 * sensor slope and offset variables are set, allowing for accurate returns from
-	 * RobotArmMember::getAnalogAngle.
-	 *
-	 * Returns true if it completes successfully, false otherwise.
-	 *
-	 * Calibrates servo position sensor by fitting line to measured results while
-	 * moving between angleA and angleB. Movements starts at angleA, travels to
-	 * angleB, back to angleA, and it may repeat this several more times. The servo
-	 * always obeys the minAngle and maxAngle limits, so make sure angleA and angleB
-	 * are within them or the calibration will not work (returns false).
-	 */
-	bool calibrateSensor(int angleA, int angleB);
-	/*
-	 * Same as calibrateSensor(int angleA, int angleB), using max/min angles.
-	 */
-	bool calibrateSensor();
-
+	void slow(int value);	// Moves servo to target angle at minimum speed.
+	void fast(int value);	// max speed
 	void sweep();
 
-	void setName(Name name);
-	void setMinServoAngle(int minAngle);
-	void setMaxServoAngle(int maxAngle);
-	void setSafeServoAngle(int safeAngle);
-	void setSensorPin(int sensorPin);
-	void setSensorConstants(long sensorScale1000, long sensorOffset);
+	void setLimits(int minAngle, int maxAngle, int safeAngle,
+		bool areServoAngles = false);
 	void setAngleConstants(long angleScale1000, long angleOffset);
 
-	Name getName();
-	void getNameStr(char nameStr[7]);	// returns name in 7 char array
-	int getAngle();		// returns angle from Servo::read() with offset
-	int getHeight();	// height of axis at end from axis at start [mm]
-	int getHeight(int angle);	// height if at this angle
-	int getRadius();	// radius of axis at end from axis at start [mm]
-	int getRadius(int angle);	// radius if at this angle
-	int getMinAngle();
-	int getMinServoAngle();
-	int getMaxAngle();
-	int getMaxServoAngle();
-	int getSafeServoAngle();
-	int getMaxHeight();
-	int getMinHeight();
-	int getMaxRadius();
-	int getMinRadius();
-	int getSensorPin();
-	int getAnalogAngle();
-	uint16_t getLength();
+	PositionVector* getPositionVector() { return &pos; }
+	Servo* getServo() { return &servo; }
+	int getAngle();
 
-private:
-	int getAnalogRaw();
+protected:
 	int servoAngleToTrueAngle(int angle);
 	int trueAngleToServoAngle(int angle);
 
-	Name name;		// Boom1, Boom2, Turret, or Claw
-	const uint16_t length;	// from axis to axis
+	Servo servo;
 	PositionVector pos;
 	long angleOffset, angleScale1000;	// y=ax+b from servo to true angle
-	long sensorOffset, sensorScale1000;	// y=ax+b from sensor to servo angle
-	int pwmPin = -1;
-	int minAngle = 0, maxAngle = 180;	// max and min servo angles
-	int safeAngle = 90;					// safe servo angle in all states
-	int sensorPin = -1;
-	const float analogDeviationLimit = 50;
-	unsigned int measurementsCount = 50;
-	QuickStats qs;
-
-	int maxHeight, minHeight, maxRadius, minRadius;
+	int pwmPin;
+	int minAngle, maxAngle, safeAngle;
 };
 
+class ClawPositionVector : public PositionVector
+{
+public:
+	ClawPositionVector(Claw& clawMember, long lOffset, long lScale, int incline)
+		: PositionVector()
+		, member(clawMember)
+		, lengthOffset(lOffset), lengthScale(lScale)
+		, inclineAngle(incline)
+	{
+		update();
+	}
+
+	void update()	// all movement commands should call this
+	{
+		this->angle = member.getAngle();
+		this->radius = getRadius(angle);
+		this->height = getHeight(angle);
+	}
+
+	int getHeight(int angle)
+	{
+		long heightL = getLength(angle);
+		heightL *= IntegerGeometry::sin1000(inclineAngle);
+		heightL /= 1000L;
+		return (int)heightL;
+	}
+
+	int getRadius(int angle)
+	{
+		long radiusL = getLength(angle);
+		radiusL *= IntegerGeometry::cos1000(inclineAngle);
+		radiusL /= 1000L;
+		return (int)radiusL;
+	}
+
+private:
+	long getLength(int angle)
+	{
+		long lengthL = lengthScale;
+		lengthL *= IntegerGeometry::sin1000(angle);
+		lengthL /= 1000L;
+		lengthL += lengthOffset;
+		return lengthL;
+	}
+
+	const int inclineAngle;	// constant angle offset based on configuration
+	const long lengthOffset, lengthScale;
+	Claw& member;
+};
+
+class Claw : public RobotArmMember
+{
+public:
+	Claw(long lOffset, long lScale, int pwmPin, Servo servo, int incline)
+		: RobotArmMember(pwmPin, servo)
+		, pos(*this, lOffset, lScale, incline)
+	{
+		//
+	}
+
+private:
+	ClawPositionVector pos;
+};
+
+class TurretPositionVector : public PositionVector
+{
+public:
+	TurretPositionVector(Turret& turretMember)
+		: PositionVector()
+		, member(turretMember)
+	{
+		update();
+	}
+
+	void update() { this->theta = member.getAngle(); }
+
+	int getHeight() { return 0; }
+	int getHeight(int angle) { return 0; }
+	int getRadius() { return 0; }
+	int getRadius(int angle) { return 0; }
+	int getTheta() { return this->theta; }
+
+private:
+	Turret& member;
+};
+
+class Turret : public RobotArmMember
+{
+public:
+	Turret(int pwmPin, Servo servo)
+		: RobotArmMember(pwmPin, servo)
+		, pos(*this)
+	{
+		//
+	}
+
+private:
+	TurretPositionVector pos;
+};
+
+class BoomPositionVector : public PositionVector
+{
+public:
+	BoomPositionVector(Boom& boomMember, long length)
+		: PositionVector()
+		, member(boomMember), length(length)
+	{
+		update();
+	}
+
+	void update()
+	{
+		this->angle = member.getAngle();
+		this->height = getHeight();
+		this->radius = getRadius();
+	}
+
+	int getHeight() { return getHeight(this->angle); }
+	int getHeight(int angle)
+	{
+		long heightL = this->length;
+		heightL *= IntegerGeometry::sin1000(this->angle);
+		heightL /= 1000L;
+		return (int)heightL;
+	}
+
+	int getRadius() { return getRadius(this->angle); }
+	int getRadius(int angle)
+	{
+		long radiusL = this->length;
+		radiusL *= IntegerGeometry::cos1000(this->angle);
+		radiusL /= 1000L;
+		return (int)radiusL;
+	}
+
+	int getTheta() { return 0; }
+
+private:
+	long length;
+	Boom& member;
+};
+
+class Boom : public RobotArmMember
+{
+public:
+	Boom(int pwmPin, Servo servo, int length)
+		: RobotArmMember(pwmPin, servo)
+		, pos(*this, length)
+	{
+		//
+	}
+
+private:
+	BoomPositionVector pos;
+};
 #endif /* RobotArmMember_h */
