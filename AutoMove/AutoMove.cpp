@@ -32,32 +32,65 @@
 #define RAS RobotArmState
 
 // Servo stuff.
-#define BOOM1_ANGLE_SCALE -100
-#define BOOM1_ANGLE_OFFSET 225	// 135 + 90
-#define BOOM2_ANGLE_SCALE 100
-#define BOOM2_ANGLE_OFFSET -125
-// TowerPro 946R, sensor needs verification
-RobotArmMember memberBoom1(RAM::Name::Boom1, 
-	135, BOOM1_PWM_PIN, 90, 180, 135, BOOM1_ADC_PIN/*, 0.557, -49.64*/);
-// Power HD 1501MG
-RobotArmMember memberBoom2(RAM::Name::Boom2, 
-	142, BOOM2_PWM_PIN, 20, 145, 95, BOOM2_ADC_PIN/*, 1.113, -147.1*/);
-// SG90 (micro), not measured -- will probably swap for TowerPro 946R
-RobotArmMember memberTurret(RAM::Name::Turret,
-	0, TURRET_PWM_PIN, 0, 180, 135, TURRET_ADC_PIN/*, 1.000, -1.000*/);
-// TowerPro 946R, angles need verification
-RobotArmMember memberClaw(RAM::Name::Claw,
-	0, CLAW_PWM_PIN, 90, 140, 90, CLAW_ADC_PIN/*, 0.557, -61.28*/);
+#define CLAW_INCLINE 0
+#define CLAW_LENGTH_MIN 40L
+#define CLAW_LENGTH_ADJ 30L
+#define CLAW_ANGLE_SCALE 1000L
+#define CLAW_ANGLE_OFFSET 0L
+
+#define BOOM1_LENGTH 135L
+#define BOOM1_ANGLE_SCALE -1000L
+#define BOOM1_ANGLE_OFFSET 225L		// 135 + 90
+
+#define BOOM2_LENGTH 142L
+#define BOOM2_ANGLE_SCALE 1000L
+#define BOOM2_ANGLE_OFFSET -125L
+
+#define TURRET_ANGLE_SCALE 500L
+#define TURRET_ANGLE_OFFSET 0L
+
+#define PAIR_BOOM2MINS_COUNT 10
+
+PositionVector presetPositions[] =
+{
+	{ 125, 120, 135 },		// CenterSonar
+	{ 125, 120, 125 },		// Center
+	{  90,  70, 135 },		// Rest
+	{ 130, 125, 135 },		// MaxHeight
+	{   0, -90,   0 },		// MinHeight
+	{   0,   0, 135 },		// MaxRadius
+	{ 140, -70,   0 }		// MinRadius
+};
+
+Pair boom2mins[PAIR_BOOM2MINS_COUNT] = 
+{
+	{ 90, 83 },
+	{ 100, 68 },
+	{ 110, 55 },
+	{ 120, 50 },
+	{ 130, 40 },
+	{ 140, 30 },
+	{ 150, 20 },
+	{ 160, 25 },
+	{ 170, 26 },
+	{ 180, 26 } 
+};
+
+BoomPositionVector posBoom1(BOOM1_LENGTH);
+BoomPositionVector posBoom2(BOOM2_LENGTH);
+TurretPositionVector posTurret = {};
+ClawPositionVector posClaw(CLAW_LENGTH_MIN, CLAW_LENGTH_ADJ, CLAW_INCLINE);
+
+RobotArmMember memberBoom1(BOOM1_PWM_PIN, posBoom1);	// TowerPro 946R
+RobotArmMember memberBoom2(BOOM2_PWM_PIN, posBoom2);	// Power HD 1501MG
+RobotArmMember memberTurret(TURRET_PWM_PIN, posTurret);	// TowerPro 946R
+RobotArmMember memberClaw(CLAW_PWM_PIN, posClaw);		// TowerPro 946R
 
 RobotArmState state(
-	RAS::EndEffectorState::P00Deg,
 	SERVO_POWER_CONTROL_PIN, SERVO_POWER_FEEDBACK_PIN,
-	memberBoom1, memberBoom2, memberTurret, memberClaw);
-
-#define BOOM2MINS_COUNT 10
-nsTyblu::Pair boom2mins[BOOM2MINS_COUNT] = {
-	{90, 83}, {100, 68}, {110, 55}, {120, 50}, {130, 40}, 
-	{140, 30}, {150, 20}, {160, 25}, {170, 26}, {180, 26} };
+	memberBoom1, memberBoom2, memberTurret, memberClaw,
+	presetPositions, boom2mins
+);
 
 // Sonar and SPI SD card stuff.
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
@@ -78,10 +111,6 @@ void setup()
 	// Servo stuff.
 	memberBoom1.setAngleConstants(BOOM1_ANGLE_SCALE, BOOM1_ANGLE_OFFSET);
 	memberBoom2.setAngleConstants(BOOM2_ANGLE_SCALE, BOOM2_ANGLE_OFFSET);
-	state.setBoom2MinMap(boom2mins, BOOM2MINS_COUNT);
-	state.setStoredPositionAngles(RAS::Name::CenterSonar, 125, 120, 135, 90);
-	state.setStoredPositionAngles(RAS::Name::Center, 125, 120, 125, 90); // not confirmed
-	state.setStoredPositionAngles(RAS::Name::Rest, 90, 70, 135, 90);
 	state.attachSafe();
 	state.servoPowerOn();
 	state.sweep();
@@ -126,42 +155,41 @@ void setup()
 	DEBUG2(F("RHS sensor reading: "), sensorR.read());
 }
 
-#ifdef SERIAL_CONTROL_MODE		// arm controlled by USB serial commands
+#ifdef SERIAL_CONTROL_MODE			// arm controlled by USB serial commands
 #define PLN(x) Serial.println(F(x)); delay(2)
 #define PLN2(x,y) Serial.print(F(x)); delay(2); Serial.println(y); delay(2)
 #define P(x) Serial.print(F(x)); delay(2)
 void loop()
 {
-	if (!state.list.isFinished())
-		PLN("WARNING: SETTING ALL SERVO LIMITS TO MAXIMUM [0-180].");
-
-	while (!state.list.isFinished())	// only runs once without ..restart()
-	{
-		state.getServo(state.list.current()).setMinAngle(0);
-		state.getServo(state.list.current()).setMaxAngle(180);
-		state.list.next();
-	}
-
 	Serial.println();
 	P("Select member: [1] boom1  : ");
-	Serial.print(memberBoom1.read());
+	Serial.print(memberBoom1.getServo()->read());
 	P(" (");
 	Serial.print(memberBoom1.getAngle());
 	PLN(")");
 
 	P(".              [2] boom2  : ");
-	Serial.print(memberBoom2.read());
+	Serial.print(memberBoom2.getServo()->read());
 	P(" (");
 	Serial.print(memberBoom2.getAngle());
 	PLN(")");
 
-	PLN2(".              [3] turret : ", memberTurret.read());
-	PLN2(".              [4] claw   : ", memberClaw.read());
+	P(".              [3] turret : ");
+	Serial.print(memberTurret.getServo()->read());
+	P(" (");
+	Serial.print(memberTurret.getAngle());
+	PLN(")");
+
+	P(".              [3]   claw : ");
+	Serial.print(memberClaw.getServo()->read());
+	P(" (");
+	Serial.print(memberClaw.getAngle());
+	PLN(")");
 	
 	uint32_t timeout;
 
 	P("Enter member number: ");
-	timeout = millis() + 10000;
+	timeout = millis() + 10000;  
 	while (!Serial.available())
 	{
 		if (millis() > timeout)
@@ -179,16 +207,16 @@ void loop()
 	switch (memberSelection)
 	{
 	case 1:
-		member = &state.getServo(RobotArmMember::Name::Boom1);
+		member = &memberBoom1;
 		break;
 	case 2:
-		member = &state.getServo(RobotArmMember::Name::Boom2);
+		member = &memberBoom2;
 		break;
 	case 3:
-		member = &state.getServo(RobotArmMember::Name::Turret);
+		member = &memberTurret;
 		break;
 	case 4:
-		member = &state.getServo(RobotArmMember::Name::Claw);
+		member = &memberClaw;
 		break;
 	default:
 		PLN("Try again.");
@@ -205,7 +233,7 @@ void loop()
 		{
 			timeout = millis() + 10000;
 			Serial.println();
-			P("Enter target angle: ");
+			P("... Enter target angle: ");
 		}
 	}
 
@@ -218,22 +246,24 @@ void loop()
 	//member->write(inputAngle);
 	member->slow(inputAngle);
 
-	Serial.print(member->read());
+	Serial.print(member->getServo()->read());
 	PLN(" degrees written.");
 	
-	PLN2("Sonar measurement: ", sonar.getMeasurement());
+	P("Sonar measurement: ");
+	Serial.print(sonar.getMeasurement());
 
-	PLN2("boom1 height = ", memberBoom1.getHeight());
-	PLN2("boom2 height = ", memberBoom2.getHeight());
-	PLN2(" claw height = ", memberClaw.getHeight());
-	PLN2("Height = ", state.getHeight());
+	PLN2("boom1 height = ", memberBoom1.getPositionVector()->getHeight());
+	PLN2("boom2 height = ", memberBoom2.getPositionVector()->getHeight());
+	PLN2("turret height= ", memberTurret.getPositionVector()->getHeight());
+	PLN2(" claw height = ", memberClaw.getPositionVector()->getHeight());
+	PLN2(".     Height = ", state.getPositionVector()->getHeight());
 
-	PLN2("boom1 radius = ", memberBoom1.getRadius());
-	PLN2("boom2 radius = ", memberBoom2.getRadius());
-	PLN2(" claw radius = ", memberClaw.getRadius());
-	PLN2("Radius = ", state.getRadius());
+	PLN2("boom1 radius = ", memberBoom1.getPositionVector()->getRadius());
+	PLN2("boom2 radius = ", memberBoom2.getPositionVector()->getRadius());
+	PLN2(" claw radius = ", memberClaw.getPositionVector()->getRadius());
+	PLN2(".     Radius = ", state.getPositionVector()->getRadius());
 
-	PLN2("Theta  = ", state.getTheta());
+	PLN2(".     Theta  = ", state.getPositionVector()->getTheta());
 }
 #endif // SERIAL_CONTROL_MODE
 

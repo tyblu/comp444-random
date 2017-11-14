@@ -81,7 +81,7 @@ uint8_t SdSpiAltDriver::receive(uint8_t* buf, size_t n) {
     SPI0_PUSHR = 0XFF;
     *buf++ = SPI0_POPR;
   }
-  // limit for rest of RX data
+  // limit for posRest of RX data
   limit += nf;
   while (buf < limit) {
     while (!(SPI0_SR & SPI_SR_RXCTR)) {}
@@ -107,7 +107,7 @@ uint8_t SdSpiAltDriver::receive(uint8_t* buf, size_t n) {
     *buf++ = w >> 8;
     *buf++ = w & 0XFF;
   }
-  // limit for rest of RX data
+  // limit for posRest of RX data
   limit += 2*nf;
   while (buf < limit) {
     while (!(SPI0_SR & SPI_SR_RXCTR)) {}

@@ -27,7 +27,12 @@ public:
 
 	void logSonarData(/*SonarSensor & sonar,*/ SdFile & file/*, RobotArmState& state*/);
 	void logSonarDataHeader(SdFile & file);
-	void logSonarDataEverything(/*SonarSensor & sonar,*/ SdFile & file/*, RobotArmState& state*/);
+	//void logSonarDataEverything(/*SonarSensor & sonar,*/ SdFile & file/*, RobotArmState& state*/);
+	void logSonarDataEverything(SdFile &file,
+		RobotArmMember &member1,
+		RobotArmMember &member2,
+		RobotArmMember &member3,
+		RobotArmMember &member4);
 	void logSonarDataHeaderEverything(SdFile & file);
 private:
 	RobotArmState& state;

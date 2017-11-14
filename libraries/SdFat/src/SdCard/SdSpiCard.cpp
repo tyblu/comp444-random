@@ -182,7 +182,7 @@ bool SdSpiCard::begin(SdSpiDriver* spi, uint8_t csPin, SPISettings settings) {
     if ((spiReceive() & 0XC0) == 0XC0) {
       type(SD_CARD_TYPE_SDHC);
     }
-    // Discard rest of ocr - contains allowed voltage range.
+    // Discard posRest of ocr - contains allowed voltage range.
     for (uint8_t i = 0; i < 3; i++) {
       spiReceive();
     }

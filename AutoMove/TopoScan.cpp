@@ -13,11 +13,11 @@ TopoScan::TopoScan(RobotArmState& state, SonarSensor& sonar)
 
 void TopoScan::logSonarData(SdFile & file)
 {
-	file.print(state.getHeight());
+	file.print(state.getPositionVector()->getHeight());
 	file.write(',');
-	file.print(state.getRadius());
+	file.print(state.getPositionVector()->getRadius());
 	file.write(',');
-	file.print(state.getTheta());
+	file.print(state.getPositionVector()->getTheta());
 	file.write(',');
 	file.print(sonar.getMeasurement());
 	file.println();
@@ -29,49 +29,31 @@ void TopoScan::logSonarDataHeader(SdFile & file)
 	file.println();
 }
 
-void TopoScan::logSonarDataEverything(SdFile & file)
+void TopoScan::logSonarDataEverything(SdFile &file,
+	RobotArmMember &member1,
+	RobotArmMember &member2,
+	RobotArmMember &member3,
+	RobotArmMember &member4)
 {
-	file.print(state.getServo(RobotArmMember::Name::Boom1).read());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Boom1).getAngle());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Boom1).getHeight());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Boom1).getRadius());
-	file.write(',');
+	RobotArmMember arr[] = { member1, member2, member3, member4 };
 
-	file.print(state.getServo(RobotArmMember::Name::Boom2).read());
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		file.print(arr[i].getServo()->read());
+		file.write(',');
+		file.print(arr[i].getAngle());
+		file.write(',');
+		file.print(arr[i].getPositionVector()->getHeight());
+		file.write(',');
+		file.print(arr[i].getPositionVector()->getRadius());
+		file.write(',');
+	}
+	
+	file.print(state.getPositionVector()->getHeight());
 	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Boom2).getAngle());
+	file.print(state.getPositionVector()->getRadius());
 	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Boom2).getHeight());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Boom2).getRadius());
-	file.write(',');
-
-	file.print(state.getServo(RobotArmMember::Name::Turret).read());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Turret).getAngle());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Turret).getHeight());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Turret).getRadius());
-	file.write(',');
-
-	file.print(state.getServo(RobotArmMember::Name::Claw).read());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Claw).getAngle());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Claw).getHeight());
-	file.write(',');
-	file.print(state.getServo(RobotArmMember::Name::Claw).getRadius());
-	file.write(',');
-
-	file.print(state.getHeight());
-	file.write(',');
-	file.print(state.getRadius());
-	file.write(',');
-	file.print(state.getTheta());
+	file.print(state.getPositionVector()->getTheta());
 	file.write(',');
 
 	file.print(sonar.getMeasurement());

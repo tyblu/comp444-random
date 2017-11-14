@@ -14,28 +14,41 @@
 #	define DEBUG3(f,xT,xF)
 #endif
 
+#define DIR RobotArmState::Direction
+
 #define SERVO_PWR_FEEDBACK_ANALOGREAD_POINTS 20	// < uint8_t max and even
+#define GOTOPOSITION_STEPS 3
+//#define GOTO_NUM 2		// initial boom2 raise of NUM/DENOM fraction of delta
+//#define GOTO_DENOM 3
 
 RobotArmState::RobotArmState(
-	EndEffectorState endEffectorState,
 	uint8_t pwrEnablePin,
 	uint8_t pwrFeedbackPin,
 	RobotArmMember& boom1,
 	RobotArmMember& boom2,
 	RobotArmMember& turret,
-	RobotArmMember& claw
+	RobotArmMember& claw,
+	PositionVector preset[7],
+	Pair pairArray[BOOM2_MIN_PAIR_ARRAY_COUNT]
 )
-	: endEffectorState(endEffectorState)
-	, pwrEnablePin(pwrEnablePin)
+	: pwrEnablePin(pwrEnablePin)
 	, pwrFeedbackPin(pwrFeedbackPin)
-	, list()
 	, boom1(boom1)
 	, boom2(boom2)
 	, turret(turret)
 	, claw(claw)
-	, boom2min()
+	, memberList()
+	, posCenterSonar(preset[0].h, preset[0].r, preset[0].th)
+	, posCenter(preset[1].h, preset[1].r, preset[1].th)
+	, posRest(preset[2].h, preset[2].r, preset[2].th)
+	, posMaxHeight(preset[3].h, preset[3].r, preset[3].th)
+	, posMinHeight(preset[4].h, preset[4].r, preset[4].th)
+	, posMaxRadius(preset[5].h, preset[5].r, preset[5].th)
+	, posMinRadius(preset[6].h, preset[6].r, preset[6].th)
+	, interpMapBoom2Min()
+	, pos(boom1, boom2, turret, claw)
 {
-	digitalWrite(pwrEnablePin, LOW);	// ensure servo power is off
+	digitalWrite(pwrEnablePin, LOW);			// ensure servo power is off
 	pinMode(pwrEnablePin, OUTPUT);
 	pinMode(pwrFeedbackPin, INPUT);
 
@@ -43,72 +56,39 @@ RobotArmState::RobotArmState(
 	memberList[1] = &boom2;
 	memberList[2] = &turret;
 	memberList[3] = &claw;
+
+	interpMapBoom2Min.putAll(pairArray, BOOM2_MIN_PAIR_ARRAY_COUNT);
 }
 
-// should make this a variadic input to simplify use
-// e.g. setBoom2MinMap(90, 83, 100, 68, 110, 55), or ...({90, 83}, {100, 68})
-void RobotArmState::setBoom2MinMap(nsTyblu::Pair pairArray[], uint8_t count)
-{
-	for (uint8_t i = 0; i < count; i++)
-		boom2min.put(pairArray[i].key, pairArray[i].val);
-}
 
-void RobotArmState::setStoredPosition(NamedPosition posName, Position p)
-{
-	//PositionAngles pAngles = p.toPositionAngles();
-	PositionAngles pAngles = positionToMemberAngles(p);
 
+void RobotArmState::goToPosition(NamedPosition posName)
+{
 	switch (posName)
 	{
 	case NamedPosition::Center:
-		posCenter.pAngles = pAngles;
-		posCenter.pos = p;
+		goToPosition(posCenter);
 		break;
 	case NamedPosition::CenterSonar:
-		posCenter.pAngles = pAngles;
-		posCenter.pos = p;
-		break;
-	case NamedPosition::CenterSonar:
-		posCenter.pAngles = pAngles;
-		posCenter.pos = p;
-		break;
-	default:
-		break;
-	}
-}
-
-void RobotArmState::setStoredPosition(NamedPosition pName, Position p)
-{
-	switch (pName)
-	{
-	case NamedPosition::Center:
-
-	}
-}
-
-void RobotArmState::goToPresetPosition(NamedPosition posName)
-{
-	boom2.smooth(boom2.getSafeServoAngle());	// replace with vertical lift function
-
-	switch (posName)
-	{
-	case NamedPosition::Center:			// don't change claw angle
-		boom1.slow(posCenter.boom1);
-		turret.slow(posCenter.turret);
-		boom2.slow(posCenter.boom2);
-		break;
-	case NamedPosition::CenterSonar:	// don't change claw angle
-		boom1.slow(posCenterSonar.boom1);
-		turret.slow(posCenterSonar.turret);
-		boom2.slow(posCenterSonar.boom2);
+		goToPosition(posCenterSonar);
 		break;
 	case NamedPosition::Rest:
-		claw.write(posRest.claw);
-		boom1.slow(posRest.boom1);
-		turret.slow(posRest.turret);
-		boom2.slow(posRest.boom2);
+		goToPosition(posRest);
+		break;
+	case NamedPosition::MaxHeight:
+		goToPosition(posMaxHeight);
+		break;
+	case NamedPosition::MinHeight:
+		goToPosition(posMinHeight);
+		break;
+	case NamedPosition::MaxRadius:
+		goToPosition(posMaxRadius);
+		break;
+	case NamedPosition::MinRadius:
+		goToPosition(posMinRadius);
 		break;
 	default:
+		DEBUG1("ERROR: No switch-case for given NamedPosition!");
 		break;
 	}
 
@@ -118,54 +98,71 @@ void RobotArmState::goToPresetPosition(NamedPosition posName)
 	DEBUG2(F("Claw angle set to/at:   "), claw.read());
 }
 
-RobotArmMember& RobotArmState::getServo(RobotArmMember::Name name)
+void RobotArmState::goToPosition(PositionVector p)	// no verification
 {
-	switch (name)
+	byte step = 0;
+	int angle;
+	PositionVector posNext = { 0, 0, 0 };
+
+	//unsigned long timeout = millis() + GOTOPOSITION_TIMEOUT_MS;
+	while (!pos.equals(p)/* && millis() < timeout*/)
 	{
-	case RobotArmMember::Name::Boom1: return boom1;
-	case RobotArmMember::Name::Boom2: return boom2;
-	case RobotArmMember::Name::Turret: return turret;
-	case RobotArmMember::Name::Claw: return claw;
-	default:
-		return;
+		if (p.h > pos.h)	// raise boom2
+		{
+			angle = boom2.getAngle();
+			do {
+				posNext.h = boom2.getPositionVector()->getHeight(angle);
+				angle++;
+			} while (posNext.h < p.h && angle < boom2.getMaxAngle());
+			boom2.slow(--angle);
+			pos.update();
+		}
+
+		if (p.r < pos.r)	// reduce radius with boom1
+		{
+			angle = boom1.getAngle();
+			do {
+				posNext.r = boom1.getPositionVector()->getRadius(angle);
+				angle++;
+			} while (posNext.r < p.r && angle < boom1.getMaxAngle());
+		}
+
+		if (pos.th != p.th)
+			turret.slow(p.th);
 	}
-}
-
-int RobotArmState::getRadius()
-{
-	DEBUG2(F(": boom1 radius: "), boom1.getRadius());
-	DEBUG2(F(": boom2 radius: "), boom2.getRadius());
-	DEBUG2(F(": claw radius:  "), claw.getRadius());
-	return boom1.getRadius() + boom2.getRadius() + claw.getRadius();
-}
-
-int RobotArmState::getHeight()
-{
-	DEBUG2(F(": boom1 height: "), boom1.getHeight());
-	DEBUG2(F(": boom2 height: "), boom2.getHeight());
-	DEBUG2(F(": claw height:  "), claw.getHeight());
-	return boom1.getHeight() + boom2.getHeight() + claw.getHeight();
-}
-
-int RobotArmState::getTheta()
-{
-	return turret.getAngle();
-}
-
-RobotArmState::Position RobotArmState::getPosition()
-{
-	this->pos.set(getHeight(), getRadius(), getTheta());
-	return pos;
-}
-
-void RobotArmState::goToPosition(Position p)
-{
-	verifyPosition(p);
 }
 
 void RobotArmState::goToPosition(int h, int r, int th)
 {
-	goToPosition(Position({ h, r, th }));
+	PositionVector posTarget = { h, r, th };
+	verifyPosition(posTarget);
+	goToPosition(posTarget);
+}
+
+void RobotArmState::constrainedMove(RobotArmState::Direction dir, int value)
+{
+	//unsigned long timeout;
+	PositionVector posTarget(0, 0, 0);
+
+	switch (dir)
+	{
+	case DIR::Vertical:
+		posTarget.add(pos.h + value, pos.r, pos.th);
+		verifyPosition(posTarget);
+		//timeout = millis() + CONSTRAINED_MOVE_TIMOUT_MS;
+		while (!pos.equals(posTarget)/* && millis() < timetout */)
+			goToPosition(pos.h + ((value < 0) ? -1 : 1), pos.r, pos.th);
+		break;
+	case DIR::Radial:
+		posTarget.add(pos.h, pos.r + value, pos.th);
+		//timeout = millis() + CONSTRAINED_MOVE_TIMEOUT_MS;
+		while (!pos.equals(posTarget)/* && millis() < timeout */)
+			goToPosition(pos.h, pos.r + ((value < 0) ? -1 : 1), pos.th);
+		break;
+	default:
+		DEBUG1("constrainedMove ERROR: No switch-case for given RAS::Direction!");
+		break;
+	}
 }
 
 bool RobotArmState::isServoPowerOn()
@@ -188,49 +185,47 @@ void RobotArmState::servoPowerOff()
 
 void RobotArmState::sweep()
 {
-	int initialAngles[4] = 
-		{ boom1.read(), boom2.read(), turret.read(), claw.read() };
-	
+	int initialAngles[4];
 	for (uint8_t i = 0; i < 4; i++)
-		memberList[i]->smooth(memberList[i]->getSafeServoAngle());
+		initialAngles[i] = memberList[i]->getAngle();
 
 	for (uint8_t i = 0; i < 4; i++)
 		memberList[i]->sweep();
 
 	for (uint8_t i = 0; i < 4; i++)
-		memberList[i]->smooth(initialAngles[i]);
+		memberList[i]->slow(initialAngles[i]);
 }
 
 void RobotArmState::attachSafe()
 {
 	for (uint8_t i = 0; i < 4; i++)
-	{
-		if (!memberList[i]->attached())
-		{
-			memberList[i]->write(memberList[i]->getSafeServoAngle());
+		memberList[i]->safe();
+
+	for (uint8_t i = 0; i < 4; i++)
+		if (!memberList[i]->getServo()->attached())
 			memberList[i]->attach();
-		}
-		else
-			memberList[i]->smooth(memberList[i]->getSafeServoAngle());
-	}
 }
 
-void RobotArmState::verifyPosition(Position& position)
+PositionVector * RobotArmState::getPositionVector()
 {
-	//
+	return &pos;
 }
 
-RobotArmState::Position RobotArmState::memberAnglesToPosition(PositionAngles pAngles)
+bool RobotArmState::verifyPosition(PositionVector& p)	// needs work
 {
-	//
+	if (p.r > posMaxRadius.r 
+		|| p.r < posMinRadius.r
+		|| p.h > posMaxHeight.h
+		|| p.h < posMinHeight.h)
+		return false;
+	return true;
 }
 
-RobotArmState::Position RobotArmState::memberAnglesToPosition(int b1, int b2, int turret)
+PositionVector RobotArmState::memberAnglesToPosition(int b1, int b2, int th)
 {
-	//
-}
-
-RobotArmState::PositionAngles RobotArmState::positionToMemberAngles(Position p)
-{
-	//
+	return { boom1.getPositionVector()->getHeight(b1)
+		+ boom2.getPositionVector()->getHeight(b2)
+		, boom1.getPositionVector()->getRadius(b1)
+		+ boom2.getPositionVector()->getRadius(b2)
+		, th };
 }

@@ -57,7 +57,7 @@ bool FatFile::addDirCluster() {
     goto fail;
   }
   memset(pc, 0, 512);
-  // zero rest of clusters
+  // zero posRest of clusters
   for (uint8_t i = 1; i < m_vol->blocksPerCluster(); i++) {
     if (!m_vol->writeBlock(block + i, pc->data)) {
       DBG_FAIL_MACRO;
