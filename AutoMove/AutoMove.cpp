@@ -33,21 +33,33 @@
 
 // Servo stuff.
 #define CLAW_INCLINE 0
-#define CLAW_LENGTH_MIN 40L
-#define CLAW_LENGTH_ADJ 30L
+#define CLAW_LENGTH_MIN 120L		// 87mm + 33mm = 120mm
+#define CLAW_LENGTH_ADJ 32L			// swingarm length [mm]
 #define CLAW_ANGLE_SCALE 1000L
-#define CLAW_ANGLE_OFFSET 0L
+#define CLAW_ANGLE_OFFSET -20L
+#define CLAW_ANGLE_MAX 110
+#define CLAW_ANGLE_MIN 40
+#define CLAW_ANGLE_SAFE 50
 
-#define BOOM1_LENGTH 135L
+#define BOOM1_LENGTH 140L
 #define BOOM1_ANGLE_SCALE -1000L
-#define BOOM1_ANGLE_OFFSET 225L		// 135 + 90
+#define BOOM1_ANGLE_OFFSET 220L		// 130 + 90
+#define BOOM1_ANGLE_MAX 180
+#define BOOM1_ANGLE_MIN 86
+#define BOOM1_ANGLE_SAFE 90
 
-#define BOOM2_LENGTH 142L
+#define BOOM2_LENGTH 145L
 #define BOOM2_ANGLE_SCALE 1000L
 #define BOOM2_ANGLE_OFFSET -125L
+#define BOOM2_ANGLE_MAX 150
+#define BOOM2_ANGLE_MIN 20
+#define BOOM2_ANGLE_SAFE 95
 
-#define TURRET_ANGLE_SCALE 500L
+#define TURRET_ANGLE_SCALE 490L		// 24:49 gear ratio
 #define TURRET_ANGLE_OFFSET 0L
+#define TURRET_ANGLE_MIN 0
+#define TURRET_ANGLE_MAX 180
+#define TURRET_ANGLE_SAFE 10
 
 #define PAIR_BOOM2MINS_COUNT 10
 
@@ -111,16 +123,16 @@ void setup()
 
 	// Servo stuff.
 	memberBoom1.setAngleConstants(BOOM1_ANGLE_SCALE, BOOM1_ANGLE_OFFSET);
-	memberBoom1.setLimits(0, 180, 90);
+	memberBoom1.setLimits(BOOM1_ANGLE_MIN, BOOM1_ANGLE_MAX, BOOM1_ANGLE_SAFE);
 
 	memberBoom2.setAngleConstants(BOOM2_ANGLE_SCALE, BOOM2_ANGLE_OFFSET);
-	memberBoom2.setLimits(0, 180, 90);
+	memberBoom2.setLimits(BOOM2_ANGLE_MIN, BOOM2_ANGLE_MAX, BOOM2_ANGLE_SAFE);
 
 	memberClaw.setAngleConstants(CLAW_ANGLE_SCALE, CLAW_ANGLE_OFFSET);
-	memberClaw.setLimits(0, 180, 90);
+	memberClaw.setLimits(CLAW_ANGLE_MIN, CLAW_ANGLE_MAX, CLAW_ANGLE_SAFE);
 
 	memberTurret.setAngleConstants(TURRET_ANGLE_SCALE, TURRET_ANGLE_OFFSET);
-	memberTurret.setLimits(0, 180, 90);
+	memberTurret.setLimits(TURRET_ANGLE_MIN, TURRET_ANGLE_MAX, TURRET_ANGLE_SAFE);
 
 	state.init();
 
