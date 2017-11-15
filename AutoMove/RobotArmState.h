@@ -15,6 +15,8 @@
 #define CLASS_MAP_INTERP_PAIRS_MAX_COUNT 10
 #define BOOM2_MIN_PAIR_ARRAY_COUNT 10
 
+void printPosition(PositionVector& pos);
+
 struct Pair { int key, val; };
 const static Pair nullPair = Pair{ INT_MAX, INT_MAX };
 
@@ -178,10 +180,12 @@ public:
 		Pair pairArray[BOOM2_MIN_PAIR_ARRAY_COUNT]
 	);
 
+	void init();
+
 	//int getRadius();	// endeffector working radius
 	//int getHeight();	// endeffector working height
 	//int getTheta();		// turret angle
-	PositionVector * getPositionVector();
+	EndEffectorPositionVector * getPositionVector();
 
 	PositionVector memberAnglesToPosition(int b1, int b2, int turret);
 
@@ -200,8 +204,7 @@ public:
 	bool verifyPosition(PositionVector& p);
 
 private:
-	// kinematics
-
+	void determineExtents();
 
 	EndEffectorPositionVector pos;
 	PositionVector posCenterSonar, posCenter, posRest;

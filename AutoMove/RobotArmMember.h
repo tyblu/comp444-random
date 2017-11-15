@@ -27,21 +27,19 @@ public:
 	void sweep();			// sweep angle range, current->min->max->current
 	void safe();			// go to safeAngle
 
-	void setLimits(int minAngle, int maxAngle, int safeAngle,
-		bool areServoAngles = false);
+	void setLimits(int minAngle, int maxAngle, int safeAngle);	// servo angles
 	void setAngleConstants(long angleScale1000, long angleOffset);
 
 	PositionVector* getPositionVector();
 	Servo* getServo();
-	int getAngle();
+	int getPhysicalAngle();
 	int getMinAngle();
 	int getMaxAngle();
-	bool isValidAngle(int angle);
+
+	int toPhysicalAngle(int servoAngle);
+	int toServoAngle(int physicalAngle);
 
 protected:
-	int servoAngleToTrueAngle(int angle);
-	int trueAngleToServoAngle(int angle);
-
 	Servo servo;
 	PositionVector& pos;
 	long angleOffset, angleScale1000;	// y=ax+b from servo to true angle
@@ -53,6 +51,8 @@ class PositionVector
 {
 public:
 	PositionVector(int h, int r, int th);
+
+	void set(int height, int radius, int theta);
 
 	virtual void update(RobotArmMember& member);
 
@@ -67,12 +67,14 @@ public:
 	void add(int h, int r, int th);
 	void add(PositionVector& other);
 
+	int delta(PositionVector& other);
+
 	static PositionVector vectorSum(PositionVector * others[], int count);
 
 	int h, r, th;
 
 protected:
-	int angle;
+	int physicalAngle;
 };
 
 class ClawPositionVector : public PositionVector

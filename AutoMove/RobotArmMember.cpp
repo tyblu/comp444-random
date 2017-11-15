@@ -30,26 +30,11 @@ RobotArmMember::RobotArmMember(int pwmPin, PositionVector& pos)
 	, servo()
 {}
 
-void RobotArmMember::setLimits(int minAngle, int maxAngle, int safeAngle,
-	bool areServoAngles)
+void RobotArmMember::setLimits(int minAngle, int maxAngle, int safeAngle)
 {
-	if (areServoAngles)
-	{
-		this->minAngle = servoAngleToTrueAngle(minAngle);
-		this->maxAngle = servoAngleToTrueAngle(maxAngle);
-		this->safeAngle = servoAngleToTrueAngle(safeAngle);
-	}
-	else
-	{
-		this->minAngle = minAngle;
-		this->maxAngle = maxAngle;
-		this->safeAngle = safeAngle;
-	}
-
-	// servoAngleToTrueAngle may have flipped angle direction, fix it
-	int tmpAngle = max(this->minAngle, this->maxAngle);
-	this->minAngle = min(this->minAngle, this->maxAngle);
-	this->maxAngle = tmpAngle;
+	this->minAngle = minAngle;
+	this->maxAngle = maxAngle;
+	this->safeAngle = safeAngle;
 }
 
 void RobotArmMember::setAngleConstants(long angleScale1000, long angleOffset)
@@ -61,9 +46,8 @@ void RobotArmMember::setAngleConstants(long angleScale1000, long angleOffset)
 void RobotArmMember::slow(int angle)
 {
 	angle = constrain(angle, minAngle, maxAngle);
-	int targetServoAngle = trueAngleToServoAngle(angle);
 	int currentServoAngle = servo.read();
-	int delta = targetServoAngle - currentServoAngle;
+	int delta = angle - currentServoAngle;
 
 	unsigned long writeTimeout;
 	while (delta != 0)
@@ -78,8 +62,7 @@ void RobotArmMember::slow(int angle)
 
 		this->servo.write(currentServoAngle);
 		//this->pos.update();	// should update() here if concurrent code
-		delta = targetServoAngle - currentServoAngle;
-
+		delta = angle - currentServoAngle;
 	}
 
 	this->pos.update(*this);
@@ -88,7 +71,7 @@ void RobotArmMember::slow(int angle)
 void RobotArmMember::fast(int angle)
 {
 	angle = constrain(angle, minAngle, maxAngle);
-	this->servo.write(trueAngleToServoAngle(angle));
+	this->servo.write(angle);
 	this->pos.update(*this);
 }
 
@@ -100,9 +83,9 @@ void RobotArmMember::safe()
 		this->slow(safeAngle);
 }
 
-int RobotArmMember::getAngle()
+int RobotArmMember::getPhysicalAngle()
 {
-	return servoAngleToTrueAngle(servo.read());
+	return toPhysicalAngle(servo.read());
 }
 
 int RobotArmMember::getMinAngle()
@@ -115,11 +98,6 @@ int RobotArmMember::getMaxAngle()
 	return this->maxAngle;
 }
 
-bool RobotArmMember::isValidAngle(int angle)
-{
-	
-}
-
 void RobotArmMember::attach()
 {
 	servo.attach(this->pwmPin);
@@ -128,28 +106,28 @@ void RobotArmMember::attach()
 
 void RobotArmMember::sweep()
 {
-	int initialAngle = getAngle();
+	int initialAngle = servo.read();
 	slow(minAngle);
 	slow(maxAngle);
 	slow(initialAngle);
 }
 
-int RobotArmMember::servoAngleToTrueAngle(int angle)
+int RobotArmMember::toPhysicalAngle(int servoAngle)
 {
-	long angleL = (long)angle;
-	angleL *= this->angleScale1000;
-	angleL = (angleL + 500L) / 1000L;	// int division with rounding to nearest
-	angleL += this->angleOffset;
-	return (int)angleL;
+	long servoAngleL = (long)servoAngle;
+	servoAngleL *= this->angleScale1000;
+	servoAngleL = (servoAngleL + 500L) / 1000L;	// int division with rounding to nearest
+	servoAngleL += this->angleOffset;
+	return (int)servoAngleL;
 }
 
-int RobotArmMember::trueAngleToServoAngle(int angle)
+int RobotArmMember::toServoAngle(int physicalAngle)
 {
-	long angleL = (long)angle;
-	angleL -= this->angleOffset;
-	angleL = (angleL * 1000L) - 500L;
-	angleL = (angleL + this->angleScale1000 / 2) / this->angleScale1000;
-	return (int)angleL;
+	long servoAngleL = (long)physicalAngle;
+	servoAngleL -= this->angleOffset;
+	servoAngleL = (servoAngleL * 1000L) - 500L;
+	servoAngleL = (servoAngleL + abs(this->angleScale1000) / 2) / this->angleScale1000;
+	return (int)servoAngleL;
 }
 
 PositionVector* RobotArmMember::getPositionVector()
@@ -167,8 +145,15 @@ Servo* RobotArmMember::getServo()
 /* -------------------------- PositionVector -------------------------- */
 
 PositionVector::PositionVector(int h, int r, int th) 
-	: h(h), r(r), th(th), angle(0)
+	: h(h), r(r), th(th), physicalAngle(0)
 {}
+
+void PositionVector::set(int height, int radius, int theta)
+{
+	this->h = height;
+	this->r = radius;
+	this->th = th;
+}
 
 void PositionVector::update(RobotArmMember & member) {}	// do nothing
 
@@ -225,6 +210,13 @@ void PositionVector::add(PositionVector& other)
 	this->th += other.th;
 }
 
+int PositionVector::delta(PositionVector &other)
+{
+	return abs(this->h - other.h) 
+		+ abs(this->r - other.r) 
+		+ abs(this->th - other.th);
+}
+
 PositionVector PositionVector::vectorSum(PositionVector * others[], int count)
 {
 	PositionVector result = { 0, 0, 0 };
@@ -245,14 +237,14 @@ ClawPositionVector::ClawPositionVector(long lOffset, long lScale, int incline)
 
 void ClawPositionVector::update(RobotArmMember& member)
 {
-	this->angle = member.getAngle();
-	this->r = getRadius(angle);
-	this->h = getHeight(angle);
+	this->physicalAngle = member.getPhysicalAngle();
+	this->r = getRadius(physicalAngle);
+	this->h = getHeight(physicalAngle);
 }
 
 int ClawPositionVector::getHeight()
 {
-	return getHeight(this->angle);
+	return getHeight(this->physicalAngle);
 }
 
 int ClawPositionVector::getHeight(int angle)
@@ -265,7 +257,7 @@ int ClawPositionVector::getHeight(int angle)
 
 int ClawPositionVector::getRadius()
 {
-	return getRadius(this->angle);
+	return getRadius(this->physicalAngle);
 }
 
 int ClawPositionVector::getRadius(int angle)
@@ -282,6 +274,9 @@ long ClawPositionVector::getLength(int angle)	// private
 	lengthL *= IntegerGeometry::sin1000(angle);
 	lengthL /= 1000L;
 	lengthL += lengthOffset;
+
+	DEBUG2(F("Claw length = "), lengthL);
+
 	return lengthL;
 }
 
@@ -295,7 +290,7 @@ TurretPositionVector::TurretPositionVector()
 
 void TurretPositionVector::update(RobotArmMember& member)
 { 
-	this->th = member.getAngle(); 
+	this->th = member.getPhysicalAngle();
 }
 
 int TurretPositionVector::getHeight() { return 0; }
@@ -314,33 +309,33 @@ BoomPositionVector::BoomPositionVector(long length)
 
 void BoomPositionVector::update(RobotArmMember& member)
 {
-	this->angle = member.getAngle();
-	this->h = getHeight(angle);
-	this->r = getRadius(angle);
+	this->physicalAngle = member.getPhysicalAngle();
+	this->h = getHeight(physicalAngle);
+	this->r = getRadius(physicalAngle);
 }
 
 int BoomPositionVector::getHeight()
 {
-	return getHeight(this->angle);
+	return getHeight(this->physicalAngle);
 }
 
 int BoomPositionVector::getHeight(int angle)
 {
 	long heightL = this->length;
-	heightL *= IntegerGeometry::sin1000(this->angle);
+	heightL *= IntegerGeometry::sin1000(this->physicalAngle);
 	heightL /= 1000L;
 	return (int)heightL;
 }
 
 int BoomPositionVector::getRadius()
 {
-	return getRadius(this->angle);
+	return getRadius(this->physicalAngle);
 }
 
 int BoomPositionVector::getRadius(int angle)
 {
 	long radiusL = this->length;
-	radiusL *= IntegerGeometry::cos1000(this->angle);
+	radiusL *= IntegerGeometry::cos1000(this->physicalAngle);
 	radiusL /= 1000L;
 	return (int)radiusL;
 }
@@ -366,7 +361,7 @@ EndEffectorPositionVector::EndEffectorPositionVector(
 void EndEffectorPositionVector::update()
 {
 	this->h = pBoom1.h + pBoom2.h + pClaw.h;
-	this->h = pBoom1.r + pBoom2.r + pClaw.r;
+	this->r = pBoom1.r + pBoom2.r + pClaw.r;
 	this->th = pTurret.th;
 }
 

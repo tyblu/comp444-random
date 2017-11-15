@@ -97,6 +97,7 @@ SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
 SdFatEX sd;
 SdFile file;
 TopoScan topoScan(state, sonar);
+bool sdCardIsWorking;
 
 // Force sensor stuff.
 ForceSensor sensorL(FORCE_SENSOR_ANALOG_A_PIN, FORCE_SENSORS_POWER_PIN, 10);
@@ -105,50 +106,70 @@ ForceSensor sensorR(FORCE_SENSOR_ANALOG_B_PIN, FORCE_SENSORS_POWER_PIN, 10);
 void setup()
 {
 	Serial.begin(9600);
-	Serial.println(__FILE__ " compiled " __DATE__ " at " __TIME__);
+	Serial.println("AutoMove.cpp compiled " __DATE__ " at " __TIME__);
 	Serial.println();
 
 	// Servo stuff.
 	memberBoom1.setAngleConstants(BOOM1_ANGLE_SCALE, BOOM1_ANGLE_OFFSET);
+	memberBoom1.setLimits(0, 180, 90);
+
 	memberBoom2.setAngleConstants(BOOM2_ANGLE_SCALE, BOOM2_ANGLE_OFFSET);
+	memberBoom2.setLimits(0, 180, 90);
+
+	memberClaw.setAngleConstants(CLAW_ANGLE_SCALE, CLAW_ANGLE_OFFSET);
+	memberClaw.setLimits(0, 180, 90);
+
+	memberTurret.setAngleConstants(TURRET_ANGLE_SCALE, TURRET_ANGLE_OFFSET);
+	memberTurret.setLimits(0, 180, 90);
+
+	state.init();
+
+	delay(1000);
+
 	state.attachSafe();
 	state.servoPowerOn();
-	state.sweep();
-	DEBUG1(F("Finished powering and wiggling servos."));
+	//state.sweep();
+	DEBUG1(F("Servos powered on."));
 
 	// SD Card stuff
 	/* The following should probably be moved to a class. AutoMoveSD? */
 	DEBUG1(F("Starting SPI SD card stuff."));
 	/* Initialize at the highest speed supported by the board that is
 	// not over 50 MHz. Try a lower speed if SPI errors occur. */
-	DEBUG3(!sd.begin(SD_CS_PIN, SD_SCK_MHZ(50)), F("begin failed."), F("begin success."));
+	sdCardIsWorking = sd.begin(SD_CS_PIN, SD_SCK_MHZ(50));
+	DEBUG3(!sdCardIsWorking, F("begin failed."), F("begin success."));
 #ifndef AutoMove_DEBUG_MODE
-	if (!sd.begin(SD_CS_PIN, SD_SCK_MHZ(50))
+	if (!sdCardIsWorking)
 		sd.initErrorHalt();
 #endif
 
-	char folderDir[] = "/TopoMaps";
-	if (!sd.exists(folderDir))
+	if (sdCardIsWorking)
 	{
-		DEBUG3(sd.mkdir(folderDir), F("Create \"TopoMaps\" succeeded."), F("Create \"TopoMaps\" failed."));
+		char folderDir[] = "/TopoMaps";
+		if (!sd.exists(folderDir))
+		{
+			DEBUG3(sd.mkdir(folderDir), F("Create \"TopoMaps\" succeeded."), F("Create \"TopoMaps\" failed."));
 #ifndef AutoMove_DEBUG_MODE
-		sd.mkdir(folderName);
+			sd.mkdir(folderName);
 #endif
-	}
+		}
 
-	char filename[13];
-	getUniqueFileNameIndex(filename, sd, folderDir, "sonar", "txt");
-	DEBUG2(F("Unique file name: "), filename);
+		char filename[13];
+		getUniqueFileNameIndex(filename, sd, folderDir, "sonar", "txt");
+		DEBUG2(F("Unique file name: "), filename);
 
 #ifdef AutoMove_DEBUG_MODE
-	DEBUG3(!sd.chdir(folderDir), F("chdir to \"TopoMaps\" failed."), F("chdir success."));
-	DEBUG3(!file.open(filename, O_CREAT | O_WRITE), F("Open failed."), F("Open success."));
+		DEBUG3(!sd.chdir(folderDir), F("chdir to \"TopoMaps\" failed."), F("chdir success."));
+		DEBUG3(!file.open(filename, O_CREAT | O_WRITE), F("Open failed."), F("Open success."));
 #else
-	sd.chdir(folderDir);
-	file.open(filename, O_CREAT);
+		sd.chdir(folderDir);
+		file.open(filename, O_CREAT);
 #endif
-	
-	topoScan.logSonarDataHeaderEverything(file);
+
+		topoScan.logSonarDataHeaderEverything(file);
+	}
+	else
+		Serial.println(F("Skipping SD card stuff."));
 
 	// Force sensor stuff.
 	DEBUG2(F("LHS sensor reading: "), sensorL.read());
@@ -164,26 +185,26 @@ void loop()
 	Serial.println();
 	P("Select member: [1] boom1  : ");
 	Serial.print(memberBoom1.getServo()->read());
-	P(" (");
-	Serial.print(memberBoom1.getAngle());
+	P(" (phys ");
+	Serial.print(memberBoom1.getPhysicalAngle());
 	PLN(")");
 
 	P(".              [2] boom2  : ");
 	Serial.print(memberBoom2.getServo()->read());
-	P(" (");
-	Serial.print(memberBoom2.getAngle());
+	P(" (phys ");
+	Serial.print(memberBoom2.getPhysicalAngle());
 	PLN(")");
 
 	P(".              [3] turret : ");
 	Serial.print(memberTurret.getServo()->read());
-	P(" (");
-	Serial.print(memberTurret.getAngle());
+	P(" (phys ");
+	Serial.print(memberTurret.getPhysicalAngle());
 	PLN(")");
 
-	P(".              [3]   claw : ");
+	P(".              [4]   claw : ");
 	Serial.print(memberClaw.getServo()->read());
-	P(" (");
-	Serial.print(memberClaw.getAngle());
+	P(" (phys ");
+	Serial.print(memberClaw.getPhysicalAngle());
 	PLN(")");
 	
 	uint32_t timeout;
@@ -243,27 +264,28 @@ void loop()
 	Serial.print(inputAngle);
 	P(" degrees entered. ");
 
-	//member->write(inputAngle);
-	member->slow(inputAngle);
+	member->getServo()->write(inputAngle);
+	//member->slow(inputAngle);
 
 	Serial.print(member->getServo()->read());
 	PLN(" degrees written.");
 	
-	P("Sonar measurement: ");
-	Serial.print(sonar.getMeasurement());
+	PLN2("Sonar measurement: ", sonar.getMeasurement());
+
+	state.getPositionVector()->updateAll();
 
 	PLN2("boom1 height = ", memberBoom1.getPositionVector()->getHeight());
 	PLN2("boom2 height = ", memberBoom2.getPositionVector()->getHeight());
 	PLN2("turret height= ", memberTurret.getPositionVector()->getHeight());
-	PLN2(" claw height = ", memberClaw.getPositionVector()->getHeight());
-	PLN2(".     Height = ", state.getPositionVector()->getHeight());
+	PLN2(".claw height = ", memberClaw.getPositionVector()->getHeight());
+	PLN2(".     HEIGHT = ", state.getPositionVector()->getHeight());
 
 	PLN2("boom1 radius = ", memberBoom1.getPositionVector()->getRadius());
 	PLN2("boom2 radius = ", memberBoom2.getPositionVector()->getRadius());
-	PLN2(" claw radius = ", memberClaw.getPositionVector()->getRadius());
-	PLN2(".     Radius = ", state.getPositionVector()->getRadius());
+	PLN2(".claw radius = ", memberClaw.getPositionVector()->getRadius());
+	PLN2(".     RADIUS = ", state.getPositionVector()->getRadius());
 
-	PLN2(".     Theta  = ", state.getPositionVector()->getTheta());
+	PLN2(".     THETA  = ", state.getPositionVector()->getTheta());
 }
 #endif // SERIAL_CONTROL_MODE
 
@@ -282,7 +304,7 @@ void loop()
 	DEBUG2(F("Height zeroed to h="), heightZero);
 
 	/* The following should probably be moved to TopoScan. */
-	for (uint8_t rad = memberBoom1.getMinAngle(); rad < memberBoom1.getMaxAngle(); rad += 5)
+	for (uint8_t radius = 0; rad < memberBoom1.getMaxAngle(); rad += 5)
 	{
 		//memberBoom1.smooth(rad);
 		//memberTurret.smooth(90);

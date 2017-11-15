@@ -41,7 +41,7 @@ void TopoScan::logSonarDataEverything(SdFile &file,
 	{
 		file.print(arr[i].getServo()->read());
 		file.write(',');
-		file.print(arr[i].getAngle());
+		file.print(arr[i].getPhysicalAngle());
 		file.write(',');
 		file.print(arr[i].getPositionVector()->getHeight());
 		file.write(',');
