@@ -35,6 +35,10 @@ void RobotArmMember::setLimits(int minAngle, int maxAngle, int safeAngle)
 	this->minAngle = minAngle;
 	this->maxAngle = maxAngle;
 	this->safeAngle = safeAngle;
+
+	DEBUG2(F("minAngle set to "), this->minAngle);
+	DEBUG2(F("maxAngle set to "), this->maxAngle);
+	DEBUG2(F("safeAngle set to "), this->safeAngle);
 }
 
 void RobotArmMember::setAngleConstants(long angleScale1000, long angleOffset)
@@ -322,7 +326,7 @@ int BoomPositionVector::getHeight()
 int BoomPositionVector::getHeight(int angle)
 {
 	long heightL = this->length;
-	heightL *= IntegerGeometry::sin1000(this->physicalAngle);
+	heightL *= IntegerGeometry::sin1000(angle);
 	heightL /= 1000L;
 	return (int)heightL;
 }
@@ -335,7 +339,7 @@ int BoomPositionVector::getRadius()
 int BoomPositionVector::getRadius(int angle)
 {
 	long radiusL = this->length;
-	radiusL *= IntegerGeometry::cos1000(this->physicalAngle);
+	radiusL *= IntegerGeometry::cos1000(angle);
 	radiusL /= 1000L;
 	return (int)radiusL;
 }

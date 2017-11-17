@@ -257,10 +257,13 @@ void RobotArmState::determineExtents()
 	int radius, height;
 	for (int a1 = boom1.getMinAngle(); a1 < boom1.getMaxAngle(); a1++)
 	{
+		Serial.println("INSIDE FIRST FOR LOOP"); delay(2);
 		for (int a2 = boom2.getMinAngle(); a2 < boom2.getMaxAngle(); a2++)
 		{
+			Serial.println("INSIDE SECOND FOR LOOP"); delay(2);
 			for (int a3 = claw.getMinAngle(); a3 < claw.getMaxAngle(); a3++)
 			{
+				Serial.println("INSIDE THIRD FOR LOOP"); delay(2);
 				radius = boom1.getPositionVector()->getRadius(boom1.toPhysicalAngle(a1))
 					+ boom2.getPositionVector()->getRadius(boom2.toPhysicalAngle(a2))
 					+ claw.getPositionVector()->getRadius(claw.toPhysicalAngle(a3));
@@ -268,6 +271,17 @@ void RobotArmState::determineExtents()
 				height = boom1.getPositionVector()->getHeight(boom1.toPhysicalAngle(a1))
 					+ boom2.getPositionVector()->getHeight(boom2.toPhysicalAngle(a2))
 					+ claw.getPositionVector()->getHeight(claw.toPhysicalAngle(a3));
+
+				DEBUG20(F("radius: "), radius);
+				DEBUG00(Serial.print(F(", height: ")));
+				DEBUG00(Serial.print(height));
+				DEBUG00(Serial.print(F(" at [")));
+				DEBUG00(Serial.print(a1));
+				DEBUG00(Serial.write(','));
+				DEBUG00(Serial.print(a2));
+				DEBUG00(Serial.write(','));
+				DEBUG00(Serial.print(a3));
+				DEBUG00(Serial.println("]"));
 
 				if (radius > maxRadius)
 				{

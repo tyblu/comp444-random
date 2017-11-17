@@ -1,11 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27004.2005
+VisualStudioVersion = 15.0.27004.2009
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AutoMove", "AutoMove.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SdFat", "..\libraries\SdFat\SdFat.vcxitems", "{4F8E7AFB-612E-4561-A310-EEA2CBC3F456}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "temp_ctrl", "..\temp_ctrl\temp_ctrl.vcxproj", "{354CDED1-4C92-4B44-A8D0-133948D19E70}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SoftPWM", "..\libraries\SoftPWM\SoftPWM.vcxitems", "{0C460E27-5FF2-428F-BD46-23842839BD64}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,6 +21,10 @@ Global
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|x86.Build.0 = Debug|Win32
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.ActiveCfg = Release|Win32
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|x86.Build.0 = Release|Win32
+		{354CDED1-4C92-4B44-A8D0-133948D19E70}.Debug|x86.ActiveCfg = Debug|Win32
+		{354CDED1-4C92-4B44-A8D0-133948D19E70}.Debug|x86.Build.0 = Debug|Win32
+		{354CDED1-4C92-4B44-A8D0-133948D19E70}.Release|x86.ActiveCfg = Release|Win32
+		{354CDED1-4C92-4B44-A8D0-133948D19E70}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

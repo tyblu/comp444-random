@@ -135,9 +135,6 @@ void setup()
 	memberTurret.setLimits(TURRET_ANGLE_MIN, TURRET_ANGLE_MAX, TURRET_ANGLE_SAFE);
 
 	state.init();
-
-	delay(1000);
-
 	state.attachSafe();
 	state.servoPowerOn();
 	//state.sweep();
@@ -276,8 +273,8 @@ void loop()
 	Serial.print(inputAngle);
 	P(" degrees entered. ");
 
-	member->getServo()->write(inputAngle);
-	//member->slow(inputAngle);
+	//member->getServo()->write(inputAngle);
+	member->slow(inputAngle);
 
 	Serial.print(member->getServo()->read());
 	PLN(" degrees written.");
