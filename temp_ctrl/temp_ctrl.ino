@@ -22,20 +22,20 @@
 
 #define SAMPLE_DELAY_MS 400L
 #define HEATER_PERIOD_MS 10000L
-#define PID_UPDATE_PERIOD_MS 125L
+#define PID_UPDATE_PERIOD_MS SAMPLE_DELAY_MS + 33L
 
 //#define OPEN_LOOP_MODE
 #define PID_MODE
 
 #	define DUTY_INIT 0.0
 
-#define PGAIN 5
-#define IGAIN 0
+#define PGAIN 0
+#define IGAIN 0.001
 #define DGAIN 0
 #define IMIN 0
 #define IMAX 10000
 
-#define TARGET 23.5 // ~20.5C ambient + 23.5C rise = 44C target
+#define TARGET 23.5 // ~20.5C ambient + 23.5C rise = 44C'ish
 
 #define TEMP_TO_DUTY_SLOPE 0.1
 #define TEMP_TO_DUTY_OFFSET 0.0
