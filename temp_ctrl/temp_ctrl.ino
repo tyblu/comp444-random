@@ -7,10 +7,14 @@
 # define DEBUG0(x) (x)
 # define DEBUG1(x) PRE; Serial.println(x); POST
 # define DEBUG10(x) Serial.print(x); POST
+# define DEBUG2(x,y) PRE; Serial.print(x); Serial.println(y); POST
+# define DEBUG20(x,y) PRE; Serial.print(x); Serial.print(y); POST
 #else
 # define DEBUG0(x)
 # define DEBUG1(x)
 # define DEBUG10(x)
+# define DEBUG2(x,y)
+# define DEBUG20(x,y)
 #endif
 
 #define TEMP_ADC_PIN A3
@@ -19,23 +23,28 @@
 #define SAMPLE_DELAY_MS 1000L
 #define HEATER_PERIOD 10000L
 
-#define SET_POINT_MODE
+#define OPEN_LOOP_MODE
 //#define P_MODE
 //#define PI_MODE
 //#define PD_MODE
 //#define PID_MODE
 
-#ifdef SET_POINT_MODE
-#	define DUTY_INIT 0.0
+#ifdef OPEN_LOOP_MODE
+#	define DUTY_INIT 0.5
 #else
 #	define DUTY_INIT 0.0
 #endif
 
-#define PGAIN 1
+#define PGAIN 1000
 #define IGAIN 0
 #define DGAIN 0
 #define IMIN 0
 #define IMAX 100
+
+#define TARGET 27
+
+#define TEMP_TO_DUTY_SLOPE 0.1
+#define TEMP_TO_DUTY_OFFSET 0.0
 
 #define DRIVE_MAX 100
 #define DRIVE_MIN 10
@@ -87,6 +96,11 @@ float getTemperature()
   for (uint8_t i = 0; i<TEMPERATURE_DATA_POINT_COUNT; i++)
     sum += analogRead(TEMP_ADC_PIN);
 	return ( sum * 0.0048828125 / (float)TEMPERATURE_DATA_POINT_COUNT - 0.5 ) * 100.0 + 5.0;
+}
+
+float tempChangeToDuty(float tempChange)
+{
+  return min(1.0, max(0.0, tempChange * TEMP_TO_DUTY_SLOPE + TEMP_TO_DUTY_OFFSET));
 }
 
 void heaterOn()
@@ -142,22 +156,20 @@ void setup()
 
 	temp = getTemperature();
 	pinMode(HEATER_PIN, OUTPUT);
-	heaterOn();
+	heaterOff();
+
+  tempSetPoint = TARGET;
 
 	pid.init();
-	pidDrive = updatePID(&pid, 0, temp);
-#ifdef DUTY_INIT
+	pidDrive = updatePID(&pid, tempSetPoint - temp, temp);
 	heaterDutyCycle = DUTY_INIT;
-#else
-	heaterDutyCycle = pidDrive / 100;
-#endif
 
 	timeZero = millis();
 	sampleTime = millis();			// sample (etc) immediately
 	heaterPeriodTime = millis();	// start new period immediately
 }
 
-#ifdef SET_POINT_MODE
+#ifdef OPEN_LOOP_MODE
 void loop()
 {
 	sampleTimeLeft = sampleTime - millis();
@@ -188,7 +200,7 @@ void loop()
 
 	delay(100);
 }
-#endif // SET_POINT_MODE
+#endif // OPEN_LOOP_MODE
 
 #ifdef P_MODE
 void loop()
