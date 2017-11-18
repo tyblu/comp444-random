@@ -20,28 +20,26 @@
 #define TEMP_ADC_PIN A3
 #define HEATER_PIN 8
 
-#define SAMPLE_DELAY_MS 1000L
-#define HEATER_PERIOD 10000L
+#define SAMPLE_DELAY_MS 250L
+#define HEATER_PERIOD_MS 10000L
+#define PID_UPDATE_PERIOD_MS 125L
 
-#define OPEN_LOOP_MODE
-//#define P_MODE
+//#define OPEN_LOOP_MODE
+#define P_MODE
+//#define I_MODE
 //#define PI_MODE
 //#define PD_MODE
 //#define PID_MODE
 
-#ifdef OPEN_LOOP_MODE
-#	define DUTY_INIT 0.5
-#else
 #	define DUTY_INIT 0.0
-#endif
 
-#define PGAIN 1000
+#define PGAIN 0.1
 #define IGAIN 0
 #define DGAIN 0
 #define IMIN 0
 #define IMAX 100
 
-#define TARGET 27
+#define TARGET 23.5 // 21.5C ambient + 23.5C rise = 45C target
 
 #define TEMP_TO_DUTY_SLOPE 0.1
 #define TEMP_TO_DUTY_OFFSET 0.0
@@ -69,6 +67,14 @@ struct SPid
 	}
 };
 
+float temp, tempRiseTarget, tempZero;
+float heaterDutyCycle;
+uint32_t timeZero, sampleTime, heaterOnTime, heaterPeriodTime, pidUpdateTime;
+long sampleTimeLeft, heaterOnTimeLeft, heaterPeriodTimeLeft, pidUpdateTimeLeft;
+SPid pid;
+float pidDrive;
+bool heaterIsOn;
+
 float updatePID(SPid * pid, float err, float pos)
 {
 	float pTerm, dTerm, iTerm;
@@ -89,13 +95,35 @@ float updatePID(SPid * pid, float err, float pos)
 	return pTerm + dTerm + iTerm;
 }
 
-#define TEMPERATURE_DATA_POINT_COUNT 10
+#define TEMPERATURE_DATA_POINT_COUNT 100
 float getTemperature()
 {
   uint32_t sum = 0;
   for (uint8_t i = 0; i<TEMPERATURE_DATA_POINT_COUNT; i++)
     sum += analogRead(TEMP_ADC_PIN);
 	return ( sum * 0.0048828125 / (float)TEMPERATURE_DATA_POINT_COUNT - 0.5 ) * 100.0 + 5.0;
+}
+
+#define TEMPZERO_DATA_POINT_COUNT 100
+#define TEMPZERO_DELAY_MS 20
+float getTempZero()
+{
+  float sum = 0;
+  for (uint8_t i = 0; i < TEMPZERO_DATA_POINT_COUNT; i++)
+  {
+    delay(TEMPZERO_DELAY_MS);
+    sum += getTemperature();
+  }
+
+#ifdef DEBUG
+  float result = sum / (float)TEMPZERO_DATA_POINT_COUNT;
+  Serial.print(F("Baseline temperature: "));
+  Serial.print(result);
+  Serial.println(F(" degrees Celsius"));
+  return result;
+#else
+  return sum / (float)TEMPZERO_DATA_POINT_COUNT;
+#endif
 }
 
 float tempChangeToDuty(float tempChange)
@@ -106,28 +134,23 @@ float tempChangeToDuty(float tempChange)
 void heaterOn()
 {
 	digitalWrite(HEATER_PIN, HIGH);
+  heaterIsOn = true;
   DEBUG1(F("Heater turned on."));
 }
 
 void heaterOff()
 {
 	digitalWrite(HEATER_PIN, LOW);
+  heaterIsOn = false;
 }
-
-float temp, tempSetPoint;
-float heaterDutyCycle;
-uint32_t timeZero, sampleTime, heaterOnTime, heaterPeriodTime;
-long sampleTimeLeft, heaterOnTimeLeft, heaterPeriodTimeLeft;
-SPid pid;
-float pidDrive;
 
 const char comma PROGMEM = ',';
 #define printCsv(x) Serial.print(x); Serial.write(comma)
 void printData(SPid * pid)
 {
-	printCsv((millis() - timeZero) / 1000UL);
+	printCsv( (millis() - timeZero) / (float)1000 );
 	printCsv(temp);
-	printCsv(tempSetPoint);
+	printCsv(tempRiseTarget);
 	printCsv(heaterDutyCycle);
 	printCsv(pid->pGain);
 	printCsv(pid->iGain);
@@ -154,14 +177,16 @@ void setup()
 	Serial.println();
 	printDataHeader();
 
+  pinMode(HEATER_PIN, OUTPUT);
+  heaterOff();
+  
+//  tempZero = 20.5;
+  tempZero = getTempZero();
 	temp = getTemperature();
-	pinMode(HEATER_PIN, OUTPUT);
-	heaterOff();
-
-  tempSetPoint = TARGET;
+  tempRiseTarget = TARGET;
 
 	pid.init();
-	pidDrive = updatePID(&pid, tempSetPoint - temp, temp);
+	pidDrive = updatePID(&pid, tempZero + tempRiseTarget - temp, temp);
 	heaterDutyCycle = DUTY_INIT;
 
 	timeZero = millis();
@@ -189,8 +214,8 @@ void loop()
 	if (heaterPeriodTimeLeft < 0)
 	{
 		heaterOn();
-		heaterOnTime = millis() + (uint32_t)(heaterDutyCycle * HEATER_PERIOD);
-		heaterPeriodTime = millis() + HEATER_PERIOD;
+		heaterOnTime = millis() + (uint32_t)(heaterDutyCycle * HEATER_PERIOD_MS);
+		heaterPeriodTime = millis() + HEATER_PERIOD_MS;
     
     DEBUG0(Serial.print(F("heaterOnTime - millis() = ")));
     DEBUG0(Serial.println(heaterOnTime - millis()));
@@ -198,16 +223,83 @@ void loop()
     DEBUG0(Serial.println(heaterPeriodTime - millis()));
 	}
 
-	delay(100);
+	delay(50);
 }
 #endif // OPEN_LOOP_MODE
 
 #ifdef P_MODE
 void loop()
 {
-	//
+  sampleTimeLeft = sampleTime - millis();
+  pidUpdateTimeLeft = pidUpdateTime - millis();
+  heaterOnTimeLeft = heaterOnTime - millis();
+  heaterPeriodTimeLeft = heaterPeriodTime - millis();
+
+  if (sampleTimeLeft < 0)
+  {
+    temp = getTemperature();
+    printData(&pid);
+    sampleTime = millis() + SAMPLE_DELAY_MS;
+  }
+
+  if (heaterOnTimeLeft < 0 && heaterIsOn)
+    heaterOff();
+
+  if (heaterPeriodTimeLeft < 0)
+  {
+    heaterOn();
+    heaterOnTime = millis() + (uint32_t)(heaterDutyCycle * HEATER_PERIOD_MS);
+    heaterPeriodTime = millis() + HEATER_PERIOD_MS;
+  }
+
+  if (pidUpdateTimeLeft < 0)
+  {
+    pidDrive = updatePID(&pid, tempZero + tempRiseTarget - temp, temp - tempZero);
+    heaterDutyCycle = tempChangeToDuty(pidDrive);
+    pidUpdateTime = millis() + PID_UPDATE_PERIOD_MS;
+    
+    DEBUG2(F("pidDrive        = "), pidDrive);
+    DEBUG2(F("heaterDutyCycle = "), heaterDutyCycle);
+  }
 }
 #endif // P_MODE
+
+#ifdef I_MODE
+void loop()
+{
+  sampleTimeLeft = sampleTime - millis();
+  pidUpdateTimeLeft = pidUpdateTime - millis();
+  heaterOnTimeLeft = heaterOnTime - millis();
+  heaterPeriodTimeLeft = heaterPeriodTime - millis();
+
+  if (sampleTimeLeft < 0)
+  {
+    temp = getTemperature();
+    printData(&pid);
+    sampleTime = millis() + SAMPLE_DELAY_MS;
+  }
+
+  if (heaterOnTimeLeft < 0 && heaterIsOn)
+    heaterOff();
+
+  if (heaterPeriodTimeLeft < 0)
+  {
+    heaterOn();
+    heaterOnTime = millis() + (uint32_t)(heaterDutyCycle * HEATER_PERIOD_MS);
+    heaterPeriodTime = millis() + HEATER_PERIOD_MS;
+  }
+
+  if (pidUpdateTimeLeft < 0)
+  {
+    pidDrive = updatePID(&pid, tempZero + tempRiseTarget - temp, temp - tempZero);
+    heaterDutyCycle = tempChangeToDuty(pidDrive);
+    pidUpdateTime = millis() + PID_UPDATE_PERIOD_MS;
+    
+    DEBUG2(F("pidDrive        = "), pidDrive);
+    DEBUG2(F("heaterDutyCycle = "), heaterDutyCycle);
+  }
+}
+#endif // I_MODE
 
 #ifdef PI_MODE
 void loop()
@@ -226,38 +318,6 @@ void loop()
 #ifdef PID_MODE
 void loop()
 {
-	heaterToggleTimeLeft = heaterToggleTime - millis();
-	sampleTimeLeft = sampleTime - millis();
-
-	if (heaterToggleTimeLeft < 0)
-	{
-		heaterToggleCount++;
-		if (heaterDutyCycle * heaterToggleCount > 0.95)
-		{
-			heaterOn();
-			heaterToggleCount = 0;
-		}
-		else
-			heaterOff();
-
-		heaterToggleTime = millis() + HEATER_TOGGLE_DELAY_MS;
-	}
-
-	if (sampleTimeLeft < 0)
-	{
-		temp = getTemperature();
-		drive = updatePID(&pid, tempSetPoint - temp, temp);
-
-		if (drive > DRIVE_MAX)
-			heaterDutyCycle = 1.0;
-		else if (drive > DRIVE_MIN)
-			heaterDutyCycle = drive / 100;
-		else
-			heaterDutyCycle = 0.0;
-
-		sampleTime = millis() + SAMPLE_DELAY_MS;
-
-		// ...
-	}
+  //
 }
 #endif // PID_MODE
