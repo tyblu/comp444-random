@@ -29,10 +29,10 @@
 
 #	define DUTY_INIT 0.0
 
-#define PGAIN 0
-#define IGAIN 0.001
+#define PGAIN 1.1
+#define IGAIN 0.0005
 #define DGAIN 0
-#define IMIN 0
+#define IMIN -10000 // arbitrarily large min and max so they don't have effect, for now
 #define IMAX 10000
 
 #define TARGET 23.5 // ~20.5C ambient + 23.5C rise = 44C'ish
@@ -133,7 +133,7 @@ float updatePID(SPid * pid, float err, float pos)
 	dTerm = pid->dGain * (pid->dState - pos);
 	pid->dState = pos;
 
-	return pTerm + dTerm + iTerm;
+	return pTerm - dTerm + iTerm;
 }
 
 #define TEMPERATURE_DATA_POINT_COUNT 10
