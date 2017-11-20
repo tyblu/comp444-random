@@ -30,8 +30,8 @@
 
 #	define DUTY_INIT 0.0
 
-#define PGAIN 2
-#define IGAIN 0
+#define PGAIN 1.1
+#define IGAIN 0.01
 #define DGAIN 0
 #define IMIN -10000 // arbitrarily large min and max so they don't have effect, for now
 #define IMAX 10000
