@@ -20,17 +20,18 @@
 #define TEMP_ADC_PIN A3
 #define HEATER_PIN 8
 
-#define SAMPLE_DELAY_MS 400L
-#define HEATER_PERIOD_MS 10000L
-#define PID_UPDATE_PERIOD_MS SAMPLE_DELAY_MS + 33L
+#define SAMPLE_DELAY_MS 50L
+#define PRINT_DELAY_MS 1000L
+#define HEATER_PERIOD_MS 5000L
+#define PID_UPDATE_PERIOD_MS 5000L
 
 //#define OPEN_LOOP_MODE
 #define PID_MODE
 
 #	define DUTY_INIT 0.0
 
-#define PGAIN 1.1
-#define IGAIN 0.0005
+#define PGAIN 2
+#define IGAIN 0
 #define DGAIN 0
 #define IMIN -10000 // arbitrarily large min and max so they don't have effect, for now
 #define IMAX 10000
@@ -40,8 +41,8 @@
 #define TEMP_TO_DUTY_SLOPE 0.1
 #define TEMP_TO_DUTY_OFFSET 0.0
 
-#define DRIVE_MAX 100
-#define DRIVE_MIN 10
+//#define DRIVE_MAX 100
+//#define DRIVE_MIN 10
 
 struct SPid
 {
@@ -63,7 +64,7 @@ struct SPid
 	}
 };
 
-#define ROLLING_AVG_DATA_POINTS 200
+#define ROLLING_AVG_DATA_POINTS 100
 #define TEMP_AVERAGING_INITIAL_VALUE (float)21
 class RollingAverage
 {
@@ -110,8 +111,8 @@ private:
 float tempRiseTarget, tempZero;
 RollingAverage tempAvg(TEMP_AVERAGING_INITIAL_VALUE);
 float heaterDutyCycle;
-uint32_t timeZero, sampleTime, heaterOnTime, heaterPeriodTime, pidUpdateTime;
-long sampleTimeLeft, heaterOnTimeLeft, heaterPeriodTimeLeft, pidUpdateTimeLeft;
+uint32_t timeZero, sampleTime, heaterOnTime, heaterPeriodTime, pidUpdateTime, printTime;
+long sampleTimeLeft, heaterOnTimeLeft, heaterPeriodTimeLeft, pidUpdateTimeLeft, printTimeLeft;
 SPid pid;
 float pidDrive;
 bool heaterIsOn;
@@ -150,6 +151,16 @@ float tempChangeToDuty(float tempChange)
   return min(1.0, max(0.0, tempChange * TEMP_TO_DUTY_SLOPE + TEMP_TO_DUTY_OFFSET));
 }
 
+float getErr()
+{
+  return -(tempAvg.getAverage() - tempZero - tempRiseTarget) / tempRiseTarget;
+}
+
+float getPos()
+{
+  return (tempAvg.getAverage() - tempZero) / tempRiseTarget;
+}
+
 void heaterOn()
 {
 	digitalWrite(HEATER_PIN, HIGH);
@@ -161,16 +172,6 @@ void heaterOff()
 {
 	digitalWrite(HEATER_PIN, LOW);
   heaterIsOn = false;
-}
-
-float getErr()
-{
-  return ( tempZero + tempRiseTarget - tempAvg.getAverage() ) / tempRiseTarget;
-}
-
-float getPos()
-{
-  return ( tempAvg.getAverage() - tempZero ) / tempRiseTarget;
 }
 
 const char comma PROGMEM = ',';
@@ -215,11 +216,12 @@ void setup()
   tempRiseTarget = TARGET;
 
 	pid.init();
-	pidDrive = updatePID(&pid, getErr(), getPos());
+	pidDrive = updatePID(&pid,getErr(),getPos());
 	heaterDutyCycle = DUTY_INIT;
 
 	timeZero = millis();
 	sampleTime = millis();			// sample (etc) immediately
+  printTime = millis();
 	heaterPeriodTime = millis();	// start new period immediately
 }
 
@@ -227,15 +229,21 @@ void setup()
 void loop()
 {
 	sampleTimeLeft = sampleTime - millis();
+  printTimeLeft = printTime - millis();
 	heaterOnTimeLeft = heaterOnTime - millis();
 	heaterPeriodTimeLeft = heaterPeriodTime - millis();
 
 	if (sampleTimeLeft < 0)
 	{
 		tempAvg.push(getTemperature());
-		printData(&pid);
 		sampleTime = millis() + SAMPLE_DELAY_MS;
 	}
+
+  if (printTimeLeft < 0)
+  {
+    printData(&pid);
+    printTime = millis() + PRINT_DELAY_MS;
+  }
 
 	if (heaterOnTimeLeft < 0 && heaterIsOn)
 		heaterOff();
@@ -260,6 +268,7 @@ void loop()
 void loop()
 {
   sampleTimeLeft = sampleTime - millis();
+  printTimeLeft = printTime - millis();
   pidUpdateTimeLeft = pidUpdateTime - millis();
   heaterOnTimeLeft = heaterOnTime - millis();
   heaterPeriodTimeLeft = heaterPeriodTime - millis();
@@ -267,8 +276,13 @@ void loop()
   if (sampleTimeLeft < 0)
   {
     tempAvg.push(getTemperature());
-    printData(&pid);
     sampleTime = millis() + SAMPLE_DELAY_MS;
+  }
+
+  if (printTimeLeft < 0)
+  {
+    printData(&pid);
+    printTime = millis() + PRINT_DELAY_MS;
   }
 
   if (heaterOnTimeLeft < 0 && heaterIsOn)
@@ -284,7 +298,8 @@ void loop()
   if (pidUpdateTimeLeft < 0)
   {
     pidDrive = updatePID(&pid, getErr(), getPos());
-    heaterDutyCycle = tempChangeToDuty(pidDrive * tempRiseTarget);
+//    heaterDutyCycle = tempChangeToDuty(pidDrive * tempRiseTarget);
+    heaterDutyCycle = constrain(pidDrive, 0, 1);
     pidUpdateTime = millis() + PID_UPDATE_PERIOD_MS;
     
     DEBUG2(F("pidDrive        = "), pidDrive);
