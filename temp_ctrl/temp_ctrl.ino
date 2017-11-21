@@ -21,18 +21,18 @@
 #define HEATER_PIN 8
 
 #define SAMPLE_DELAY_MS 50L
-#define PRINT_DELAY_MS 1000L
-#define HEATER_PERIOD_MS 5000L
-#define PID_UPDATE_PERIOD_MS 5000L
+#define PRINT_DELAY_MS 3000L
+#define HEATER_PERIOD_MS 1500L
+#define PID_UPDATE_PERIOD_MS 15000L
 
 //#define OPEN_LOOP_MODE
 #define PID_MODE
 
 #	define DUTY_INIT 0.0
 
-#define PGAIN 1.1
-#define IGAIN 0.01
-#define DGAIN 0
+#define PGAIN 1
+#define IGAIN 0
+#define DGAIN 10
 #define IMIN -10000 // arbitrarily large min and max so they don't have effect, for now
 #define IMAX 10000
 
@@ -134,7 +134,7 @@ float updatePID(SPid * pid, float err, float pos)
 	dTerm = pid->dGain * (pid->dState - pos);
 	pid->dState = pos;
 
-	return pTerm - dTerm + iTerm;
+	return pTerm + iTerm + dTerm;
 }
 
 #define TEMPERATURE_DATA_POINT_COUNT 10
