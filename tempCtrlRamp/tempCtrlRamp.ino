@@ -30,9 +30,9 @@
 
 #	define DUTY_INIT 0.0
 
-#define PGAIN 5
-#define IGAIN 0.1
-#define DGAIN 0
+#define PGAIN 2
+#define IGAIN 0.05
+#define DGAIN 2.5
 #define IMIN -10000 // arbitrarily large min and max so they don't have effect, for now
 #define IMAX 10000
 
@@ -228,39 +228,44 @@ void setup()
 #ifdef OPEN_LOOP_MODE
 void loop()
 {
-	sampleTimeLeft = sampleTime - millis();
-  printTimeLeft = printTime - millis();
-	heaterOnTimeLeft = heaterOnTime - millis();
-	heaterPeriodTimeLeft = heaterPeriodTime - millis();
-
-	if (sampleTimeLeft < 0)
-	{
-		tempAvg.push(getTemperature());
-		sampleTime = millis() + SAMPLE_DELAY_MS;
-	}
-
-  if (printTimeLeft < 0)
+  for (heaterDutyCycle = 0; heaterDutyCycle < 1; heaterDutyCycle += 0.1)
   {
-    printData(&pid);
-    printTime = millis() + PRINT_DELAY_MS;
+  	sampleTimeLeft = sampleTime - millis();
+    printTimeLeft = printTime - millis();
+  	heaterOnTimeLeft = heaterOnTime - millis();
+  	heaterPeriodTimeLeft = heaterPeriodTime - millis();
+  
+  	if (sampleTimeLeft < 0)
+  	{
+  		tempAvg.push(getTemperature());
+  		sampleTime = millis() + SAMPLE_DELAY_MS;
+  	}
+  
+    if (printTimeLeft < 0)
+    {
+      printData(&pid);
+      printTime = millis() + PRINT_DELAY_MS;
+    }
+  
+  	if (heaterOnTimeLeft < 0 && heaterIsOn)
+  		heaterOff();
+  
+  	if (heaterPeriodTimeLeft < 0)
+  	{
+  		heaterOn();
+  		heaterOnTime = millis() + (uint32_t)(heaterDutyCycle * HEATER_PERIOD_MS);
+  		heaterPeriodTime = millis() + HEATER_PERIOD_MS;
+      
+      DEBUG0(Serial.print(F("heaterOnTime - millis() = ")));
+      DEBUG0(Serial.println(heaterOnTime - millis()));
+      DEBUG0(Serial.print(F("heaterPeriodTime - ...  = ")));
+      DEBUG0(Serial.println(heaterPeriodTime - millis()));
+  	}
+  
+  	delay(50);
   }
 
-	if (heaterOnTimeLeft < 0 && heaterIsOn)
-		heaterOff();
-
-	if (heaterPeriodTimeLeft < 0)
-	{
-		heaterOn();
-		heaterOnTime = millis() + (uint32_t)(heaterDutyCycle * HEATER_PERIOD_MS);
-		heaterPeriodTime = millis() + HEATER_PERIOD_MS;
-    
-    DEBUG0(Serial.print(F("heaterOnTime - millis() = ")));
-    DEBUG0(Serial.println(heaterOnTime - millis()));
-    DEBUG0(Serial.print(F("heaterPeriodTime - ...  = ")));
-    DEBUG0(Serial.println(heaterPeriodTime - millis()));
-	}
-
-	delay(50);
+  while (1) { // stop }
 }
 #endif // OPEN_LOOP_MODE
 
