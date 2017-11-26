@@ -30,11 +30,11 @@
 
 #	define DUTY_INIT 0.0
 
-#define PGAIN 5
+#define PGAIN 2
 #define IGAIN 0.1
 #define DGAIN 0
-#define IMIN -10000 // arbitrarily large min and max so they don't have effect, for now
-#define IMAX 10000
+#define IMIN -25    // IMIN = iTerm min/IGAIN
+#define IMAX 25     // IMAX = iTerm max/IGAIN
 
 #define TARGET 23.5 // ~20.5C ambient + 23.5C rise = 44C'ish
 
@@ -124,11 +124,8 @@ float updatePID(SPid * pid, float err, float pos)
 	pTerm = pid->pGain * err;
 	
 	pid->iState += err;
-	if (pid->iState > pid->iMax)
-		pid->iState = pid->iMax;
-	if (pid->iState < pid->iMin)
-		pid->iState = pid->iMin;
-
+	if (pid->iState > pid->iMax) { pid->iState = pid->iMax; }
+	if (pid->iState < pid->iMin) { pid->iState = pid->iMin; }
 	iTerm = pid->iGain * pid->iState;
 
 	dTerm = pid->dGain * (pid->dState - pos);
