@@ -33,16 +33,16 @@
 #define PGAIN 2
 #define IGAIN 0.1
 #define DGAIN 0
-#define IMIN -25    // IMIN = iTerm min/IGAIN
-#define IMAX 25     // IMAX = iTerm max/IGAIN
+#define IMIN -10000    // IMIN = iTerm min/IGAIN
+#define IMAX 10000     // IMAX = iTerm max/IGAIN
 
 #define TARGET 23.5 // ~20.5C ambient + 23.5C rise = 44C'ish
 
 #define TEMP_TO_DUTY_SLOPE 0.1
 #define TEMP_TO_DUTY_OFFSET 0.0
 
-//#define DRIVE_MAX 100
-//#define DRIVE_MIN 10
+#define TURNOFF_TIME_MS 720000 // 12 minutes is 720k ms
+#define TURNON_TIME_MS 720000
 
 struct SPid
 {
@@ -57,8 +57,8 @@ struct SPid
 		pGain = PGAIN;
 		iGain = IGAIN;
 		dGain = DGAIN;
+    iMax = IMAX;
 		iMin = IMIN;
-		iMax = IMAX;
 		dState = 0;
 		iState = 0;
 	}
@@ -111,11 +111,15 @@ private:
 float tempRiseTarget, tempZero;
 RollingAverage tempAvg(TEMP_AVERAGING_INITIAL_VALUE);
 float heaterDutyCycle;
-uint32_t timeZero, sampleTime, heaterOnTime, heaterPeriodTime, pidUpdateTime, printTime;
-long sampleTimeLeft, heaterOnTimeLeft, heaterPeriodTimeLeft, pidUpdateTimeLeft, printTimeLeft;
+uint32_t timeZero, sampleTime, heaterOnTime, heaterPeriodTime, pidUpdateTime, printTime, turnOffTime, turnOnTime;
+long sampleTimeLeft, heaterOnTimeLeft, heaterPeriodTimeLeft, pidUpdateTimeLeft, printTimeLeft, turnOffTimeLeft, turnOnTimeLeft;
 SPid pid;
 float pidDrive;
 bool heaterIsOn;
+
+float iStateLim[] = {1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 10, 10, 25, 25, 50, 50, 100, 100, 200, 200, 400, 400 };
+int iStateLimIterator = -1; // increment before use!
+const uint8_t iStateLimSize = 27;
 
 float updatePID(SPid * pid, float err, float pos)
 {
@@ -182,7 +186,8 @@ void printData(SPid * pid)
 	printCsv(heaterDutyCycle);
 	printCsv(pid->pGain);
 	printCsv(pid->iGain);
-	Serial.println(pid->dGain);
+	printCsv(pid->dGain);
+  Serial.println(pid->iMax);
 }
 
 void printDataHeader()
@@ -194,7 +199,8 @@ void printDataHeader()
 	printCsv(F("heater duty cycle"));
 	printCsv(F("pGain"));
 	printCsv(F("iGain"));
-	Serial.println(F("dGain"));
+	printCsv(F("dGain"));
+  Serial.println(F("iState limit"));
 }
 
 void setup()
@@ -220,6 +226,7 @@ void setup()
 	sampleTime = millis();			// sample (etc) immediately
   printTime = millis();
 	heaterPeriodTime = millis();	// start new period immediately
+  turnOffTime = millis() + TURNOFF_TIME_MS;
 }
 
 #ifdef OPEN_LOOP_MODE
@@ -229,6 +236,7 @@ void loop()
   printTimeLeft = printTime - millis();
 	heaterOnTimeLeft = heaterOnTime - millis();
 	heaterPeriodTimeLeft = heaterPeriodTime - millis();
+  turnOffTimeLeft = turnOffTime - millis();
 
 	if (sampleTimeLeft < 0)
 	{
@@ -258,6 +266,8 @@ void loop()
 	}
 
 	delay(50);
+
+  if (turnOffTimeLeft < 0) { heaterOff(); while(1) {/*take a nop*/} }
 }
 #endif // OPEN_LOOP_MODE
 
@@ -269,6 +279,7 @@ void loop()
   pidUpdateTimeLeft = pidUpdateTime - millis();
   heaterOnTimeLeft = heaterOnTime - millis();
   heaterPeriodTimeLeft = heaterPeriodTime - millis();
+  turnOffTimeLeft = turnOffTime - millis();
 
   if (sampleTimeLeft < 0)
   {
@@ -301,6 +312,32 @@ void loop()
     
     DEBUG2(F("pidDrive        = "), pidDrive);
     DEBUG2(F("heaterDutyCycle = "), heaterDutyCycle);
+  }
+  
+  if (turnOffTimeLeft < 0) 
+  { 
+    heaterOff();
+    
+    turnOnTime = millis() + TURNON_TIME_MS;
+    do {
+      turnOnTimeLeft = turnOnTime - millis();
+      delay(1000);
+    } while (turnOnTimeLeft > 0);
+
+    tempZero = tempAvg.getAverage();
+    
+    if (++iStateLimIterator >= iStateLimSize) { while(1) {/*take a nop*/} }
+    pid.init();
+    pid.iMax = iStateLim[iStateLimIterator];
+    pid.iMin = -iStateLim[iStateLimIterator];
+
+    pidDrive = updatePID(&pid,getErr(),getPos());
+    
+    timeZero = millis();
+    sampleTime = millis();
+    printTime = millis();
+    heaterPeriodTime = millis();
+    turnOffTime = millis() + TURNOFF_TIME_MS;
   }
 }
 #endif // PID_MODE
