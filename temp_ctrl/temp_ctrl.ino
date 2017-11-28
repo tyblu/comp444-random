@@ -117,7 +117,7 @@ SPid pid;
 float pidDrive;
 bool heaterIsOn;
 
-float iStateLim[] = {1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 10, 10, 25, 25, 50, 50, 100, 100, 200, 200, 400, 400 };
+float iStateLim[] = {1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 10, 10, 25, 25, 50, 50, 100, 100, 200, 200, 400, 400};
 int iStateLimIterator = -1; // increment before use!
 const uint8_t iStateLimSize = 27;
 
@@ -323,7 +323,9 @@ void loop()
       turnOnTimeLeft = turnOnTime - millis();
       delay(1000);
     } while (turnOnTimeLeft > 0);
-
+    
+    for (uint8_t i = 0; i < tempAvg.getSize(); i++)
+      tempAvg.push(getTemperature());
     tempZero = tempAvg.getAverage();
     
     if (++iStateLimIterator >= iStateLimSize) { while(1) {/*take a nop*/} }
