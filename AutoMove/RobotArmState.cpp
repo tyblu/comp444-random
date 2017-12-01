@@ -13,6 +13,27 @@
 #	define DEBUG20(x,y) PRE; Serial.print(x); Serial.print(y); POST
 #	define DEBUG3(f,xT,xF) PRE; if(f) { Serial.println(xT); } else { Serial.println(xF); } POST
 #	define DEBUG30(f,xT,xF) PRE; if(f) { Serial.print(xT); } else { Serial.print(xF); } POST
+
+//#	define RobotArmState_DEBUG_MODE_LEVEL1
+#   ifdef RobotArmState_DEBUG_MODE_LEVEL1
+#	   define DEBUG0_LV1(x) DEBUG0(x)
+#	   define DEBUG00_LV1(x) DEBUG00(x)
+#	   define DEBUG1_LV1(x) DEBUG1(x)
+#	   define DEBUG10_LV1(x) DEBUG10(x)
+#	   define DEBUG2_LV1(x,y) DEBUG2(x,y)
+#	   define DEBUG20_LV1(x,y) DEBUG20(x,y)
+#	   define DEBUG3_LV1(f,xT,xF) DEBUG3(f,xT,xF)
+#	   define DEBUG30_LV1(f,xT,xF) DEBUG30(f,xT,xF)
+#   else
+#	   define DEBUG0_LV1(x)
+#	   define DEBUG00_LV1(x)
+#	   define DEBUG1_LV1(x)
+#	   define DEBUG10_LV1(x)
+#	   define DEBUG2_LV1(x,y)
+#	   define DEBUG20_LV1(x,y)
+#	   define DEBUG3_LV1(f,xT,xF)
+#	   define DEBUG30_LV1(f,xT,xF)
+#   endif
 #else
 #	define DEBUG0(x)
 #	define DEBUG00(x)
@@ -247,87 +268,101 @@ void RobotArmState::init()
 	determineExtents();
 }
 
+/* This currently takes about 14 minutes!! */
 void RobotArmState::determineExtents()
 {
+	DEBUG2(F("determineExtents() timestamp: "), millis());
+	DEBUG10(F("Determining movement extents."));
+
 	int maxRadius = INT_MIN;
 	int minRadius = INT_MAX;
 	int maxHeight = INT_MIN;
 	int minHeight = INT_MAX;
 
-	DEBUG2(F("boom1.getMinAngle():  "), boom1.getMinAngle());
-	DEBUG2(F("boom1.getMaxAngle():  "), boom1.getMaxAngle());
-	DEBUG2(F("boom2.getMinAngle():  "), boom2.getMinAngle());
-	DEBUG2(F("boom2.getMaxAngle():  "), boom2.getMaxAngle());
-//	DEBUG2(F(".[1]->getMinAngle():  "), memberList[1]->getMinAngle());
-//	DEBUG2(F(".[1]->getMaxAngle():  "), memberList[1]->getMaxAngle());
-	DEBUG2(F("turret.getMinAngle(): "), turret.getMinAngle());
-	DEBUG2(F("turret.getMaxAngle(): "), turret.getMaxAngle());
-	DEBUG2(F("claw.getMinAngle():   "), claw.getMinAngle());
-	DEBUG2(F("claw.getMaxAngle():   "), claw.getMaxAngle());
+	PositionVector &p1 = *(boom1.getPositionVector());
+	PositionVector &p2 = *(boom2.getPositionVector());
+	PositionVector &p3 = *(claw.getPositionVector());
+
+	int max1 = boom1.getMaxAngle();
+	int min1 = boom1.getMinAngle();
+	int max2 = boom2.getMaxAngle();
+	int min2 = boom2.getMinAngle();
+	int max3 = claw.getMaxAngle();
+	int min3 = claw.getMinAngle();
 
 	int radius, height;
-	for (int a1 = boom1.getMinAngle(); a1 < boom1.getMaxAngle(); a1++)
+	for (int a1 = min1; a1 <= max1; a1++)
 	{
-		Serial.println(F("INSIDE FIRST FOR LOOP")); delay(2);
-		for (int a2 = boom2.getMinAngle(); a2 < boom2.getMaxAngle(); a2++)
+		for (int a2 = min2; a2 <= max2; a2++)
 		{
-			Serial.println(F("INSIDE SECOND FOR LOOP")); delay(2);
-			for (int a3 = claw.getMinAngle(); a3 < claw.getMaxAngle(); a3++)
+			for (int a3 = min3; a3 <= max3; a3++)
 			{
-				Serial.println(F("INSIDE THIRD FOR LOOP")); delay(2);
-				radius = boom1.getPositionVector()->getRadius(boom1.toPhysicalAngle(a1))
-					+ boom2.getPositionVector()->getRadius(boom2.toPhysicalAngle(a2))
-					+ claw.getPositionVector()->getRadius(claw.toPhysicalAngle(a3));
+//				radius = boom1.getPositionVector()->getRadius(boom1.toPhysicalAngle(a1))
+//					+ boom2.getPositionVector()->getRadius(boom2.toPhysicalAngle(a2))
+//					+ claw.getPositionVector()->getRadius(claw.toPhysicalAngle(a3));
+//
+//				height = boom1.getPositionVector()->getHeight(boom1.toPhysicalAngle(a1))
+//					+ boom2.getPositionVector()->getHeight(boom2.toPhysicalAngle(a2))
+//					+ claw.getPositionVector()->getHeight(claw.toPhysicalAngle(a3));
 
-				height = boom1.getPositionVector()->getHeight(boom1.toPhysicalAngle(a1))
-					+ boom2.getPositionVector()->getHeight(boom2.toPhysicalAngle(a2))
-					+ claw.getPositionVector()->getHeight(claw.toPhysicalAngle(a3));
+				radius = p1.getRadius(boom1.toPhysicalAngle(a1))
+					+ p2.getRadius(boom2.toPhysicalAngle(a2))
+					+ p3.getRadius(claw.toPhysicalAngle(a3));
 
-				DEBUG20(F("radius: "), radius);
-				DEBUG00(Serial.print(F(", height: ")));
-				DEBUG00(Serial.print(height));
-				DEBUG00(Serial.print(F(" at [")));
-				DEBUG00(Serial.print(a1));
-				DEBUG00(Serial.write(','));
-				DEBUG00(Serial.print(a2));
-				DEBUG00(Serial.write(','));
-				DEBUG00(Serial.print(a3));
-				DEBUG00(Serial.println("]"));
+				height = p1.getHeight(boom1.toPhysicalAngle(a1))
+					+ p2.getHeight(boom2.toPhysicalAngle(a2))
+					+ p3.getHeight(claw.toPhysicalAngle(a3));
+
+//				DEBUG20_LV1(F("radius: "), radius);
+//				DEBUG00_LV1(Serial.print(F(", height: ")));
+//				DEBUG00_LV1(Serial.print(height));
+//				DEBUG00_LV1(Serial.print(F(" at [")));
+//				DEBUG00_LV1(Serial.print(a1));
+//				DEBUG00_LV1(Serial.write(','));
+//				DEBUG00_LV1(Serial.print(a2));
+//				DEBUG00_LV1(Serial.write(','));
+//				DEBUG00_LV1(Serial.print(a3));
+//				DEBUG00_LV1(Serial.println("]"));
 
 				if (radius > maxRadius)
 				{
 					this->posMaxRadius.set(height, radius, posMaxRadius.th);
 					maxRadius = radius;
-					DEBUG10(F("posMaxRadius changed to: "));
-					DEBUG0(printPosition(posMaxRadius));
+					DEBUG10_LV1(F("posMaxRadius changed to: "));
+					DEBUG0_LV1(printPosition(posMaxRadius));
 				}
 
 				if (height > maxHeight)
 				{
 					this->posMaxHeight.set(height, radius, posMaxHeight.th);
 					maxHeight = height;
-					DEBUG10(F("posMaxHeight changed to: "));
-					DEBUG0(printPosition(posMaxHeight));
+					DEBUG10_LV1(F("posMaxHeight changed to: "));
+					DEBUG0_LV1(printPosition(posMaxHeight));
 				}
 
 				if (radius < minRadius)
 				{
 					this->posMinRadius.set(height, radius, posMinRadius.th);
 					minRadius = radius;
-					DEBUG10(F("posMinRadius changed to: "));
-					DEBUG0(printPosition(posMinRadius));
+					DEBUG10_LV1(F("posMinRadius changed to: "));
+					DEBUG0_LV1(printPosition(posMinRadius));
 				}
 
 				if (height < minHeight)
 				{
 					this->posMinHeight.set(height, radius, posMaxRadius.th);
 					minHeight = height;
-					DEBUG10(F("posMinHeight changed to: "));
-					DEBUG0(printPosition(posMinHeight));
+					DEBUG10_LV1(F("posMinHeight changed to: "));
+					DEBUG0_LV1(printPosition(posMinHeight));
 				}
 			}
 		}
+		DEBUG00(Serial.write('.'));
 	}
+
+	DEBUG00(Serial.println());
+
+	DEBUG2(F("determineExtents() timestamp: "), millis());
 
 	DEBUG10(F("posMinHeight: "));
 	DEBUG0(printPosition(posMinHeight));

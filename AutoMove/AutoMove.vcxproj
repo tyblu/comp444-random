@@ -89,7 +89,6 @@
     <ClInclude Include="ForceSensor.h" />
     <ClInclude Include="IntegerGeometry.h" />
     <ClInclude Include="limits.h" />
-    <ClInclude Include="resource.h" />
     <ClInclude Include="RobotArmMember.h" />
     <ClInclude Include="RobotArmState.h" />
     <ClInclude Include="SonarSensor.h" />
