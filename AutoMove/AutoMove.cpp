@@ -134,6 +134,15 @@ void setup()
 	memberTurret.setAngleConstants(TURRET_ANGLE_SCALE, TURRET_ANGLE_OFFSET);
 	memberTurret.setLimits(TURRET_ANGLE_MIN, TURRET_ANGLE_MAX, TURRET_ANGLE_SAFE);
 
+	DEBUG2(F("memberBoom1.getMinAngle:  "), memberBoom1.getMinAngle());
+	DEBUG2(F("memberBoom1.getMaxAngle:  "), memberBoom1.getMaxAngle());
+	DEBUG2(F("memberBoom2.getMinAngle:  "), memberBoom2.getMinAngle());
+	DEBUG2(F("memberBoom2.getMaxAngle:  "), memberBoom2.getMaxAngle());
+	DEBUG2(F("memberTurret.getMinAngle: "), memberTurret.getMinAngle());
+	DEBUG2(F("memberTurret.getMaxAngle: "), memberTurret.getMaxAngle());
+	DEBUG2(F("memberClaw.getMinAngle:   "), memberClaw.getMinAngle());
+	DEBUG2(F("memberClaw.getMaxAngle:   "), memberClaw.getMaxAngle());
+
 	state.init();
 	state.attachSafe();
 	state.servoPowerOn();

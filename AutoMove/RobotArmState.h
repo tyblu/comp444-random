@@ -210,7 +210,7 @@ private:
 	PositionVector posCenterSonar, posCenter, posRest;
 	PositionVector posMaxHeight, posMinHeight, posMaxRadius, posMinRadius;
 	const uint8_t pwrEnablePin, pwrFeedbackPin;
-	RobotArmMember& boom1, boom2, turret, claw;
+	RobotArmMember &boom1, &boom2, &turret, &claw;
 	RobotArmMember* memberList[4];
 	InterpolatedMap interpMapBoom2Min;
 };

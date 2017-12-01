@@ -242,7 +242,7 @@ void RobotArmState::attachSafe()
 			memberList[i]->attach();
 }
 
-void RobotArmState::init()	// may expand to do more, later
+void RobotArmState::init()
 {
 	determineExtents();
 }
@@ -254,16 +254,27 @@ void RobotArmState::determineExtents()
 	int maxHeight = INT_MIN;
 	int minHeight = INT_MAX;
 
+	DEBUG2(F("boom1.getMinAngle():  "), boom1.getMinAngle());
+	DEBUG2(F("boom1.getMaxAngle():  "), boom1.getMaxAngle());
+	DEBUG2(F("boom2.getMinAngle():  "), boom2.getMinAngle());
+	DEBUG2(F("boom2.getMaxAngle():  "), boom2.getMaxAngle());
+//	DEBUG2(F(".[1]->getMinAngle():  "), memberList[1]->getMinAngle());
+//	DEBUG2(F(".[1]->getMaxAngle():  "), memberList[1]->getMaxAngle());
+	DEBUG2(F("turret.getMinAngle(): "), turret.getMinAngle());
+	DEBUG2(F("turret.getMaxAngle(): "), turret.getMaxAngle());
+	DEBUG2(F("claw.getMinAngle():   "), claw.getMinAngle());
+	DEBUG2(F("claw.getMaxAngle():   "), claw.getMaxAngle());
+
 	int radius, height;
 	for (int a1 = boom1.getMinAngle(); a1 < boom1.getMaxAngle(); a1++)
 	{
-		Serial.println("INSIDE FIRST FOR LOOP"); delay(2);
+		Serial.println(F("INSIDE FIRST FOR LOOP")); delay(2);
 		for (int a2 = boom2.getMinAngle(); a2 < boom2.getMaxAngle(); a2++)
 		{
-			Serial.println("INSIDE SECOND FOR LOOP"); delay(2);
+			Serial.println(F("INSIDE SECOND FOR LOOP")); delay(2);
 			for (int a3 = claw.getMinAngle(); a3 < claw.getMaxAngle(); a3++)
 			{
-				Serial.println("INSIDE THIRD FOR LOOP"); delay(2);
+				Serial.println(F("INSIDE THIRD FOR LOOP")); delay(2);
 				radius = boom1.getPositionVector()->getRadius(boom1.toPhysicalAngle(a1))
 					+ boom2.getPositionVector()->getRadius(boom2.toPhysicalAngle(a2))
 					+ claw.getPositionVector()->getRadius(claw.toPhysicalAngle(a3));

@@ -11,7 +11,7 @@
 #include "IntegerGeometry.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 
-#define RobotArmMember_DEBUG_MODE	// actually using these #defines for whole document
+//#define RobotArmMember_DEBUG_MODE	// actually using these #defines for whole document
 #ifdef RobotArmMember_DEBUG_MODE
 #	define DEBUG1(x) Serial.print("RobotArmMember : "); Serial.println(x); delay(2)	// note missing ';'
 #	define DEBUG2(x,y) Serial.print("RobotArmMember : "); Serial.print(x); Serial.println(y); delay(2)	// note missing ';'
