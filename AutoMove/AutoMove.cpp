@@ -146,6 +146,7 @@ void setup()
 	state.init();
 	state.attachSafe();
 	state.servoPowerOn();
+	state.getPositionVector()->updateAll();
 	//state.sweep();
 	DEBUG1(F("Servos powered on."));
 
@@ -198,95 +199,89 @@ void setup()
 #define PLN(x) Serial.println(F(x)); delay(2)
 #define PLN2(x,y) Serial.print(F(x)); delay(2); Serial.println(y); delay(2)
 #define P(x) Serial.print(F(x)); delay(2)
+#define printPos(p) Serial.write('['); Serial.print(p.h); Serial.write(','); Serial.print(p.r); Serial.write(','); Serial.print(p.th); Serial.write(']')
 void loop()
 {
 	Serial.println();
-	P("Select member: [1] boom1  : ");
+	PLN("[#] [name] : [servo angle] ([physical angle])");
+	P("[1] boom1  : ");
 	Serial.print(memberBoom1.getServo()->read());
-	P(" (phys ");
+	P(" (");
 	Serial.print(memberBoom1.getPhysicalAngle());
 	PLN(")");
 
-	P(".              [2] boom2  : ");
+	P("[2] boom2  : ");
 	Serial.print(memberBoom2.getServo()->read());
-	P(" (phys ");
+	P(" (");
 	Serial.print(memberBoom2.getPhysicalAngle());
 	PLN(")");
 
-	P(".              [3] turret : ");
+	P("[3] turret : ");
 	Serial.print(memberTurret.getServo()->read());
-	P(" (phys ");
+	P(" (");
 	Serial.print(memberTurret.getPhysicalAngle());
 	PLN(")");
 
-	P(".              [4]   claw : ");
+	P("[4]   claw : ");
 	Serial.print(memberClaw.getServo()->read());
-	P(" (phys ");
+	P(" (");
 	Serial.print(memberClaw.getPhysicalAngle());
 	PLN(")");
+
+	P("Current position: ");
+	printPosition(*state.getPositionVector());
+	Serial.println();
 	
 	uint32_t timeout;
 
-	P("Enter member number: ");
-	timeout = millis() + 10000;  
-	while (!Serial.available())
-	{
-		if (millis() > timeout)
-		{
-			timeout = millis() + 10000;
-			Serial.println();
-			P("Enter member number: ");
-		}
-	}
-
-	int memberSelection = Serial.parseInt();
-	Serial.println(memberSelection);
-
-	RobotArmMember* member;
-	switch (memberSelection)
-	{
-	case 1:
-		member = &memberBoom1;
-		break;
-	case 2:
-		member = &memberBoom2;
-		break;
-	case 3:
-		member = &memberTurret;
-		break;
-	case 4:
-		member = &memberClaw;
-		break;
-	default:
-		PLN("Try again.");
-		Serial.println();
-		Serial.flush();
-		return;
-	}
-
+	P("Enter height: ");
 	timeout = millis() + 10000;
-	P("Enter target angle: ");
 	while (!Serial.available())
 	{
 		if (millis() > timeout)
 		{
 			timeout = millis() + 10000;
 			Serial.println();
-			P("... Enter target angle: ");
+			P("Enter height: ");
 		}
 	}
+	int hSelection = Serial.parseInt();
+	Serial.println(hSelection);
 
-	int inputAngle = Serial.parseInt();
-	Serial.println(inputAngle);
+	P("Enter radius: ");
+	timeout = millis() + 10000;
+	while (!Serial.available())
+	{
+		if (millis() > timeout)
+		{
+			timeout = millis() + 10000;
+			Serial.println();
+			P("Enter radius: ");
+		}
+	}
+	int rSelection = Serial.parseInt();
+	Serial.println(rSelection);
 
-	Serial.print(inputAngle);
-	P(" degrees entered. ");
+	P("Enter swing angle: ");
+	timeout = millis() + 10000;
+	while (!Serial.available())
+	{
+		if (millis() > timeout)
+		{
+			timeout = millis() + 10000;
+			Serial.println();
+			P("Enter swing angle: ");
+		}
+	}
+	int thSelection = Serial.parseInt();
+	Serial.println(thSelection);
 
-	//member->getServo()->write(inputAngle);
-	member->slow(inputAngle);
-
-	Serial.print(member->getServo()->read());
-	PLN(" degrees written.");
+	PositionVector posSelection(hSelection, rSelection, thSelection);
+	P("Going to position: (h,r,th)=");
+//	printPos(posSelection);
+	printPosition(posSelection);	// bare function in RobotArmState.cpp
+	Serial.println();
+	state.goToPosition(posSelection);
 	
 	PLN2("Sonar measurement: ", sonar.getMeasurement());
 

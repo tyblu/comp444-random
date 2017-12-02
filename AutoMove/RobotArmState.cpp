@@ -13,7 +13,16 @@
 #	define DEBUG20(x,y) PRE; Serial.print(x); Serial.print(y); POST
 #	define DEBUG3(f,xT,xF) PRE; if(f) { Serial.println(xT); } else { Serial.println(xF); } POST
 #	define DEBUG30(f,xT,xF) PRE; if(f) { Serial.print(xT); } else { Serial.print(xF); } POST
-
+#else
+#	define DEBUG0(x)
+#	define DEBUG00(x)
+#	define DEBUG1(x)
+#	define DEBUG10(x)
+#	define DEBUG2(x,y)
+#	define DEBUG20(x,y)
+#	define DEBUG3(f,xT,xF)
+#	define DEBUG30(f,xT,xF)
+#endif
 //#	define RobotArmState_DEBUG_MODE_LEVEL1
 #   ifdef RobotArmState_DEBUG_MODE_LEVEL1
 #	   define DEBUG0_LV1(x) DEBUG0(x)
@@ -34,21 +43,12 @@
 #	   define DEBUG3_LV1(f,xT,xF)
 #	   define DEBUG30_LV1(f,xT,xF)
 #   endif
-#else
-#	define DEBUG0(x)
-#	define DEBUG00(x)
-#	define DEBUG1(x)
-#	define DEBUG10(x)
-#	define DEBUG2(x,y)
-#	define DEBUG20(x,y)
-#	define DEBUG3(f,xT,xF)
-#	define DEBUG30(f,xT,xF)
-#endif
 
 #define DIR RobotArmState::Direction
 
 #define SERVO_PWR_FEEDBACK_ANALOGREAD_POINTS 20	// < uint8_t max and even
 #define GOTOPOSITION_STEPS 3
+#define GOTOPOSITION_TIMEOUT_MS 5000
 //#define GOTO_NUM 2		// initial boom2 raise of NUM/DENOM fraction of delta
 //#define GOTO_DENOM 3
 
@@ -133,8 +133,8 @@ void RobotArmState::goToPosition(PositionVector p)	// no verification
 	int angle1, angle2;
 	PositionVector posNext = { 0, 0, 0 };
 
-	//unsigned long timeout = millis() + GOTOPOSITION_TIMEOUT_MS;
-	while (!pos.equals(p)/* && millis() < timeout*/)
+	unsigned long timeout = millis() + GOTOPOSITION_TIMEOUT_MS;
+	while (!pos.equals(p) && millis() < timeout)
 	{
 		if (p.h > pos.h)	// raise boom2
 		{
@@ -142,7 +142,7 @@ void RobotArmState::goToPosition(PositionVector p)	// no verification
 			do {
 				posNext.h = boom2.getPositionVector()->getHeight(boom2.toPhysicalAngle(angle2));
 				angle2++;
-			} while (posNext.h < p.h && angle2 < boom2.getMaxAngle());
+			} while (posNext.h < p.h && angle2 < boom2.getMaxAngle() && millis() < timeout);
 			boom2.slow(--angle2);
 			pos.update();
 		}
@@ -153,14 +153,14 @@ void RobotArmState::goToPosition(PositionVector p)	// no verification
 			do {
 				posNext.r = boom1.getPositionVector()->getRadius(boom1.toPhysicalAngle(angle1));
 				angle1++;
-			} while (posNext.r < p.r && angle1 < boom1.getMaxAngle());
+			} while (posNext.r < p.r && angle1 < boom1.getMaxAngle() && millis() < timeout);
 		}
 
 		if (pos.th != p.th)	// rotate to position
 			turret.slow(p.th);
 
 		// seek target radius and height simultaneously
-		while (pos.delta(p) > 6)	// error up to 6mm or 6deg or combo of two
+		while (pos.delta(p) > 6 && millis() < timeout)	// error up to 6mm or 6deg or combo of two
 		{
 			if (p.h > pos.h && angle2 < boom2.getMaxAngle())
 				boom2.slow(++angle2);
@@ -174,14 +174,15 @@ void RobotArmState::goToPosition(PositionVector p)	// no verification
 
 		DEBUG10(F("Pos. "));
 		DEBUG00(printPosition(p));
-		DEBUG10(F(" found at boom angles {"));
-		DEBUG10(angle1);
-		DEBUG10(',');
-		DEBUG10(angle2);
-		DEBUG10(F("} for actual pos. "));
+		DEBUG00(Serial.print(F(" found at boom angles {")));
+		DEBUG00(Serial.print(angle1));
+		DEBUG00(Serial.write(','));
+		DEBUG00(Serial.print(angle2));
+		DEBUG00(Serial.print(F("} for actual pos. ")));
 		DEBUG00(printPosition(pos));
-		DEBUG10('.');
+		DEBUG0(Serial.write('.'));
 	}
+	DEBUG3(millis() > timeout, F("goToPos() timeout"), F("goToPos() worked!"));
 }
 
 void printPosition(PositionVector& pos)	// move to PositionVector class
@@ -265,7 +266,7 @@ void RobotArmState::attachSafe()
 
 void RobotArmState::init()
 {
-	determineExtents();
+	//determineExtents();
 }
 
 /* This currently takes about 14 minutes!! */
@@ -279,39 +280,39 @@ void RobotArmState::determineExtents()
 	int maxHeight = INT_MIN;
 	int minHeight = INT_MAX;
 
-	PositionVector &p1 = *(boom1.getPositionVector());
-	PositionVector &p2 = *(boom2.getPositionVector());
-	PositionVector &p3 = *(claw.getPositionVector());
+//	PositionVector &p1 = *(boom1.getPositionVector());
+//	PositionVector &p2 = *(boom2.getPositionVector());
+//	PositionVector &p3 = *(claw.getPositionVector());
 
-	int max1 = boom1.getMaxAngle();
-	int min1 = boom1.getMinAngle();
-	int max2 = boom2.getMaxAngle();
-	int min2 = boom2.getMinAngle();
-	int max3 = claw.getMaxAngle();
-	int min3 = claw.getMinAngle();
+//	int max1 = boom1.getMaxAngle();
+//	int min1 = boom1.getMinAngle();
+//	int max2 = boom2.getMaxAngle();
+//	int min2 = boom2.getMinAngle();
+//	int max3 = claw.getMaxAngle();
+//	int min3 = claw.getMinAngle();
 
 	int radius, height;
-	for (int a1 = min1; a1 <= max1; a1++)
+	for (int a1 = boom1.getMinAngle(); a1 <= boom1.getMaxAngle(); a1++)
 	{
-		for (int a2 = min2; a2 <= max2; a2++)
+		for (int a2 = boom2.getMinAngle(); a2 <= boom2.getMaxAngle(); a2++)
 		{
-			for (int a3 = min3; a3 <= max3; a3++)
+			for (int a3 = claw.getMinAngle(); a3 <= claw.getMaxAngle(); a3++)
 			{
-//				radius = boom1.getPositionVector()->getRadius(boom1.toPhysicalAngle(a1))
-//					+ boom2.getPositionVector()->getRadius(boom2.toPhysicalAngle(a2))
-//					+ claw.getPositionVector()->getRadius(claw.toPhysicalAngle(a3));
+				radius = boom1.getPositionVector()->getRadius(boom1.toPhysicalAngle(a1))
+					+ boom2.getPositionVector()->getRadius(boom2.toPhysicalAngle(a2))
+					+ claw.getPositionVector()->getRadius(claw.toPhysicalAngle(a3));
+
+				height = boom1.getPositionVector()->getHeight(boom1.toPhysicalAngle(a1))
+					+ boom2.getPositionVector()->getHeight(boom2.toPhysicalAngle(a2))
+					+ claw.getPositionVector()->getHeight(claw.toPhysicalAngle(a3));
+
+//				radius = p1.getRadius(boom1.toPhysicalAngle(a1))
+//					+ p2.getRadius(boom2.toPhysicalAngle(a2))
+//					+ p3.getRadius(claw.toPhysicalAngle(a3));
 //
-//				height = boom1.getPositionVector()->getHeight(boom1.toPhysicalAngle(a1))
-//					+ boom2.getPositionVector()->getHeight(boom2.toPhysicalAngle(a2))
-//					+ claw.getPositionVector()->getHeight(claw.toPhysicalAngle(a3));
-
-				radius = p1.getRadius(boom1.toPhysicalAngle(a1))
-					+ p2.getRadius(boom2.toPhysicalAngle(a2))
-					+ p3.getRadius(claw.toPhysicalAngle(a3));
-
-				height = p1.getHeight(boom1.toPhysicalAngle(a1))
-					+ p2.getHeight(boom2.toPhysicalAngle(a2))
-					+ p3.getHeight(claw.toPhysicalAngle(a3));
+//				height = p1.getHeight(boom1.toPhysicalAngle(a1))
+//					+ p2.getHeight(boom2.toPhysicalAngle(a2))
+//					+ p3.getHeight(claw.toPhysicalAngle(a3));
 
 //				DEBUG20_LV1(F("radius: "), radius);
 //				DEBUG00_LV1(Serial.print(F(", height: ")));
