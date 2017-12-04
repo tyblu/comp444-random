@@ -137,10 +137,12 @@ public:
 		CenterSonar, 
 		Center, 
 		Rest, 
+		Cup,
 		MaxHeight, 
 		MinHeight, 
 		MaxRadius, 
-		MinRadius 
+		MinRadius,
+		A, B, C, D
 	};
 
 	enum Direction { Vertical, Radial };
@@ -176,7 +178,7 @@ public:
 		RobotArmMember& boom2,
 		RobotArmMember& turret,
 		RobotArmMember& claw,
-		PositionVector preset[7],
+		PositionVector preset[12],
 		Pair pairArray[BOOM2_MIN_PAIR_ARRAY_COUNT]
 	);
 
@@ -207,8 +209,9 @@ private:
 	void determineExtents();
 
 	EndEffectorPositionVector pos;
-	PositionVector posCenterSonar, posCenter, posRest;
+	PositionVector posCenterSonar, posCenter, posRest, posCup;
 	PositionVector posMaxHeight, posMinHeight, posMaxRadius, posMinRadius;
+	PositionVector posA, posB, posC, posD;
 	const uint8_t pwrEnablePin, pwrFeedbackPin;
 	RobotArmMember &boom1, &boom2, &turret, &claw;
 	RobotArmMember* memberList[4];

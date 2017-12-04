@@ -47,7 +47,6 @@
 #define DIR RobotArmState::Direction
 
 #define SERVO_PWR_FEEDBACK_ANALOGREAD_POINTS 20	// < uint8_t max and even
-#define GOTOPOSITION_STEPS 3
 #define GOTOPOSITION_TIMEOUT_MS 5000
 //#define GOTO_NUM 2		// initial boom2 raise of NUM/DENOM fraction of delta
 //#define GOTO_DENOM 3
@@ -59,7 +58,7 @@ RobotArmState::RobotArmState(
 	RobotArmMember& boom2,
 	RobotArmMember& turret,
 	RobotArmMember& claw,
-	PositionVector preset[7],
+	PositionVector preset[12],
 	Pair pairArray[BOOM2_MIN_PAIR_ARRAY_COUNT]
 )
 	: pwrEnablePin(pwrEnablePin)
@@ -76,6 +75,11 @@ RobotArmState::RobotArmState(
 	, posMinHeight(preset[4].h, preset[4].r, preset[4].th)
 	, posMaxRadius(preset[5].h, preset[5].r, preset[5].th)
 	, posMinRadius(preset[6].h, preset[6].r, preset[6].th)
+	, posCup(preset[7].h, preset[7].r, preset[7].th)
+	, posA(preset[8].h, preset[8].r, preset[8].th)
+	, posB(preset[9].h, preset[9].r, preset[9].th)
+	, posC(preset[10].h, preset[10].r, preset[10].th)
+	, posD(preset[11].h, preset[11].r, preset[11].th)
 	, interpMapBoom2Min()
 	, pos(boom1, boom2, turret, claw)
 {
@@ -116,6 +120,21 @@ void RobotArmState::goToPosition(NamedPosition posName)
 	case NamedPosition::MinRadius:
 		goToPosition(posMinRadius);
 		break;
+	case NamedPosition::Cup:
+		goToPosition(posCup);
+		break;
+	case NamedPosition::A:
+		goToPosition(posA);
+		break;
+	case NamedPosition::B:
+		goToPosition(posB);
+		break;
+	case NamedPosition::C:
+		goToPosition(posC);
+		break;
+	case NamedPosition::D:
+		goToPosition(posD);
+		break;
 	default:
 		DEBUG1(F("ERROR: No switch-case for given NamedPosition!"));
 		break;
@@ -129,70 +148,70 @@ void RobotArmState::goToPosition(NamedPosition posName)
 
 void RobotArmState::goToPosition(PositionVector p)	// no verification
 {
-	byte step = 0;
-	int angle1, angle2;
-	PositionVector posNext = { 0, 0, 0 };
+	int angle1 = boom1.getServo()->read();
+	int angle2 = boom2.getServo()->read();
 
-	unsigned long timeout = millis() + GOTOPOSITION_TIMEOUT_MS;
-	while (!pos.equals(p) && millis() < timeout)
+	long timeout = millis() + GOTOPOSITION_TIMEOUT_MS;
+	long timeLeft = GOTOPOSITION_TIMEOUT_MS;
+	while (pos.delta(p) > 1 && timeLeft > 0)	// error up to 1mm or 1deg or combo of two
 	{
-		if (p.h > pos.h)	// raise boom2
+		if (p.h > pos.h && angle2 + 1 <= boom2.getMaxAngle())	// raise boom2
 		{
-			angle2 = boom2.getServo()->read();
 			do {
-				posNext.h = boom2.getPositionVector()->getHeight(boom2.toPhysicalAngle(angle2));
-				angle2++;
-			} while (posNext.h < p.h && angle2 < boom2.getMaxAngle() && millis() < timeout);
-			boom2.slow(--angle2);
-			pos.update();
+				boom2.slow(++angle2);
+				pos.updateAll();
+				timeLeft = timeout - millis();
+			} while (p.h > pos.h && angle2+1 < boom2.getMaxAngle() && timeLeft > 0);
 		}
 
-		if (p.r < pos.r)	// reduce radius with boom1
+		if (p.r < pos.r && angle1 - 1 >= boom1.getMinAngle())	// reduce radius with boom1
 		{
-			angle1 = boom1.getServo()->read();
 			do {
-				posNext.r = boom1.getPositionVector()->getRadius(boom1.toPhysicalAngle(angle1));
-				angle1++;
-			} while (posNext.r < p.r && angle1 < boom1.getMaxAngle() && millis() < timeout);
+				boom1.slow(--angle1);
+				pos.updateAll();
+				timeLeft = timeout - millis();
+			} while (p.r < pos.r && angle1-1 > boom1.getMinAngle() && timeLeft > 0);
 		}
 
-		if (pos.th != p.th)	// rotate to position
-			turret.slow(p.th);
+		if (p.th != pos.th)	// rotate to position
+			turret.change(turret.toServoAngle(p.th - pos.th));
 
 		// seek target radius and height simultaneously
-		while (pos.delta(p) > 6 && millis() < timeout)	// error up to 6mm or 6deg or combo of two
-		{
-			if (p.h > pos.h && angle2 < boom2.getMaxAngle())
-				boom2.slow(++angle2);
-			if (p.r < pos.r && angle1 < boom1.getMaxAngle())
-				boom1.slow(++angle1);
-			if (p.h < pos.h && angle2 > boom2.getMinAngle())
-				boom2.slow(--angle2);
-			if (p.r > pos.r && angle1 > boom1.getMinAngle())
-				boom1.slow(--angle1);
-		}
+		if (p.h > pos.h && angle2 + 1 <= boom2.getMaxAngle())	// up
+			boom2.slow(++angle2);
+		if (p.r < pos.r && angle1 - 1 >= boom1.getMinAngle())	// in
+			boom1.slow(--angle1);
+		if (p.h < pos.h && angle2 - 1 >= boom2.getMinAngle())	// down
+			boom2.slow(--angle2);
+		if (p.r > pos.r && angle1 + 1 <= boom1.getMaxAngle())	// out
+			boom1.slow(++angle1);
 
-		DEBUG10(F("Pos. "));
-		DEBUG00(printPosition(p));
-		DEBUG00(Serial.print(F(" found at boom angles {")));
-		DEBUG00(Serial.print(angle1));
-		DEBUG00(Serial.write(','));
-		DEBUG00(Serial.print(angle2));
-		DEBUG00(Serial.print(F("} for actual pos. ")));
-		DEBUG00(printPosition(pos));
-		DEBUG0(Serial.write('.'));
+		pos.updateAll();
+		timeLeft = timeout - millis();
 	}
-	DEBUG3(millis() > timeout, F("goToPos() timeout"), F("goToPos() worked!"));
+
+	DEBUG3(timeLeft < 0, F("goToPos() timeout"), F("goToPos() finished on time"));
+
+	DEBUG10(F("Pos. "));
+	DEBUG00(printPosition(p));
+	DEBUG00(Serial.print(F(" found at boom angles {")));
+	DEBUG00(Serial.print(angle1));
+	DEBUG00(Serial.write(','));
+	DEBUG00(Serial.print(angle2));
+	DEBUG00(Serial.print(F("} for actual pos. ")));
+	DEBUG00(printPosition(pos));
+	DEBUG00(Serial.print(F(", diff=")));
+	DEBUG0(Serial.print(pos.delta(p)));
 }
 
-void printPosition(PositionVector& pos)	// move to PositionVector class
+void printPosition(PositionVector& p)	// move to PositionVector class
 {
 	Serial.write('(');
-	Serial.print(pos.h);
+	Serial.print(p.h);
 	Serial.write(',');
-	Serial.print(pos.r);
+	Serial.print(p.r);
 	Serial.write(',');
-	Serial.print(pos.th);
+	Serial.print(p.th);
 	Serial.write(')');
 	delay(4);
 }

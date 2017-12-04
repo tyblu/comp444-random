@@ -26,6 +26,7 @@ public:
 	void fast(int angle);	// Moves servo to target angle at maximum speed.
 	void sweep();			// sweep angle range, current->min->max->current
 	void safe();			// go to safeAngle
+	void change(int amount);
 
 	void setLimits(int minAngle, int maxAngle, int safeAngle);	// servo angles
 	void setAngleConstants(long angleScale1000, long angleOffset);

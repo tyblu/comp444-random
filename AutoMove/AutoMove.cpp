@@ -64,14 +64,19 @@
 #define PAIR_BOOM2MINS_COUNT 10
 
 PositionVector presetPositions[] =
-{
-	{ 125, 120, 135 },		// CenterSonar
-	{ 125, 120, 125 },		// Center
-	{  90,  70, 135 },		// Rest
-	{ 130, 125, 135 },		// MaxHeight
-	{   0, -90,   0 },		// MinHeight
-	{   0,   0, 135 },		// MaxRadius
-	{ 140, -70,   0 }		// MinRadius
+{	// total 12 positions at the moment
+	{ 100, 265,  63 },		// CenterSonar
+	{   0, 156,  50 },		// Center
+	{   0, 164,   1 },		// Rest
+	{ 999, 290,  50 },		// MaxHeight
+	{ -40, 999,   1 },		// MinHeight
+	{ 200, 999,  50 },		// MaxRadius
+	{  60, -99,  50 },		// MinRadius
+	{  20, 165,   4 },		// Cup
+	{ 100, 275,  30 },		// corner A
+	{ 100, 381,  53 },		// corner B
+	{ 100, 310,  82 },		// corner C
+	{ 100, 220,  87 }		// corner D
 };
 
 Pair boom2mins[PAIR_BOOM2MINS_COUNT] = 
@@ -277,28 +282,33 @@ void loop()
 	Serial.println(thSelection);
 
 	PositionVector posSelection(hSelection, rSelection, thSelection);
-	P("Going to position: (h,r,th)=");
+	P("Going to position: (h,r,th) = ");
 //	printPos(posSelection);
 	printPosition(posSelection);	// bare function in RobotArmState.cpp
 	Serial.println();
 	state.goToPosition(posSelection);
-	
-	PLN2("Sonar measurement: ", sonar.getMeasurement());
 
 	state.getPositionVector()->updateAll();
+	
+	PLN2("Sonar measurement: ", sonar.getMeasurement());
+	PLN2("Force LHS: ", sensorL.read());
+	PLN2("Force RHS: ", sensorR.read());
+	P("Current position: ");
+	printPosition(*(state.getPositionVector()));
+	Serial.println();
 
-	PLN2("boom1 height = ", memberBoom1.getPositionVector()->getHeight());
-	PLN2("boom2 height = ", memberBoom2.getPositionVector()->getHeight());
-	PLN2("turret height= ", memberTurret.getPositionVector()->getHeight());
-	PLN2(".claw height = ", memberClaw.getPositionVector()->getHeight());
-	PLN2(".     HEIGHT = ", state.getPositionVector()->getHeight());
-
-	PLN2("boom1 radius = ", memberBoom1.getPositionVector()->getRadius());
-	PLN2("boom2 radius = ", memberBoom2.getPositionVector()->getRadius());
-	PLN2(".claw radius = ", memberClaw.getPositionVector()->getRadius());
-	PLN2(".     RADIUS = ", state.getPositionVector()->getRadius());
-
-	PLN2(".     THETA  = ", state.getPositionVector()->getTheta());
+//	PLN2("boom1 height = ", memberBoom1.getPositionVector()->getHeight());
+//	PLN2("boom2 height = ", memberBoom2.getPositionVector()->getHeight());
+//	PLN2("turret height= ", memberTurret.getPositionVector()->getHeight());
+//	PLN2(".claw height = ", memberClaw.getPositionVector()->getHeight());
+//	PLN2(".     HEIGHT = ", state.getPositionVector()->getHeight());
+//
+//	PLN2("boom1 radius = ", memberBoom1.getPositionVector()->getRadius());
+//	PLN2("boom2 radius = ", memberBoom2.getPositionVector()->getRadius());
+//	PLN2(".claw radius = ", memberClaw.getPositionVector()->getRadius());
+//	PLN2(".     RADIUS = ", state.getPositionVector()->getRadius());
+//
+//	PLN2(".     THETA  = ", state.getPositionVector()->getTheta());
 }
 #endif // SERIAL_CONTROL_MODE
 

@@ -72,6 +72,11 @@ void RobotArmMember::slow(int angle)
 	this->pos.update(*this);
 }
 
+void RobotArmMember::change(int amount)
+{
+	this->slow(this->servo.read() + amount);
+}
+
 void RobotArmMember::fast(int angle)
 {
 	angle = constrain(angle, minAngle, maxAngle);
