@@ -14,6 +14,7 @@
 
 #define CLASS_MAP_INTERP_PAIRS_MAX_COUNT 10
 #define BOOM2_MIN_PAIR_ARRAY_COUNT 10
+#define PRESET_POSITIONS_COUNT 12
 
 void printPosition(PositionVector& pos);
 
@@ -178,7 +179,7 @@ public:
 		RobotArmMember& boom2,
 		RobotArmMember& turret,
 		RobotArmMember& claw,
-		PositionVector preset[12],
+		PositionVector preset[PRESET_POSITIONS_COUNT],
 		Pair pairArray[BOOM2_MIN_PAIR_ARRAY_COUNT]
 	);
 

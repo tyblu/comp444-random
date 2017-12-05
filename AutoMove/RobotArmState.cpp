@@ -1,7 +1,7 @@
 #include "RobotArmState.h"
 #include "C:\Users\tyblu\Documents\repos\comp444-random\AutoMove\RobotArmMember.h"
 
-#define RobotArmState_DEBUG_MODE
+//#define RobotArmState_DEBUG_MODE
 #ifdef RobotArmState_DEBUG_MODE
 #	define PRE Serial.print(F("RobotArmState : "))
 #	define POST delay(2) // note missing ';'
@@ -48,8 +48,6 @@
 
 #define SERVO_PWR_FEEDBACK_ANALOGREAD_POINTS 20	// < uint8_t max and even
 #define GOTOPOSITION_TIMEOUT_MS 5000
-//#define GOTO_NUM 2		// initial boom2 raise of NUM/DENOM fraction of delta
-//#define GOTO_DENOM 3
 
 RobotArmState::RobotArmState(
 	uint8_t pwrEnablePin,
@@ -58,7 +56,7 @@ RobotArmState::RobotArmState(
 	RobotArmMember& boom2,
 	RobotArmMember& turret,
 	RobotArmMember& claw,
-	PositionVector preset[12],
+	PositionVector preset[PRESET_POSITIONS_COUNT],
 	Pair pairArray[BOOM2_MIN_PAIR_ARRAY_COUNT]
 )
 	: pwrEnablePin(pwrEnablePin)
@@ -97,53 +95,63 @@ RobotArmState::RobotArmState(
 
 void RobotArmState::goToPosition(NamedPosition posName)
 {
+	DEBUG10_LV1(F("Going to position "));
+
 	switch (posName)
 	{
 	case NamedPosition::Center:
+		DEBUG00_LV1(Serial.println(F("[Center] ... ")));
 		goToPosition(posCenter);
 		break;
 	case NamedPosition::CenterSonar:
+		DEBUG00_LV1(Serial.println(F("[CenterSonar] ... ")));
 		goToPosition(posCenterSonar);
 		break;
 	case NamedPosition::Rest:
+		DEBUG00_LV1(Serial.println(F("[Rest] ... ")));
 		goToPosition(posRest);
 		break;
 	case NamedPosition::MaxHeight:
+		DEBUG00_LV1(Serial.println(F("[MaxHeight] ... ")));
 		goToPosition(posMaxHeight);
 		break;
 	case NamedPosition::MinHeight:
+		DEBUG00_LV1(Serial.println(F("[MinHeight] ... ")));
 		goToPosition(posMinHeight);
 		break;
 	case NamedPosition::MaxRadius:
+		DEBUG00_LV1(Serial.println(F("[MaxRadius] ... ")));
 		goToPosition(posMaxRadius);
 		break;
 	case NamedPosition::MinRadius:
+		DEBUG00_LV1(Serial.println(F("[MinRadius] ... ")));
 		goToPosition(posMinRadius);
 		break;
 	case NamedPosition::Cup:
+		DEBUG00_LV1(Serial.println(F("[Cup] ... ")));
 		goToPosition(posCup);
 		break;
 	case NamedPosition::A:
+		DEBUG00_LV1(Serial.println(F("[A] ... ")));
 		goToPosition(posA);
 		break;
 	case NamedPosition::B:
+		DEBUG00_LV1(Serial.println(F("[B] ... ")));
 		goToPosition(posB);
 		break;
 	case NamedPosition::C:
+		DEBUG00_LV1(Serial.println(F("[C] ... ")));
 		goToPosition(posC);
 		break;
 	case NamedPosition::D:
+		DEBUG00_LV1(Serial.println(F("[D] ... ")));
 		goToPosition(posD);
 		break;
 	default:
-		DEBUG1(F("ERROR: No switch-case for given NamedPosition!"));
+		DEBUG1(F("\nERROR: No switch-case for given NamedPosition!"));
 		break;
 	}
-
-//	DEBUG2(F("Boom1 angle set to/at:  "), boom1.getServo()->read());
-//	DEBUG2(F("Boom2 angle set to/at:  "), boom2.getServo()->read());
-//	DEBUG2(F("Turret angle set to/at: "), turret.getServo()->read());
-//	DEBUG2(F("Claw angle set to/at:   "), claw.getServo()->read());
+	DEBUG0_LV1(F("done."));
 }
 
 void RobotArmState::goToPosition(PositionVector p)	// no verification

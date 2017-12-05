@@ -63,22 +63,25 @@
 
 #define PAIR_BOOM2MINS_COUNT 10
 
-PositionVector presetPositions[] =
-{	// total 12 positions at the moment
-	{ 100, 265,  63 },		// CenterSonar
-	{   0, 156,  50 },		// Center
-	{   1, 161,   1 },		// Rest
-	{ 198, 291,  50 },		// MaxHeight
-	{ -32, 301,   1 },		// MinHeight
-	{  98, 385,  50 },		// MaxRadius
-	{   0, 143,   1 },		// MinRadius
-	{  20, 165,   4 },		// Cup
-	{ 100, 275,  30 },		// corner A
-	{ 100, 381,  53 },		// corner B
-	{ 100, 309,  81 },		// corner C
-	{ 100, 222,  87 }		// corner D
+/* Important positions determined through manual control and measurement. */
+/* PRESET_POSITIONS_COUNT is defined in RobotArmState.h */
+PositionVector presetPositions[PRESET_POSITIONS_COUNT] =
+{
+	{ 100, 265,  63 },		// CenterSonar	- sonar sensor is centered between pylons
+	{   0, 156,  50 },		// Center		- horizonal end effector near center of pylons
+	{   1, 161,   1 },		// Rest			- good place to shut down, off area
+	{ 198, 291,  50 },		// MaxHeight	- around 198
+	{ -32, 301,   1 },		// MinHeight	- hits storage box around -32 (off area)
+	{  98, 385,  50 },		// MaxRadius	- around 385
+	{   0, 143,   1 },		// MinRadius	- around 143; can probably be less with direct servo control
+	{  20, 165,   4 },		// Cup			- good place to put the 'drop cup' under
+	{ 100, 275,  30 },		// corner A		- above pylon 'A' (opposite power supply)
+	{ 100, 381,  53 },		// corner B		- above pylon 'B' (nearest to Arduino)
+	{ 100, 309,  81 },		// corner C		- above pylon 'C' (nearest to power supply)
+	{ 100, 222,  87 }		// corner D		- above pylon 'D' (nearest to turret base)
 };
 
+/* Minimum angles for boom2 with respect to various boom1 angles. */
 Pair boom2mins[PAIR_BOOM2MINS_COUNT] = 
 {
 	{ 90, 83 },
@@ -155,20 +158,20 @@ void setup()
 	//state.sweep();
 	DEBUG1(F("Servos powered on."));
 
-	delay(500);
-	state.goToPosition(RAS::NamedPosition::CenterSonar);
-	state.goToPosition(RAS::NamedPosition::A);
-	state.goToPosition(RAS::NamedPosition::B);
-	state.goToPosition(RAS::NamedPosition::C);
-	state.goToPosition(RAS::NamedPosition::D);
-	state.goToPosition(RAS::NamedPosition::Center);
-	state.goToPosition(RAS::NamedPosition::Cup);
-	state.goToPosition(RAS::NamedPosition::MinHeight);
-	state.goToPosition(RAS::NamedPosition::MinRadius);
-	state.goToPosition(RAS::NamedPosition::MaxHeight);
-	state.goToPosition(RAS::NamedPosition::MaxRadius);
-	state.goToPosition(RAS::NamedPosition::Rest);
-	state.servoPowerOff();
+	//delay(500);
+	//state.goToPosition(RAS::NamedPosition::CenterSonar);
+	//state.goToPosition(RAS::NamedPosition::A);
+	//state.goToPosition(RAS::NamedPosition::B);
+	//state.goToPosition(RAS::NamedPosition::C);
+	//state.goToPosition(RAS::NamedPosition::D);
+	//state.goToPosition(RAS::NamedPosition::Center);
+	//state.goToPosition(RAS::NamedPosition::Cup);
+	//state.goToPosition(RAS::NamedPosition::MinHeight);
+	//state.goToPosition(RAS::NamedPosition::MinRadius);
+	//state.goToPosition(RAS::NamedPosition::MaxHeight);
+	//state.goToPosition(RAS::NamedPosition::MaxRadius);
+	//state.goToPosition(RAS::NamedPosition::Rest);
+	//state.servoPowerOff();
 
 	// SD Card stuff
 	/* The following should probably be moved to a class. AutoMoveSD? */
