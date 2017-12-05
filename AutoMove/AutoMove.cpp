@@ -67,16 +67,16 @@ PositionVector presetPositions[] =
 {	// total 12 positions at the moment
 	{ 100, 265,  63 },		// CenterSonar
 	{   0, 156,  50 },		// Center
-	{   0, 164,   1 },		// Rest
-	{ 999, 290,  50 },		// MaxHeight
-	{ -40, 999,   1 },		// MinHeight
-	{ 200, 999,  50 },		// MaxRadius
-	{  60, -99,  50 },		// MinRadius
+	{   1, 161,   1 },		// Rest
+	{ 198, 291,  50 },		// MaxHeight
+	{ -32, 301,   1 },		// MinHeight
+	{  98, 385,  50 },		// MaxRadius
+	{   0, 143,   1 },		// MinRadius
 	{  20, 165,   4 },		// Cup
 	{ 100, 275,  30 },		// corner A
 	{ 100, 381,  53 },		// corner B
-	{ 100, 310,  82 },		// corner C
-	{ 100, 220,  87 }		// corner D
+	{ 100, 309,  81 },		// corner C
+	{ 100, 222,  87 }		// corner D
 };
 
 Pair boom2mins[PAIR_BOOM2MINS_COUNT] = 
@@ -155,6 +155,21 @@ void setup()
 	//state.sweep();
 	DEBUG1(F("Servos powered on."));
 
+	delay(500);
+	state.goToPosition(RAS::NamedPosition::CenterSonar);
+	state.goToPosition(RAS::NamedPosition::A);
+	state.goToPosition(RAS::NamedPosition::B);
+	state.goToPosition(RAS::NamedPosition::C);
+	state.goToPosition(RAS::NamedPosition::D);
+	state.goToPosition(RAS::NamedPosition::Center);
+	state.goToPosition(RAS::NamedPosition::Cup);
+	state.goToPosition(RAS::NamedPosition::MinHeight);
+	state.goToPosition(RAS::NamedPosition::MinRadius);
+	state.goToPosition(RAS::NamedPosition::MaxHeight);
+	state.goToPosition(RAS::NamedPosition::MaxRadius);
+	state.goToPosition(RAS::NamedPosition::Rest);
+	state.servoPowerOff();
+
 	// SD Card stuff
 	/* The following should probably be moved to a class. AutoMoveSD? */
 	DEBUG1(F("Starting SPI SD card stuff."));
@@ -207,6 +222,9 @@ void setup()
 #define printPos(p) Serial.write('['); Serial.print(p.h); Serial.write(','); Serial.print(p.r); Serial.write(','); Serial.print(p.th); Serial.write(']')
 void loop()
 {
+	if (!state.isServoPowerOn())
+		state.servoPowerOn();
+
 	Serial.println();
 	PLN("[#] [name] : [servo angle] ([physical angle])");
 	P("[1] boom1  : ");

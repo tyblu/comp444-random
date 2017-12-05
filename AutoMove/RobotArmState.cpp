@@ -140,10 +140,10 @@ void RobotArmState::goToPosition(NamedPosition posName)
 		break;
 	}
 
-	DEBUG2(F("Boom1 angle set to/at:  "), boom1.getServo()->read());
-	DEBUG2(F("Boom2 angle set to/at:  "), boom2.getServo()->read());
-	DEBUG2(F("Turret angle set to/at: "), turret.getServo()->read());
-	DEBUG2(F("Claw angle set to/at:   "), claw.getServo()->read());
+//	DEBUG2(F("Boom1 angle set to/at:  "), boom1.getServo()->read());
+//	DEBUG2(F("Boom2 angle set to/at:  "), boom2.getServo()->read());
+//	DEBUG2(F("Turret angle set to/at: "), turret.getServo()->read());
+//	DEBUG2(F("Claw angle set to/at:   "), claw.getServo()->read());
 }
 
 void RobotArmState::goToPosition(PositionVector p)	// no verification
@@ -153,7 +153,7 @@ void RobotArmState::goToPosition(PositionVector p)	// no verification
 
 	long timeout = millis() + GOTOPOSITION_TIMEOUT_MS;
 	long timeLeft = GOTOPOSITION_TIMEOUT_MS;
-	while (pos.delta(p) > 1 && timeLeft > 0)	// error up to 1mm or 1deg or combo of two
+	while (pos.delta(p) > 2 && timeLeft > 0)	// error up to 1mm or 1deg or combo of two
 	{
 		if (p.h > pos.h && angle2 + 1 <= boom2.getMaxAngle())	// raise boom2
 		{
@@ -254,7 +254,7 @@ bool RobotArmState::isServoPowerOn()
 	int sum = 0;
 	for (uint8_t i = 0; i < SERVO_PWR_FEEDBACK_ANALOGREAD_POINTS; i++)
 		sum += analogRead(pwrFeedbackPin);
-	return (sum > SERVO_PWR_FEEDBACK_ANALOGREAD_POINTS / 2);
+	return (sum > SERVO_PWR_FEEDBACK_ANALOGREAD_POINTS * 1023 / 2);
 }
 
 void RobotArmState::servoPowerOn()
