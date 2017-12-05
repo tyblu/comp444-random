@@ -17,10 +17,18 @@
 #include "SdFat.h"
 #include "inttypes.h"
 
-void getUniqueFileNameIndex(char * filename, SdFatEX & arg_sd,
-	const char * folder, const char * prefix, const char * extension);
+namespace AutoMoveSD
+{
 
-uint16_t pow(uint8_t base, uint8_t exponent);
-uint8_t log10(uint16_t number);
+	void getUniqueIncrementedFileName(char * filename, SdFatEX & arg_sd,
+		const char * folder, const char * prefix, const char * extension);
+
+	uint16_t pow(uint8_t base, uint8_t exponent);
+	uint8_t log10(uint16_t number);
+
+	bool startScript(SdFatEX & sd, int csPin, SPISettings spiSettings);
+	bool openNewFile(SdFatEX & sd, const char * dir, SdFile & f, const char * fname);
+	bool initTopo(SdFatEX & sd, const char * dir, const char * pre, SdFile & f);
+}
+
 #endif // AutoMoveSD_h
-

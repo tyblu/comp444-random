@@ -115,7 +115,7 @@ RobotArmState state(
 // Sonar and SPI SD card stuff.
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
 SdFatEX sd;
-SdFile file;
+SdFile topoMapBaseline, topoMapCurrent;
 TopoScan topoScan(state, sonar);
 bool sdCardIsWorking;
 
@@ -174,44 +174,18 @@ void setup()
 	//state.servoPowerOff();
 
 	// SD Card stuff
-	/* The following should probably be moved to a class. AutoMoveSD? */
 	DEBUG1(F("Starting SPI SD card stuff."));
-	/* Initialize at the highest speed supported by the board that is
-	// not over 50 MHz. Try a lower speed if SPI errors occur. */
-	sdCardIsWorking = sd.begin(SD_CS_PIN, SD_SCK_MHZ(50));
-	DEBUG3(!sdCardIsWorking, F("begin failed."), F("begin success."));
-#ifndef AutoMove_DEBUG_MODE
-	if (!sdCardIsWorking)
-		sd.initErrorHalt();
-#endif
-
+	sdCardIsWorking = AutoMoveSD::startScript(sd, SD_CS_PIN, SD_SCK_MHZ(50));
+	sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "base", topoMapBaseline);
+	sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "topo", topoMapCurrent);
 	if (sdCardIsWorking)
 	{
-		char folderDir[] = "/TopoMaps";
-		if (!sd.exists(folderDir))
-		{
-			DEBUG3(sd.mkdir(folderDir), F("Create \"TopoMaps\" succeeded."), F("Create \"TopoMaps\" failed."));
-#ifndef AutoMove_DEBUG_MODE
-			sd.mkdir(folderName);
-#endif
-		}
-
-		char filename[13];
-		getUniqueFileNameIndex(filename, sd, folderDir, "sonar", "txt");
-		DEBUG2(F("Unique file name: "), filename);
-
-#ifdef AutoMove_DEBUG_MODE
-		DEBUG3(!sd.chdir(folderDir), F("chdir to \"TopoMaps\" failed."), F("chdir success."));
-		DEBUG3(!file.open(filename, O_CREAT | O_WRITE), F("Open failed."), F("Open success."));
-#else
-		sd.chdir(folderDir);
-		file.open(filename, O_CREAT);
-#endif
-
-		topoScan.logSonarDataHeaderEverything(file);
+		topoScan.logSonarDataHeaderEverything(topoMapBaseline);
+		topoScan.logSonarDataHeaderEverything(topoMapCurrent);
+		Serial.println(F("SD card files initialized."));
 	}
 	else
-		Serial.println(F("Skipping SD card stuff."));
+		Serial.println(F("SD card malfunction."));
 
 	// Force sensor stuff.
 	DEBUG2(F("LHS sensor reading: "), sensorL.read());
@@ -227,6 +201,9 @@ void loop()
 {
 	if (!state.isServoPowerOn())
 		state.servoPowerOn();
+
+	if (sdCardIsWorking)
+		topoScan.logSonarData(topoMapCurrent);
 
 	Serial.println();
 	PLN("[#] [name] : [servo angle] ([physical angle])");
