@@ -8,6 +8,7 @@
 #include "AutoMoveSD.h"
 
 #define AutoMoveSD_DEBUG_MODE
+#define getUniqueIncrementedFileName_DEBUG_MODE
 #ifdef AutoMoveSD_DEBUG_MODE
 #	define PRE Serial.print(F("AutoMoveSD : "))
 #	define POST delay(2) // note missing ';'
@@ -24,7 +25,25 @@
 #   define DEBUG10(x) 
 #	define DEBUG2(x,y) 
 #	define DEBUG20(x,y) 
-#endif
+#endif // AutoMoveSD_DEBUG_MODE
+#ifdef getUniqueIncrementedFileName_DEBUG_MODE
+#   define DEBUG0_UNIQUE(x) DEBUG0(x)
+#   define DEBUG00_UNIQUE(x) DEBUG00(x)
+#	define DEBUG1_UNIQUE(x) DEBUG1(x)
+#   define DEBUG10_UNIQUE(x) DEBUG10(x)
+#	define DEBUG2_UNIQUE(x,y) DEBUG2(x,y)
+#	define DEBUG20_UNIQUE(x,y) DEBUG20(x,y)
+#else
+#   define DEBUG0_UNIQUE(x) 
+#   define DEBUG00_UNIQUE(x) 
+#	define DEBUG1_UNIQUE(x) 
+#   define DEBUG10_UNIQUE(x) 
+#	define DEBUG2_UNIQUE(x,y) 
+#	define DEBUG20_UNIQUE(x,y) 
+#endif // getUniqueIncrementedFileName_DEBUG_MODE
+
+#define SPI_DIVIDER_MAX 32+1
+#define MAX_PATH_NAME_SIZE 9
 
 namespace AutoMoveSD
 {
@@ -59,7 +78,7 @@ namespace AutoMoveSD
 			strcat(filename, ".");
 			strcat(filename, extension);
 
-			DEBUG2(F("getUniqueFileNameIndex() fin (prefixLength > 8) --> filename = "), filename);
+			DEBUG2_UNIQUE(F("getUniqueFileNameIndex() fin (prefixLength > 8) --> filename = "), filename);
 
 			return;
 		}
@@ -68,38 +87,53 @@ namespace AutoMoveSD
 		char index[8];
 		uint8_t indexLength = (uint8_t)(13 - 4 - prefixLength - 1);
 
-		arg_sd.chdir(true);	// go to root dir
-		arg_sd.chdir(folder, true); // go to folder
+		if (!arg_sd.chdir(true))	// go to root dir
+		{
+			DEBUG1_UNIQUE(F("getUnique...() : sd.chdir() to root failed."));
+			strcpy(filename, "err.txt");
+			return;
+		}
+
+		if (!arg_sd.chdir(folder, true)) // go to folder
+		{
+			DEBUG1_UNIQUE(F("getUnique...() : sd.chdir() to root failed."));
+			strcpy(filename, "err.txt");
+			return;
+		}
+
 		do {
 			if (indexNumber > AutoMoveSD::pow((uint8_t)10, (uint8_t)(indexLength - 1))) // max index
 				return;		// quit, no unique indices left
 
-			DEBUG2(F("indexNumber = "), indexNumber);
-			DEBUG2(F("prefixLength= "), prefixLength);
-			DEBUG2(F("indexLength = "), indexLength);
+			uint8_t numberLength = AutoMoveSD::log10(indexNumber) + 1;
+
+			DEBUG2_UNIQUE(F("indexNumber = "), indexNumber);
+			DEBUG2_UNIQUE(F("prefixLength= "), prefixLength);
+			DEBUG2_UNIQUE(F("indexLength = "), indexLength);
+			DEBUG2_UNIQUE(F("numberLength= "), numberLength);
 
 			strcpy(filename, prefix);
 
-			DEBUG2(F("strcpy(filename, prefix)         --> filename = "), filename);
+			DEBUG2_UNIQUE(F("strcpy(filename, prefix)         --> filename = "), filename);
 
-			for (uint8_t i = 0; i < indexLength - AutoMoveSD::log10(indexNumber) - 1; i++)
+			for (uint8_t i = 0; i < indexLength - numberLength; i++)
 				strcat(filename, "0");
 
-			DEBUG2(F("strcat(filename, \"0\") for loop   --> filename = "), filename);
+			DEBUG2_UNIQUE(F("strcat(filename, \"0\") for loop   --> filename = "), filename);
 
 			itoa(indexNumber, index, 10);
 			strcat(filename, index);
 			strcat(filename, ".");
 			strcat(filename, extension);
 
-			DEBUG2(F("do-while loop finished           --> filename = "), filename);
+			DEBUG2_UNIQUE(F("do-while loop finished           --> filename = "), filename);
 
 			indexNumber++;
 		} while (arg_sd.exists(filename));
 
 		arg_sd.chdir(true);	// back to root dir
 
-		DEBUG2(F("getUniqueFileNameIndex() fin     --> filename = "), filename);
+		DEBUG2_UNIQUE(F("getUniqueFileNameIndex() fin     --> filename = "), filename);
 
 		return;
 	}
@@ -114,7 +148,7 @@ namespace AutoMoveSD
 		uint16_t result = (uint16_t)base;
 		while (--exponent > 0)
 		{
-			result *= result;
+			result *= base;
 		}
 
 		DEBUG0(Serial.print(result));
@@ -139,39 +173,101 @@ namespace AutoMoveSD
 		return result;
 	}
 
-	bool startScript(SdFatEX & arg_sd, int csPin, SPISettings spiSettings)
+	bool startScript(SdFatEX & arg_sd, int csPin, int spiClockDivider)
 	{
 		/* Initialize at the highest speed supported by the board that is
 		 * not over 50 MHz. Try a lower speed if SPI errors occur. */
-		bool beginSucceeded = arg_sd.begin(csPin, spiSettings);
-
-		DEBUG10(F("startScript() "));
-		DEBUG0((beginSucceeded) ? Serial.print(F("succeeded.")) : Serial.print(F("failed.")) );
+		bool beginSucceeded = arg_sd.begin(csPin, SD_SCK_MHZ(F_CPU / spiClockDivider));
 
 		if (!beginSucceeded)
-			arg_sd.initErrorHalt();
+		{
+			DEBUG2(F("startScript() failed at F_CPU/"), spiClockDivider);
+
+			if (spiClockDivider < SPI_DIVIDER_MAX)
+			{
+				spiClockDivider *= 2;
+				return startScript(arg_sd, csPin, spiClockDivider);
+			}
+
+			arg_sd.initErrorPrint();
+			return false;	// failed all clock speeds
+		}
 
 		return beginSucceeded;
 	}
 
-	bool openNewFile(SdFatEX & sd, const char * dir, SdFile & f, const char * fname)
+	bool openNewFile(SdFatEX & sd, const char * dirName, SdFile & f, const char * fname)
 	{
-		if (!sd.exists(dir))
-			sd.mkdir(dir);
-
-		if (!sd.chdir(dir))
+		if (strlen(dirName) > MAX_PATH_NAME_SIZE)
 		{
-			DEBUG2(F("openNewFile() : sd.chdir() failed, dir = "), dir);
+			DEBUG20(F("openNewFile() : dir name too long, strlen("), dirName);
+			DEBUG00(Serial.print(F(")=")));
+			DEBUG00(Serial.print(strlen(dirName)));
+			DEBUG00(Serial.print(F(" > ")));
+			DEBUG00(Serial.println(MAX_PATH_NAME_SIZE));
+			return false;
+		}
+
+		char path[MAX_PATH_NAME_SIZE];
+		char pathFwdSlash[MAX_PATH_NAME_SIZE];
+
+		if (dirName[0] == '/')				// remove prepended slash
+		{
+			strncpy(path, &dirName[1], MAX_PATH_NAME_SIZE);	// dirty C-string trick, copies dir[1] onwards
+			strncpy(pathFwdSlash, dirName, MAX_PATH_NAME_SIZE);
+		}
+		else
+		{
+			strncpy(path, dirName, MAX_PATH_NAME_SIZE);
+			strncpy(path, "/", MAX_PATH_NAME_SIZE);
+			strcat(path, dirName);
+		}
+
+		if (!sd.chdir());						// goto root dir
+		{
+			DEBUG1(F("sd.chdir() to root failed."));
+			return false;
+		}
+
+		if (!sd.exists(path))
+		{
+			if (!sd.mkdir(path))
+			{
+				DEBUG2(F("sd.mkdir(path) failed, path = "), path);
+				return false;
+			}
+		}
+
+		if (!sd.chdir(pathFwdSlash, true))
+		{
+			DEBUG2(F("openNewFile() : sd.chdir(pathFwdSlash) failed, path = "), pathFwdSlash);
 			return false;
 		}
 
 		return f.open(fname, O_CREAT | O_WRITE);
 	}
 
-	bool initTopo(SdFatEX & sd, const char * dir, const char * pre, SdFile & f)
+	bool initTopo(SdFatEX & sd, const char * dirName, const char * pre, SdFile & f)
 	{
 		char filename[13];
-		AutoMoveSD::getUniqueIncrementedFileName(filename, sd, dir, pre, "txt");
-		return AutoMoveSD::openNewFile(sd, dir, f, filename);
+		AutoMoveSD::getUniqueIncrementedFileName(filename, sd, dirName, pre, "txt");
+		return AutoMoveSD::openNewFile(sd, dirName, f, filename);
+	}
+
+	void serialPrintFileNames(SdFile * fileArr, int fileCount)
+	{
+		char fname[13];
+		for (uint8_t i = 0; i < fileCount; i++)
+		{
+			if (i > 0) { Serial.print(F(", ")); }
+			fileArr[i].getName(fname, 13);
+			Serial.print(fname);
+		}
+	}
+
+	void serialPrintlnFileNames(SdFile * fileArr, int fileCount)
+	{
+		serialPrintFileNames(fileArr, fileCount);
+		Serial.println();
 	}
 }

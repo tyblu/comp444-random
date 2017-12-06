@@ -46,8 +46,10 @@
 
 #define DIR RobotArmState::Direction
 
+#define POWER_DELAY_MS 200						// power up/down delay
 #define SERVO_PWR_FEEDBACK_ANALOGREAD_POINTS 20	// < uint8_t max and even
-#define GOTOPOSITION_TIMEOUT_MS 5000
+#define GOTOPOSITION_TIMEOUT_MS 5000			// allowed time to seek to a position
+#define PRESET_POSITIONS_DELAY_MS 300			// delay between positions
 
 RobotArmState::RobotArmState(
 	uint8_t pwrEnablePin,
@@ -268,11 +270,14 @@ bool RobotArmState::isServoPowerOn()
 void RobotArmState::servoPowerOn()
 {
 	digitalWrite(pwrEnablePin, HIGH);
+	delay(POWER_DELAY_MS);
+	this->getPositionVector()->updateAll();
 }
 
 void RobotArmState::servoPowerOff()
 {
 	digitalWrite(pwrEnablePin, LOW);
+	delay(POWER_DELAY_MS);
 }
 
 void RobotArmState::sweep()
@@ -281,14 +286,37 @@ void RobotArmState::sweep()
 		memberList[i]->sweep();
 }
 
+void RobotArmState::sweepPresetPositions()
+{
+	PositionVector * pos[PRESET_POSITIONS_COUNT] =
+	{
+		&posCenterSonar,
+		&posCenter,
+		&posRest,
+		&posCup,
+		&posMaxHeight, &posMinHeight, &posMaxRadius, &posMinRadius,
+		&posA, &posB, &posC, &posD
+	};
+
+	for (uint8_t i = 0; i < PRESET_POSITIONS_COUNT; i++)
+	{
+		goToPosition(*pos[i]);
+		delay(PRESET_POSITIONS_DELAY_MS);
+	}
+}
+
+void RobotArmState::attach()
+{
+	for (uint8_t i = 0; i < 4; i++)
+		if (!memberList[i]->getServo()->attached())
+			memberList[i]->attach();
+}
+
 void RobotArmState::attachSafe()
 {
 	for (uint8_t i = 0; i < 4; i++)
 		memberList[i]->safe();
-
-	for (uint8_t i = 0; i < 4; i++)
-		if (!memberList[i]->getServo()->attached())
-			memberList[i]->attach();
+	attach();
 }
 
 void RobotArmState::init()

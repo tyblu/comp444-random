@@ -196,12 +196,14 @@ public:
 	void servoPowerOn();
 	void servoPowerOff();
 
+	void attach();
 	void attachSafe();
 
 	void goToPosition(int height, int radius, int theta);
 	void goToPosition(PositionVector p);
 	void goToPosition(NamedPosition namedPos);
 	void sweep();
+	void RobotArmState::sweepPresetPositions();
 	void constrainedMove(Direction dir, int value);
 
 	bool verifyPosition(PositionVector& p);

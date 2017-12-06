@@ -9,13 +9,16 @@
 #include "AutoMovePinDefinitions.h"
 #include "TopoScan.h"
 #include "AutoMoveSD.h"
+#include "avr/sleep.h"
+
+namespace AutoMove { void shutdown(); }
 
 //#define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
 #ifndef AUTONOMOUS_OPERATION
 #	define SERIAL_CONTROL_MODE
 #endif
 
-#define AutoMove_DEBUG_MODE
+//#define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
 #	define PRE Serial.print(F("AutoMove : "))
 #	define POST delay(2) // note missing ';'
@@ -31,7 +34,7 @@
 #define RAM RobotArmMember
 #define RAS RobotArmState
 
-// Servo stuff.
+// Servo and arm construction constants
 #define CLAW_INCLINE 0
 #define CLAW_LENGTH_MIN 120L		// 87mm + 33mm = 120mm
 #define CLAW_LENGTH_ADJ 32L			// swingarm length [mm]
@@ -112,14 +115,17 @@ RobotArmState state(
 	presetPositions, boom2mins
 );
 
-// Sonar and SPI SD card stuff.
+// Sonar and SPI SD card
 SonarSensor sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN);
 SdFatEX sd;
 SdFile topoMapBaseline, topoMapCurrent;
+SdFile * files[] = { &topoMapBaseline , &topoMapCurrent };
+#define FILES_COUNT 2
 TopoScan topoScan(state, sonar);
 bool sdCardIsWorking;
+#define SPI_SPEED_DIVIDER 2	// for use with SD_SCK_MHZ(F_CPU/SPI_SPEED_DIVIDER), min 2
 
-// Force sensor stuff.
+// Force sensor
 ForceSensor sensorL(FORCE_SENSOR_ANALOG_A_PIN, FORCE_SENSORS_POWER_PIN, 10);
 ForceSensor sensorR(FORCE_SENSOR_ANALOG_B_PIN, FORCE_SENSORS_POWER_PIN, 10);
 
@@ -132,57 +138,46 @@ void setup()
 	// Servo stuff.
 	memberBoom1.setAngleConstants(BOOM1_ANGLE_SCALE, BOOM1_ANGLE_OFFSET);
 	memberBoom1.setLimits(BOOM1_ANGLE_MIN, BOOM1_ANGLE_MAX, BOOM1_ANGLE_SAFE);
+	DEBUG2(F("memberBoom1.getMinAngle:  "), memberBoom1.getMinAngle());
+	DEBUG2(F("memberBoom1.getMaxAngle:  "), memberBoom1.getMaxAngle());
 
 	memberBoom2.setAngleConstants(BOOM2_ANGLE_SCALE, BOOM2_ANGLE_OFFSET);
 	memberBoom2.setLimits(BOOM2_ANGLE_MIN, BOOM2_ANGLE_MAX, BOOM2_ANGLE_SAFE);
+	DEBUG2(F("memberBoom2.getMinAngle:  "), memberBoom2.getMinAngle());
+	DEBUG2(F("memberBoom2.getMaxAngle:  "), memberBoom2.getMaxAngle());
 
 	memberClaw.setAngleConstants(CLAW_ANGLE_SCALE, CLAW_ANGLE_OFFSET);
 	memberClaw.setLimits(CLAW_ANGLE_MIN, CLAW_ANGLE_MAX, CLAW_ANGLE_SAFE);
-
-	memberTurret.setAngleConstants(TURRET_ANGLE_SCALE, TURRET_ANGLE_OFFSET);
-	memberTurret.setLimits(TURRET_ANGLE_MIN, TURRET_ANGLE_MAX, TURRET_ANGLE_SAFE);
-
-	DEBUG2(F("memberBoom1.getMinAngle:  "), memberBoom1.getMinAngle());
-	DEBUG2(F("memberBoom1.getMaxAngle:  "), memberBoom1.getMaxAngle());
-	DEBUG2(F("memberBoom2.getMinAngle:  "), memberBoom2.getMinAngle());
-	DEBUG2(F("memberBoom2.getMaxAngle:  "), memberBoom2.getMaxAngle());
-	DEBUG2(F("memberTurret.getMinAngle: "), memberTurret.getMinAngle());
-	DEBUG2(F("memberTurret.getMaxAngle: "), memberTurret.getMaxAngle());
 	DEBUG2(F("memberClaw.getMinAngle:   "), memberClaw.getMinAngle());
 	DEBUG2(F("memberClaw.getMaxAngle:   "), memberClaw.getMaxAngle());
 
+	memberTurret.setAngleConstants(TURRET_ANGLE_SCALE, TURRET_ANGLE_OFFSET);
+	memberTurret.setLimits(TURRET_ANGLE_MIN, TURRET_ANGLE_MAX, TURRET_ANGLE_SAFE);
+	DEBUG2(F("memberTurret.getMinAngle: "), memberTurret.getMinAngle());
+	DEBUG2(F("memberTurret.getMaxAngle: "), memberTurret.getMaxAngle());
+
 	state.init();
-	state.attachSafe();
+	state.goToPosition(RAS::NamedPosition::Rest);
+	state.attach();
 	state.servoPowerOn();
-	state.getPositionVector()->updateAll();
-	//state.sweep();
 	DEBUG1(F("Servos powered on."));
 
-	//delay(500);
-	//state.goToPosition(RAS::NamedPosition::CenterSonar);
-	//state.goToPosition(RAS::NamedPosition::A);
-	//state.goToPosition(RAS::NamedPosition::B);
-	//state.goToPosition(RAS::NamedPosition::C);
-	//state.goToPosition(RAS::NamedPosition::D);
-	//state.goToPosition(RAS::NamedPosition::Center);
-	//state.goToPosition(RAS::NamedPosition::Cup);
-	//state.goToPosition(RAS::NamedPosition::MinHeight);
-	//state.goToPosition(RAS::NamedPosition::MinRadius);
-	//state.goToPosition(RAS::NamedPosition::MaxHeight);
-	//state.goToPosition(RAS::NamedPosition::MaxRadius);
-	//state.goToPosition(RAS::NamedPosition::Rest);
-	//state.servoPowerOff();
+	//state.sweep();
+	//state.sweepPresetPositions();
+	state.goToPosition(RAS::NamedPosition::Rest);
+	state.servoPowerOff();
 
 	// SD Card stuff
 	DEBUG1(F("Starting SPI SD card stuff."));
-	sdCardIsWorking = AutoMoveSD::startScript(sd, SD_CS_PIN, SD_SCK_MHZ(50));
+	sdCardIsWorking = AutoMoveSD::startScript(sd, SD_CS_PIN, SPI_SPEED_DIVIDER);
 	sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "base", topoMapBaseline);
 	sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "topo", topoMapCurrent);
 	if (sdCardIsWorking)
 	{
 		topoScan.logSonarDataHeaderEverything(topoMapBaseline);
 		topoScan.logSonarDataHeaderEverything(topoMapCurrent);
-		Serial.println(F("SD card files initialized."));
+		Serial.print(F("SD card files initialized: "));
+		AutoMoveSD::serialPrintlnFileNames(*files, FILES_COUNT);
 	}
 	else
 		Serial.println(F("SD card malfunction."));
@@ -236,13 +231,19 @@ void loop()
 	Serial.println();
 	
 	uint32_t timeout;
+	int32_t timeLeft;
+	uint8_t timeoutCount = 0;
+	const uint8_t timeoutCountLimit = 25;
 
 	P("Enter height: ");
 	timeout = millis() + 10000;
 	while (!Serial.available())
 	{
-		if (millis() > timeout)
+		timeLeft = timeout - millis();
+		if (timeLeft < 0)
 		{
+			timeoutCount++;
+			if (timeoutCount > timeoutCountLimit) { AutoMove::shutdown(); }
 			timeout = millis() + 10000;
 			Serial.println();
 			P("Enter height: ");
@@ -255,8 +256,11 @@ void loop()
 	timeout = millis() + 10000;
 	while (!Serial.available())
 	{
-		if (millis() > timeout)
+		timeLeft = timeout - millis();
+		if (timeLeft < 0)
 		{
+			timeoutCount++;
+			if (timeoutCount > timeoutCountLimit) { AutoMove::shutdown(); }
 			timeout = millis() + 10000;
 			Serial.println();
 			P("Enter radius: ");
@@ -269,8 +273,11 @@ void loop()
 	timeout = millis() + 10000;
 	while (!Serial.available())
 	{
-		if (millis() > timeout)
+		timeLeft = timeout - millis();
+		if (timeLeft < 0)
 		{
+			timeoutCount++;
+			if (timeoutCount > timeoutCountLimit) { AutoMove::shutdown(); }
 			timeout = millis() + 10000;
 			Serial.println();
 			P("Enter swing angle: ");
@@ -368,3 +375,28 @@ void loop()
 	}
 }
 #endif // AUTONOMOUS_OPERATION
+
+namespace AutoMove
+{
+	void shutdown()
+	{
+		state.goToPosition(RAS::NamedPosition::Rest);
+		state.servoPowerOff();
+
+		for (uint8_t i = 0; i < FILES_COUNT; i++)
+			files[i]->close();
+
+		Serial.println(F("\n*.*.*.*.* { I'm sleepy. Goodnight! Shutting down... } *.*.*.*.* \n"));
+		Serial.flush();
+
+		set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+		sleep_enable();
+		sleep_mode();
+
+		/* Program should never advanced past this point without something to wake it up. */
+
+		sleep_disable();
+		state.servoPowerOn();
+		DEBUG1(F("Turned back on all by myself! (wtf)"));
+	}
+}
