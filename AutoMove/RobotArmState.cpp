@@ -271,12 +271,17 @@ void RobotArmState::servoPowerOn()
 {
 	digitalWrite(pwrEnablePin, HIGH);
 	delay(POWER_DELAY_MS);
+
 	this->getPositionVector()->updateAll();
 }
 
 void RobotArmState::servoPowerOff()
 {
 	digitalWrite(pwrEnablePin, LOW);
+
+	for (uint8_t i = 0; i < 4; i++)
+		memberList[i]->getServo()->detach();
+
 	delay(POWER_DELAY_MS);
 }
 

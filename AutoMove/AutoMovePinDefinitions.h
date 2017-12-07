@@ -31,8 +31,8 @@
 #define SD_MISO_PIN 12	// ICSP #1
 
  // Force sensor stuff.
-#define FORCE_SENSOR_ANALOG_A_PIN A4
-#define FORCE_SENSOR_ANALOG_B_PIN A5
+#define FORCE_SENSOR_ANALOG_L_PIN A4
+#define FORCE_SENSOR_ANALOG_R_PIN A5
 #define FORCE_SENSORS_POWER_PIN 2
 
 #endif	// AutoMovePinDefinitions_h

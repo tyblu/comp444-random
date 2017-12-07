@@ -11,14 +11,14 @@
 #include "AutoMoveSD.h"
 #include "avr/sleep.h"
 
-namespace AutoMove { void shutdown(); }
+namespace AutoMove { void shutdown(); }	// signature only
 
 //#define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
 #ifndef AUTONOMOUS_OPERATION
 #	define SERIAL_CONTROL_MODE
 #endif
 
-//#define AutoMove_DEBUG_MODE
+#define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
 #	define PRE Serial.print(F("AutoMove : "))
 #	define POST delay(2) // note missing ';'
@@ -65,6 +65,9 @@ namespace AutoMove { void shutdown(); }
 #define TURRET_ANGLE_SAFE 10
 
 #define PAIR_BOOM2MINS_COUNT 10
+
+#define FORCE_SENSOR_MIN 10		// about 50mV
+#define FORCE_SENSOR_MAX 1013	// about 5V - 50mV = 4.95V
 
 /* Important positions determined through manual control and measurement. */
 /* PRESET_POSITIONS_COUNT is defined in RobotArmState.h */
@@ -126,35 +129,23 @@ bool sdCardIsWorking;
 #define SPI_SPEED_DIVIDER 2	// for use with SD_SCK_MHZ(F_CPU/SPI_SPEED_DIVIDER), min 2
 
 // Force sensor
-ForceSensor sensorL(FORCE_SENSOR_ANALOG_A_PIN, FORCE_SENSORS_POWER_PIN, 10);
-ForceSensor sensorR(FORCE_SENSOR_ANALOG_B_PIN, FORCE_SENSORS_POWER_PIN, 10);
+ForceSensor sensorL(FORCE_SENSOR_ANALOG_L_PIN, FORCE_SENSORS_POWER_PIN, FORCE_SENSOR_MIN, FORCE_SENSOR_MAX);
+ForceSensor sensorR(FORCE_SENSOR_ANALOG_R_PIN, FORCE_SENSORS_POWER_PIN, FORCE_SENSOR_MIN, FORCE_SENSOR_MAX);
 
 void setup()
 {
 	Serial.begin(9600);
-	Serial.println("AutoMove.cpp compiled " __DATE__ " at " __TIME__);
-	Serial.println();
+	Serial.println("AutoMove.cpp compiled " __DATE__ " at " __TIME__ "\n");
 
 	// Servo stuff.
 	memberBoom1.setAngleConstants(BOOM1_ANGLE_SCALE, BOOM1_ANGLE_OFFSET);
 	memberBoom1.setLimits(BOOM1_ANGLE_MIN, BOOM1_ANGLE_MAX, BOOM1_ANGLE_SAFE);
-	DEBUG2(F("memberBoom1.getMinAngle:  "), memberBoom1.getMinAngle());
-	DEBUG2(F("memberBoom1.getMaxAngle:  "), memberBoom1.getMaxAngle());
-
 	memberBoom2.setAngleConstants(BOOM2_ANGLE_SCALE, BOOM2_ANGLE_OFFSET);
 	memberBoom2.setLimits(BOOM2_ANGLE_MIN, BOOM2_ANGLE_MAX, BOOM2_ANGLE_SAFE);
-	DEBUG2(F("memberBoom2.getMinAngle:  "), memberBoom2.getMinAngle());
-	DEBUG2(F("memberBoom2.getMaxAngle:  "), memberBoom2.getMaxAngle());
-
 	memberClaw.setAngleConstants(CLAW_ANGLE_SCALE, CLAW_ANGLE_OFFSET);
 	memberClaw.setLimits(CLAW_ANGLE_MIN, CLAW_ANGLE_MAX, CLAW_ANGLE_SAFE);
-	DEBUG2(F("memberClaw.getMinAngle:   "), memberClaw.getMinAngle());
-	DEBUG2(F("memberClaw.getMaxAngle:   "), memberClaw.getMaxAngle());
-
 	memberTurret.setAngleConstants(TURRET_ANGLE_SCALE, TURRET_ANGLE_OFFSET);
 	memberTurret.setLimits(TURRET_ANGLE_MIN, TURRET_ANGLE_MAX, TURRET_ANGLE_SAFE);
-	DEBUG2(F("memberTurret.getMinAngle: "), memberTurret.getMinAngle());
-	DEBUG2(F("memberTurret.getMaxAngle: "), memberTurret.getMaxAngle());
 
 	state.init();
 	state.goToPosition(RAS::NamedPosition::Rest);
@@ -168,7 +159,6 @@ void setup()
 	state.servoPowerOff();
 
 	// SD Card stuff
-	DEBUG1(F("Starting SPI SD card stuff."));
 	sdCardIsWorking = AutoMoveSD::startScript(sd, SD_CS_PIN, SPI_SPEED_DIVIDER);
 	sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "base", topoMapBaseline);
 	sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "topo", topoMapCurrent);
@@ -183,8 +173,14 @@ void setup()
 		Serial.println(F("SD card malfunction."));
 
 	// Force sensor stuff.
-	DEBUG2(F("LHS sensor reading: "), sensorL.read());
-	DEBUG2(F("RHS sensor reading: "), sensorR.read());
+	Serial.print(F("Force sensors configured (normally off): "));
+	ForceSensor::report(sensorL, sensorR, true);
+
+	// debug demo
+	sensorL.on();
+	sensorR.on();
+	Serial.print(F("Force sensors configured (normally on) : "));
+	ForceSensor::report(sensorL, sensorR, true);
 }
 
 #ifdef SERIAL_CONTROL_MODE			// arm controlled by USB serial commands
@@ -194,8 +190,11 @@ void setup()
 #define printPos(p) Serial.write('['); Serial.print(p.h); Serial.write(','); Serial.print(p.r); Serial.write(','); Serial.print(p.th); Serial.write(']')
 void loop()
 {
-	if (!state.isServoPowerOn())
-		state.servoPowerOn();
+	//if (!state.isServoPowerOn())
+	//{
+	//	state.servoPowerOn();
+	//	state.attach();
+	//}
 
 	if (sdCardIsWorking)
 		topoScan.logSonarData(topoMapCurrent);
