@@ -11,7 +11,7 @@
 #define FILTERED_READ_POINTS 50
 #define FILTERED_READ_TIMEOUT_MS 100
 
-//#define ForceSensor_DEBUG_MODE
+//#define ForceSensor_DEBUG_MODE	// remember to increase timeout value
 #ifdef ForceSensor_DEBUG_MODE
 #	define PRE Serial.print(F("ForceSensor: "))
 #	define POST delay(5)

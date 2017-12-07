@@ -66,8 +66,8 @@ namespace AutoMove { void shutdown(); }	// signature only
 
 #define PAIR_BOOM2MINS_COUNT 10
 
-#define FORCE_SENSOR_MIN 10		// about 50mV
-#define FORCE_SENSOR_MAX 1013	// about 5V - 50mV = 4.95V
+#define FORCE_SENSOR_MIN 41		// about 200mV
+#define FORCE_SENSOR_MAX 982	// about 5V - 200mV = 4.8V
 
 /* Important positions determined through manual control and measurement. */
 /* PRESET_POSITIONS_COUNT is defined in RobotArmState.h */
@@ -174,12 +174,6 @@ void setup()
 
 	// Force sensor stuff.
 	Serial.print(F("Force sensors configured (normally off): "));
-	ForceSensor::report(sensorL, sensorR, true);
-
-	// debug demo
-	sensorL.on();
-	sensorR.on();
-	Serial.print(F("Force sensors configured (normally on) : "));
 	ForceSensor::report(sensorL, sensorR, true);
 }
 
