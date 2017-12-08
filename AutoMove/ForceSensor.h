@@ -28,7 +28,7 @@ public:
 	//void combineWith(ForceSensor& anotherForceSensor);
 	//void remove(ForceSensor& anotherForceSensor);
 
-	static void ForceSensor::report(ForceSensor & sLeft, ForceSensor & sRight, bool lineBreak);
+	static void ForceSensor::report(ForceSensor & sLeft, ForceSensor & sRight, bool lineBreak = false);
 
 private:
 	uint8_t adcPin, powerPin;

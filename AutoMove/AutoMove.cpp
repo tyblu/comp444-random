@@ -13,12 +13,12 @@
 
 namespace AutoMove { void shutdown(); }	// signature only
 
-//#define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
+#define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
 #ifndef AUTONOMOUS_OPERATION
 #	define SERIAL_CONTROL_MODE
 #endif
 
-#define AutoMove_DEBUG_MODE
+//#define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
 #	define PRE Serial.print(F("AutoMove : "))
 #	define POST delay(2) // note missing ';'
@@ -73,7 +73,7 @@ namespace AutoMove { void shutdown(); }	// signature only
 /* PRESET_POSITIONS_COUNT is defined in RobotArmState.h */
 PositionVector presetPositions[PRESET_POSITIONS_COUNT] =
 {
-	{ 100, 265,  63 },		// CenterSonar	- sonar sensor is centered between pylons
+	{ 180, 280,  63 },		// CenterSonar	- sonar sensor is centered between pylons
 	{   0, 156,  50 },		// Center		- horizonal end effector near center of pylons
 	{   1, 161,   1 },		// Rest			- good place to shut down, off area
 	{ 198, 291,  50 },		// MaxHeight	- around 198
@@ -148,14 +148,14 @@ void setup()
 	memberTurret.setLimits(TURRET_ANGLE_MIN, TURRET_ANGLE_MAX, TURRET_ANGLE_SAFE);
 
 	state.init();
-	state.goToPosition(RAS::NamedPosition::Rest);
+	state.goToPosition(RAS::NamedPosition::CenterSonar);
 	state.attach();
 	state.servoPowerOn();
 	DEBUG1(F("Servos powered on."));
 
 	//state.sweep();
 	//state.sweepPresetPositions();
-	state.goToPosition(RAS::NamedPosition::Rest);
+	state.goToPosition(RAS::NamedPosition::CenterSonar);
 	state.servoPowerOff();
 
 	// SD Card stuff
@@ -184,11 +184,13 @@ void setup()
 #define printPos(p) Serial.write('['); Serial.print(p.h); Serial.write(','); Serial.print(p.r); Serial.write(','); Serial.print(p.th); Serial.write(']')
 void loop()
 {
-	//if (!state.isServoPowerOn())
-	//{
-	//	state.servoPowerOn();
-	//	state.attach();
-	//}
+	if (!state.isServoPowerOn())
+	{
+		state.servoPowerOn();
+		state.attach();
+		state.goToPosition(RobotArmState::NamedPosition::CenterSonar);
+		Serial.println(F("Ready for sonar readings."));
+	}
 
 	if (sdCardIsWorking)
 		topoScan.logSonarData(topoMapCurrent);
@@ -313,58 +315,28 @@ void loop()
 #ifdef AUTONOMOUS_OPERATION		// regular behaviour loop()
 void loop()
 {
-	// Go to middle of paper and calibrate height.
-	/* The following should probably be moved to a class function.
-	 * RobotArmState or TopoScan? Proabably TopoScan. */
-	//memberBoom2.smooth(100);
-	//memberBoom1.smooth(115);
-	state.goToPos(RobotArmState::NamedPosition::CenterSonar);
-	DEBUG1(F("Sonar sensor centered."));
-	delay(500);
-	uint32_t heightZero = sonar.getMeasurement();
-	DEBUG2(F("Height zeroed to h="), heightZero);
-
-	/* The following should probably be moved to TopoScan. */
-	for (uint8_t radius = 0; rad < memberBoom1.getMaxAngle(); rad += 5)
+	if (!state.isServoPowerOn())
 	{
-		//memberBoom1.smooth(rad);
-		//memberTurret.smooth(90);
-		DEBUG1(F("Centering sonar."));
-		state.goToPos(RobotArmState::NamedPosition::CenterSonar);
-		memberBoom1.smooth(rad);
+		state.servoPowerOn();
+		state.attach();
+		state.goToPosition(RobotArmState::NamedPosition::CenterSonar);
+		Serial.println(F("Ready for sonar readings."));
+	}
 
-		// zero height with boom2
-		int32_t heightDiff = sonar.getMeasurement() - heightZero;
-		uint32_t timeout = millis() + 2000;
-		while (abs(heightDiff) > 25 && millis() < timeout)
-		{
-			memberBoom2.smooth((heightDiff > 0) ? -1 : 1);
-			heightDiff = sonar.getMeasurement() - heightZero;
-		}
-		DEBUG2(F("Sonar height adjusted to zero-level. heightDiff="), heightDiff);
+	
+	while (1)
+	{
+		Serial.print(F("Sonar sum: "));
+		delay(500);
 
-		//int32_t timeDiff;
-		//do {
-		//	timeDiff = micros() - logTime;
-		//} while (timeDiff < 0); // wait for log time
+		int count = 0;
+		uint32_t sum = 0;
+		do {
+			sum += sonar.getMeasurement();
+			delay(25);
+		} while (count++ < 100);
 
-		for (uint8_t theta = memberTurret.getMinAngle(); theta < memberTurret.getMaxAngle(); theta += 2)
-		{
-			memberTurret.smooth(theta); 
-			//logSonarDataEverything(sonar, file, state);
-			topoScan.logSonarDataEverything(file);
-			file.sync();
-		}
-
-		for (uint8_t theta = memberTurret.getMaxAngle(); theta > memberTurret.getMinAngle(); theta -= 2)
-		{
-			memberTurret.smooth(theta);
-			//logSonarDataEverything(sonar, file, state);
-			topoScan.logSonarDataEverything(file);
-			file.sync();
-		}
-
-		DEBUG1(F("Completed scan line."));
+		Serial.println(sum);
 	}
 }
 #endif // AUTONOMOUS_OPERATION

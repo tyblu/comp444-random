@@ -97,13 +97,13 @@ uint8_t ForceSensor::filteredMeasure()
 	do {
 		dat = analogRead(adcPin);
 
-		//BREAK; PRE;
-		//DEBUG(Serial.print(F("filteredMeasure() do-while: dat=")));
-		//DEBUG(Serial.print(dat));
-		//DEBUG(Serial.print(F(", (dat > minReading && dat < maxReading)=(")));
-		//DEBUG(Serial.print((dat > minReading) ? (F("TRUE && ")) : (F("FALSE && "))));
-		//DEBUG(Serial.print((dat < maxReading) ? (F("TRUE)=")) : (F("FALSE)="))));
-		//DEBUG(Serial.print((dat > minReading && dat < maxReading) ? (F("TRUE, sum=")) : F("FALSE, sum=")));
+		BREAK; PRE;
+		DEBUG(Serial.print(F("filteredMeasure() do-while: dat=")));
+		DEBUG(Serial.print(dat));
+		DEBUG(Serial.print(F(", (dat > minReading && dat < maxReading)=(")));
+		DEBUG(Serial.print((dat > minReading) ? (F("TRUE && ")) : (F("FALSE && "))));
+		DEBUG(Serial.print((dat < maxReading) ? (F("TRUE)=")) : (F("FALSE)="))));
+		DEBUG(Serial.print((dat > minReading && dat < maxReading) ? (F("TRUE, sum=")) : F("FALSE, sum=")));
 
 		if (dat > minReading && dat < maxReading)
 		{
@@ -111,30 +111,30 @@ uint8_t ForceSensor::filteredMeasure()
 			count++;
 		}
 
-		//DEBUG(Serial.print(sum));
-		//DEBUG(Serial.print(F(", count=")));
-		//DEBUG(Serial.print(count));
-		//POST; BREAK; PRE;
-		//DEBUG(Serial.print(F("minReading: ")));
-		//DEBUG(Serial.print(minReading));
-		//DEBUG(Serial.print(F(", maxReading: ")));
-		//DEBUG(Serial.print(maxReading));
-		//POST; BREAK;
-		//
-		//PRE;
-		//DEBUG(Serial.print(F("(count < FILTERED_READ_POINTS && millis() < timeout)=(")));
-		//DEBUG(Serial.print(count));
-		//DEBUG(Serial.print(F(" < ")));
-		//DEBUG(Serial.print(FILTERED_READ_POINTS));
-		//DEBUG(Serial.print(F(" && ")));
-		//DEBUG(Serial.print(millis()));
-		//DEBUG(Serial.print(F(" < ")));
-		//DEBUG(Serial.print(timeout));
-		//DEBUG(Serial.print(F(")=(")));
-		//DEBUG(Serial.print((count < FILTERED_READ_POINTS) ? (F("TRUE && ")) : (F("FALSE && "))));
-		//DEBUG(Serial.print((millis() < timeout) ? (F("TRUE)=")) : (F("FALSE)="))));
-		//DEBUG(Serial.print((count < FILTERED_READ_POINTS && millis() < timeout) ? (F("TRUE")) : (F("FALSE"))));
-		//POST; BREAK;
+		DEBUG(Serial.print(sum));
+		DEBUG(Serial.print(F(", count=")));
+		DEBUG(Serial.print(count));
+		POST; BREAK; PRE;
+		DEBUG(Serial.print(F("minReading: ")));
+		DEBUG(Serial.print(minReading));
+		DEBUG(Serial.print(F(", maxReading: ")));
+		DEBUG(Serial.print(maxReading));
+		POST; BREAK;
+		
+		PRE;
+		DEBUG(Serial.print(F("(count < FILTERED_READ_POINTS && millis() < timeout)=(")));
+		DEBUG(Serial.print(count));
+		DEBUG(Serial.print(F(" < ")));
+		DEBUG(Serial.print(FILTERED_READ_POINTS));
+		DEBUG(Serial.print(F(" && ")));
+		DEBUG(Serial.print(millis()));
+		DEBUG(Serial.print(F(" < ")));
+		DEBUG(Serial.print(timeout));
+		DEBUG(Serial.print(F(")=(")));
+		DEBUG(Serial.print((count < FILTERED_READ_POINTS) ? (F("TRUE && ")) : (F("FALSE && "))));
+		DEBUG(Serial.print((millis() < timeout) ? (F("TRUE)=")) : (F("FALSE)="))));
+		DEBUG(Serial.print((count < FILTERED_READ_POINTS && millis() < timeout) ? (F("TRUE")) : (F("FALSE"))));
+		POST; BREAK;
 
 	} while (count < FILTERED_READ_POINTS && millis() < timeout);
 
