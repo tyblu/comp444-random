@@ -26,7 +26,7 @@ namespace AutoMove // signatures only
 #	define SERIAL_CONTROL_MODE
 #endif
 
-#define SCAN_OBJECT_COUNT 100
+#define SCAN_OBJECT_COUNT 50
 #define SCAN_OBJECT_DATA_POINTS 3
 #define SCAN_OBJECT_HYSTERISIS 20UL
 
@@ -34,10 +34,14 @@ namespace AutoMove // signatures only
 #ifdef AutoMove_DEBUG_MODE
 #	define PRE Serial.print(F("AutoMove : "))
 #	define POST delay(2) // note missing ';'
+#	define DEBUG0(x) (x)
 #	define DEBUG1(x) PRE; Serial.println(x); POST
 #	define DEBUG2(x,y) PRE; Serial.print(x); Serial.println(y); POST
 #	define DEBUG3(f,xT,xF) PRE; if(f) { Serial.println(xT); } else { Serial.println(xF); } POST
 #else
+#	define PRE 
+#	define POST 
+#	define DEBUG0(x) 
 #	define DEBUG1(x)
 #	define DEBUG2(x,y)
 #	define DEBUG3(f,xT,xF)
@@ -52,9 +56,9 @@ namespace AutoMove // signatures only
 #define CLAW_LENGTH_ADJ 32L			// swingarm length [mm]
 #define CLAW_ANGLE_SCALE 1000L
 #define CLAW_ANGLE_OFFSET -20L
-#define CLAW_ANGLE_MAX 110
-#define CLAW_ANGLE_MIN 40
-#define CLAW_ANGLE_SAFE 50
+#define CLAW_ANGLE_MAX 160
+#define CLAW_ANGLE_MIN 80
+#define CLAW_ANGLE_SAFE 90
 
 #define BOOM1_LENGTH 140L
 #define BOOM1_ANGLE_SCALE -1000L
@@ -82,13 +86,13 @@ namespace AutoMove // signatures only
 #define FORCE_SENSOR_MAX 982	// about 5V - 200mV = 4.8V
 #define GRIP_FORCE_MAX 500
 
-#define PLATFORM_HEIGHT -5
+#define PLATFORM_HEIGHT -20
 
 /* Important positions determined through manual control and measurement. */
 /* PRESET_POSITIONS_COUNT is defined in RobotArmState.h */
 PositionVector presetPositions[PRESET_POSITIONS_COUNT] =
 {
-	{ 180, 280,  63 },		// CenterSonar	- sonar sensor is centered between pylons
+	{ 180, 300,  63 },		// CenterSonar	- sonar sensor is centered between pylons
 	{   0, 156,  50 },		// Center		- horizonal end effector near center of pylons
 	{   1, 161,   1 },		// Rest			- good place to shut down, off area
 	{ 198, 291,  50 },		// MaxHeight	- around 198
@@ -190,6 +194,13 @@ void setup()
 	// Force sensor stuff.
 	Serial.print(F("Force sensors configured (normally off): "));
 	ForceSensor::report(sensorL, sensorR, true);
+
+/* The following block is only to help glue a force sensor back onto the gripper. */
+	state.servoPowerOn();
+	state.goToPosition(RobotArmState::NamedPosition::Rest);
+	memberClaw.slow(memberClaw.getMaxAngle()+15);
+	state.servoPowerOff();
+	AutoMove::shutdown();
 }
 
 #ifdef SERIAL_CONTROL_MODE			// arm controlled by USB serial commands
@@ -341,8 +352,7 @@ void loop()
 	if (AutoMove::scanForObject(30000))
 	{
 		DEBUG1(F("Object found, moving it off the platform..."));
-		/* presetPosition[9] is position 'B', the platform corner nearest to the Arduino. */
-		AutoMove::gripObjectAt(PLATFORM_HEIGHT + 5, presetPositions[9].r, presetPositions[9].th);
+		AutoMove::gripObjectAt(PLATFORM_HEIGHT + 5, 250, 63);
 		delay(500);
 		state.goToPosition(RobotArmState::NamedPosition::Cup);
 		AutoMove::releaseObject();
@@ -411,7 +421,7 @@ namespace AutoMove
 			DEBUG2(F("scanForObj(): sonarData.peek() -------> "), sonarData.peek());
 
 			/* If an object was on the table while doing baseline scan, get new baseline. */
-			if (sonarData.peek() + SCAN_OBJECT_HYSTERISIS < baseline)
+			if (sonarData.peek() > baseline + SCAN_OBJECT_HYSTERISIS)
 			{
 				baseline = sonar.getMeasurement(SCAN_OBJECT_COUNT);
 				sonarData.set(baseline);
@@ -422,7 +432,7 @@ namespace AutoMove
 			DEBUG2(F("scanForObj(): sonarData.getStdDev() --> "), sonarData.getStdDev());
 			DEBUG2(F("scanForObj(): SCAN_OBJ_HYST ----------> "), SCAN_OBJECT_HYSTERISIS);
 
-			if (sonarData.getAverage() > baseline + SCAN_OBJECT_HYSTERISIS 
+			if (sonarData.getAverage() + SCAN_OBJECT_HYSTERISIS < baseline
 				|| sonarData.getStdDev() > SCAN_OBJECT_HYSTERISIS)
 				return true;
 
@@ -463,13 +473,17 @@ namespace AutoMove
 			th
 		);
 
-		memberClaw.change(20);
+		//memberClaw.change(20);
 
 		while (sensorL.read() + sensorR.read() < 2 * GRIP_FORCE_MAX 
 			&& memberClaw.getServo()->read() < memberClaw.getMaxAngle())
 		{
 			state.goToPosition(h, r, th);
 			memberClaw.change(5);
+			PRE;
+			DEBUG0(Serial.print(F("gripObjAt(): forces ")));
+			DEBUG0(ForceSensor::report(sensorL, sensorR, true));
+			POST;
 		}
 	}
 
