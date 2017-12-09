@@ -28,7 +28,7 @@ namespace AutoMove // signatures only
 
 #define SCAN_OBJECT_COUNT 100
 #define SCAN_OBJECT_DATA_POINTS 3
-#define SCAN_OBJECT_HYSTERISIS 2000UL
+#define SCAN_OBJECT_HYSTERISIS 20UL
 
 #define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
@@ -335,10 +335,10 @@ void loop()
 		state.servoPowerOn();
 		state.attach();
 		state.goToPosition(RobotArmState::NamedPosition::CenterSonar);
-		Serial.println(F("Ready to rock and roll!"));
+		Serial.println(F("Servo power is switched on and we\'re ready to rock and roll!"));
 	}
 
-	if (AutoMove::scanForObject(10000))
+	if (AutoMove::scanForObject(30000))
 	{
 		DEBUG1(F("Object found, moving it off the platform..."));
 		/* presetPosition[9] is position 'B', the platform corner nearest to the Arduino. */
@@ -391,27 +391,36 @@ namespace AutoMove
 		{
 			state.servoPowerOn();
 			state.attach();
+			DEBUG1(F("scanForObj(): turned on power"));
 		}
 
 		state.goToPosition(RobotArmState::NamedPosition::CenterSonar);
 		delay(250);	// wait to stabilize	TODO: make 250 a #define
 
 		/* Get baseline sonar measurement if not provided. */
-		if (baseline = 0)
+		if (baseline == 0)
 			baseline = sonar.getMeasurement(SCAN_OBJECT_COUNT);
 
 		RollingAverage sonarData(baseline);
+		
 		uint32_t timeEnd = millis() + timeout;
 		while (timeout > 0)
 		{
 			sonarData.push(sonar.getMeasurement(SCAN_OBJECT_COUNT));
+
+			DEBUG2(F("scanForObj(): sonarData.peek() -------> "), sonarData.peek());
 
 			/* If an object was on the table while doing baseline scan, get new baseline. */
 			if (sonarData.peek() + SCAN_OBJECT_HYSTERISIS < baseline)
 			{
 				baseline = sonar.getMeasurement(SCAN_OBJECT_COUNT);
 				sonarData.set(baseline);
+				DEBUG2(F("scanForObj(): new baseline set to "), baseline);
 			}
+
+			DEBUG2(F("scanForObj(): sonarData.getAvg() -----> "), sonarData.getAverage());
+			DEBUG2(F("scanForObj(): sonarData.getStdDev() --> "), sonarData.getStdDev());
+			DEBUG2(F("scanForObj(): SCAN_OBJ_HYST ----------> "), SCAN_OBJECT_HYSTERISIS);
 
 			if (sonarData.getAverage() > baseline + SCAN_OBJECT_HYSTERISIS 
 				|| sonarData.getStdDev() > SCAN_OBJECT_HYSTERISIS)
@@ -424,6 +433,8 @@ namespace AutoMove
 
 	void gripObjectAt(int h, int r, int th)
 	{
+		DEBUG1(F("gripObjAt(): grabbing object..."));
+
 		memberClaw.fast(memberClaw.getMinAngle());
 
 		state.goToPosition(
@@ -458,17 +469,19 @@ namespace AutoMove
 			&& memberClaw.getServo()->read() < memberClaw.getMaxAngle())
 		{
 			state.goToPosition(h, r, th);
-			memberClaw.change(2);
+			memberClaw.change(5);
 		}
 	}
 
 	void releaseObjectAt(int h, int r, int th)
 	{
+		DEBUG1(F("releaseObjAt(): releasing object..."));
+
 		while (sensorL.read() + sensorR.read() > 2 * FORCE_SENSOR_MIN
 			&& memberClaw.getServo()->read() > memberClaw.getMinAngle())
 		{
 			state.goToPosition(h, r, th);
-			memberClaw.change(-2);
+			memberClaw.change(-5);
 		}
 
 		memberClaw.fast(memberClaw.getMinAngle());
