@@ -10,15 +10,27 @@
 #include "TopoScan.h"
 #include "AutoMoveSD.h"
 #include "avr/sleep.h"
+#include "RollingAverage.h"
 
-namespace AutoMove { void shutdown(); }	// signature only
+namespace AutoMove // signatures only
+{ 
+	void shutdown();											// closest thing to powering off
+	bool scanForObject(int32_t timeout, uint32_t baseline = 0);	// look for objects from up on high
+	void gripObjectAt(int h, int r, int th);					// grip object at (h,r,th)
+	void releaseObjectAt(int h, int r, int th);					// release object at (h,r,th)
+	void releaseObject();										// release at current position
+}	
 
 #define AUTONOMOUS_OPERATION		// comment out for serial (USB) control mode
 #ifndef AUTONOMOUS_OPERATION
 #	define SERIAL_CONTROL_MODE
 #endif
 
-//#define AutoMove_DEBUG_MODE
+#define SCAN_OBJECT_COUNT 100
+#define SCAN_OBJECT_DATA_POINTS 3
+#define SCAN_OBJECT_HYSTERISIS 2000UL
+
+#define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
 #	define PRE Serial.print(F("AutoMove : "))
 #	define POST delay(2) // note missing ';'
@@ -68,6 +80,9 @@ namespace AutoMove { void shutdown(); }	// signature only
 
 #define FORCE_SENSOR_MIN 41		// about 200mV
 #define FORCE_SENSOR_MAX 982	// about 5V - 200mV = 4.8V
+#define GRIP_FORCE_MAX 500
+
+#define PLATFORM_HEIGHT -5
 
 /* Important positions determined through manual control and measurement. */
 /* PRESET_POSITIONS_COUNT is defined in RobotArmState.h */
@@ -320,23 +335,23 @@ void loop()
 		state.servoPowerOn();
 		state.attach();
 		state.goToPosition(RobotArmState::NamedPosition::CenterSonar);
-		Serial.println(F("Ready for sonar readings."));
+		Serial.println(F("Ready to rock and roll!"));
 	}
 
-	
-	while (1)
+	if (AutoMove::scanForObject(10000))
 	{
-		Serial.print(F("Sonar sum: "));
+		DEBUG1(F("Object found, moving it off the platform..."));
+		/* presetPosition[9] is position 'B', the platform corner nearest to the Arduino. */
+		AutoMove::gripObjectAt(PLATFORM_HEIGHT + 5, presetPositions[9].r, presetPositions[9].th);
 		delay(500);
-
-		int count = 0;
-		uint32_t sum = 0;
-		do {
-			sum += sonar.getMeasurement();
-			delay(25);
-		} while (count++ < 100);
-
-		Serial.println(sum);
+		state.goToPosition(RobotArmState::NamedPosition::Cup);
+		AutoMove::releaseObject();
+		delay(500);
+	}
+	else
+	{
+		DEBUG1(F("Did not detect object. Continuing to scan..."));
+		delay(500);
 	}
 }
 #endif // AUTONOMOUS_OPERATION
@@ -363,5 +378,108 @@ namespace AutoMove
 		sleep_disable();
 		state.servoPowerOn();
 		DEBUG1(F("Turned back on all by myself! (wtf)"));
+	}
+
+	bool scanForObject()
+	{
+		return scanForObject(5000L, 0UL);	// TODO: make the 5000UL a #define
+	}
+
+	bool scanForObject(int32_t timeout, uint32_t baseline = 0)
+	{
+		if (!state.isServoPowerOn())
+		{
+			state.servoPowerOn();
+			state.attach();
+		}
+
+		state.goToPosition(RobotArmState::NamedPosition::CenterSonar);
+		delay(250);	// wait to stabilize	TODO: make 250 a #define
+
+		/* Get baseline sonar measurement if not provided. */
+		if (baseline = 0)
+			baseline = sonar.getMeasurement(SCAN_OBJECT_COUNT);
+
+		RollingAverage sonarData(baseline);
+		uint32_t timeEnd = millis() + timeout;
+		while (timeout > 0)
+		{
+			sonarData.push(sonar.getMeasurement(SCAN_OBJECT_COUNT));
+
+			/* If an object was on the table while doing baseline scan, get new baseline. */
+			if (sonarData.peek() + SCAN_OBJECT_HYSTERISIS < baseline)
+			{
+				baseline = sonar.getMeasurement(SCAN_OBJECT_COUNT);
+				sonarData.set(baseline);
+			}
+
+			if (sonarData.getAverage() > baseline + SCAN_OBJECT_HYSTERISIS 
+				|| sonarData.getStdDev() > SCAN_OBJECT_HYSTERISIS)
+				return true;
+
+			timeout = timeEnd - millis();
+		}
+		return false;	// no object detected within time limit
+	}
+
+	void gripObjectAt(int h, int r, int th)
+	{
+		memberClaw.fast(memberClaw.getMinAngle());
+
+		state.goToPosition(
+			state.getPositionVector()->getHeight(), 
+			r - memberClaw.getPositionVector()->getRadius(), 
+			th
+		);
+
+		state.goToPosition(
+			h,
+			r - memberClaw.getPositionVector()->getRadius(),
+			th
+		);
+
+		state.goToPosition(
+			h, 
+			r - memberClaw.getPositionVector()->getRadius(memberClaw.toPhysicalAngle(memberClaw.getMaxAngle())) * 2 / 3,
+			th
+		);
+
+		memberClaw.change(20);
+
+		state.goToPosition(
+			h,
+			r - memberClaw.getPositionVector()->getRadius(memberClaw.toPhysicalAngle(memberClaw.getMaxAngle())) * 1 / 3,
+			th
+		);
+
+		memberClaw.change(20);
+
+		while (sensorL.read() + sensorR.read() < 2 * GRIP_FORCE_MAX 
+			&& memberClaw.getServo()->read() < memberClaw.getMaxAngle())
+		{
+			state.goToPosition(h, r, th);
+			memberClaw.change(2);
+		}
+	}
+
+	void releaseObjectAt(int h, int r, int th)
+	{
+		while (sensorL.read() + sensorR.read() > 2 * FORCE_SENSOR_MIN
+			&& memberClaw.getServo()->read() > memberClaw.getMinAngle())
+		{
+			state.goToPosition(h, r, th);
+			memberClaw.change(-2);
+		}
+
+		memberClaw.fast(memberClaw.getMinAngle());
+	}
+
+	void releaseObject()
+	{
+		releaseObjectAt(
+			state.getPositionVector()->h,
+			state.getPositionVector()->r,
+			state.getPositionVector()->th
+		);
 	}
 }

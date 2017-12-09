@@ -269,6 +269,9 @@ bool RobotArmState::isServoPowerOn()
 
 void RobotArmState::servoPowerOn()
 {
+	if (digitalRead(pwrEnablePin) == HIGH)
+		return;		// already on, just return
+
 	digitalWrite(pwrEnablePin, HIGH);
 	delay(POWER_DELAY_MS);
 

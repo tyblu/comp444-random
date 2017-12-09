@@ -20,7 +20,8 @@ class SonarSensor
 {
 public:
 	SonarSensor(int triggerPin, int echoPin);
-	long getMeasurement();
+	uint32_t getMeasurement();
+	uint32_t getMeasurement(uint16_t count);
 
 private:
 	int triggerPin, echoPin;

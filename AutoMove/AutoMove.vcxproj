@@ -91,6 +91,7 @@
     <ClInclude Include="limits.h" />
     <ClInclude Include="RobotArmMember.h" />
     <ClInclude Include="RobotArmState.h" />
+    <ClInclude Include="RollingAverage.h" />
     <ClInclude Include="SonarSensor.h" />
     <ClInclude Include="TopoScan.h" />
     <ClInclude Include="__vm\.AutoMove.vsarduino.h" />
@@ -104,6 +105,7 @@
     <ClCompile Include="IntegerGeometry.cpp" />
     <ClCompile Include="RobotArmMember.cpp" />
     <ClCompile Include="RobotArmState.cpp" />
+    <ClCompile Include="RollingAverage.cpp" />
     <ClCompile Include="SonarSensor.cpp" />
     <ClCompile Include="TopoScan.cpp" />
   </ItemGroup>

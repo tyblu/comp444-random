@@ -51,6 +51,9 @@
     <ClInclude Include="AutoMoveSD.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RollingAverage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AutoMove.cpp">
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="AutoMoveSD.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RollingAverage.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -2,6 +2,7 @@
  * #includes into the forefront. It doesn't seem to work otherwise, when a 
  * library #includes another library. */
 
+#include "RollingAverage.h"
 #include "AutoMoveSD.h"
 #include <Arduino.h>
 #include <inttypes.h>
