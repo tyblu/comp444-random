@@ -7,7 +7,7 @@
 
 #include "AutoMoveSD.h"
 
-#define AutoMoveSD_DEBUG_MODE
+//#define AutoMoveSD_DEBUG_MODE
 #define getUniqueIncrementedFileName_DEBUG_MODE
 #ifdef AutoMoveSD_DEBUG_MODE
 #	define PRE Serial.print(F("AutoMoveSD : "))

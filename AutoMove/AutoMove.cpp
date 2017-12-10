@@ -30,7 +30,7 @@ namespace AutoMove // signatures only
 #define SCAN_OBJECT_DATA_POINTS 4
 #define SCAN_OBJECT_HYSTERISIS 4UL
 
-#define AutoMove_DEBUG_MODE
+//#define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
 #	define PRE Serial.print(F("AutoMove : "))
 #	define POST delay(2) // note missing ';'
@@ -144,7 +144,7 @@ SdFile topoMapBaseline, topoMapCurrent;
 SdFile * files[] = { &topoMapBaseline , &topoMapCurrent };
 #define FILES_COUNT 2
 TopoScan topoScan(state, sonar);
-bool sdCardIsWorking;
+bool sdCardIsWorking = false;
 #define SPI_SPEED_DIVIDER 2	// for use with SD_SCK_MHZ(F_CPU/SPI_SPEED_DIVIDER), min 2
 
 // Force sensor
@@ -177,19 +177,19 @@ void setup()
 	//state.goToPosition(RAS::NamedPosition::CenterSonar);
 	//state.servoPowerOff();
 
-	// SD Card stuff
-	sdCardIsWorking = AutoMoveSD::startScript(sd, SD_CS_PIN, SPI_SPEED_DIVIDER);
-	sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "base", topoMapBaseline);
-	sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "topo", topoMapCurrent);
-	if (sdCardIsWorking)
-	{
-		topoScan.logSonarDataHeaderEverything(topoMapBaseline);
-		topoScan.logSonarDataHeaderEverything(topoMapCurrent);
-		Serial.print(F("SD card files initialized: "));
-		AutoMoveSD::serialPrintlnFileNames(*files, FILES_COUNT);
-	}
-	else
-		Serial.println(F("SD card malfunction."));
+	//// SD Card stuff
+	//sdCardIsWorking = AutoMoveSD::startScript(sd, SD_CS_PIN, SPI_SPEED_DIVIDER);
+	//sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "base", topoMapBaseline);
+	//sdCardIsWorking = AutoMoveSD::initTopo(sd, "/TopoMaps", "topo", topoMapCurrent);
+	//if (sdCardIsWorking)
+	//{
+	//	topoScan.logSonarDataHeaderEverything(topoMapBaseline);
+	//	topoScan.logSonarDataHeaderEverything(topoMapCurrent);
+	//	Serial.print(F("SD card files initialized: "));
+	//	AutoMoveSD::serialPrintlnFileNames(*files, FILES_COUNT);
+	//}
+	//else
+	//	Serial.println(F("SD card malfunction."));
 
 	// Force sensor stuff.
 	Serial.print(F("Force sensors configured (normally off): "));
@@ -451,14 +451,14 @@ namespace AutoMove
 		state.goToPosition(
 			state.getPositionVector()->getHeight(), 
 			//r - memberClaw.getPositionVector()->getRadius(), 
-			r - 100,
+			r - 50,
 			th
 		);
 
 		state.goToPosition(
-			h,
+			h + 30,
 			//r - memberClaw.getPositionVector()->getRadius(),
-			r - 100,
+			r - 50,
 			th
 		);
 
