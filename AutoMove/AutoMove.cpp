@@ -26,9 +26,9 @@ namespace AutoMove // signatures only
 #	define SERIAL_CONTROL_MODE
 #endif
 
-#define SCAN_OBJECT_COUNT 50
-#define SCAN_OBJECT_DATA_POINTS 3
-#define SCAN_OBJECT_HYSTERISIS 20UL
+#define SCAN_OBJECT_COUNT 30
+#define SCAN_OBJECT_DATA_POINTS 4
+#define SCAN_OBJECT_HYSTERISIS 4UL
 
 #define AutoMove_DEBUG_MODE
 #ifdef AutoMove_DEBUG_MODE
@@ -56,9 +56,9 @@ namespace AutoMove // signatures only
 #define CLAW_LENGTH_ADJ 32L			// swingarm length [mm]
 #define CLAW_ANGLE_SCALE 1000L
 #define CLAW_ANGLE_OFFSET -20L
-#define CLAW_ANGLE_MAX 160
-#define CLAW_ANGLE_MIN 80
-#define CLAW_ANGLE_SAFE 90
+#define CLAW_ANGLE_MAX 170
+#define CLAW_ANGLE_MIN 125
+#define CLAW_ANGLE_SAFE 130
 
 #define BOOM1_LENGTH 140L
 #define BOOM1_ANGLE_SCALE -1000L
@@ -84,7 +84,7 @@ namespace AutoMove // signatures only
 
 #define FORCE_SENSOR_MIN 41		// about 200mV
 #define FORCE_SENSOR_MAX 982	// about 5V - 200mV = 4.8V
-#define GRIP_FORCE_MAX 500
+#define GRIP_FORCE_MAX 300
 
 #define PLATFORM_HEIGHT -20
 
@@ -92,7 +92,7 @@ namespace AutoMove // signatures only
 /* PRESET_POSITIONS_COUNT is defined in RobotArmState.h */
 PositionVector presetPositions[PRESET_POSITIONS_COUNT] =
 {
-	{ 180, 300,  63 },		// CenterSonar	- sonar sensor is centered between pylons
+	{ 180, 370,  63 },		// CenterSonar	- where it scans for any object on the platform
 	{   0, 156,  50 },		// Center		- horizonal end effector near center of pylons
 	{   1, 161,   1 },		// Rest			- good place to shut down, off area
 	{ 198, 291,  50 },		// MaxHeight	- around 198
@@ -174,8 +174,8 @@ void setup()
 
 	//state.sweep();
 	//state.sweepPresetPositions();
-	state.goToPosition(RAS::NamedPosition::CenterSonar);
-	state.servoPowerOff();
+	//state.goToPosition(RAS::NamedPosition::CenterSonar);
+	//state.servoPowerOff();
 
 	// SD Card stuff
 	sdCardIsWorking = AutoMoveSD::startScript(sd, SD_CS_PIN, SPI_SPEED_DIVIDER);
@@ -195,12 +195,11 @@ void setup()
 	Serial.print(F("Force sensors configured (normally off): "));
 	ForceSensor::report(sensorL, sensorR, true);
 
-/* The following block is only to help glue a force sensor back onto the gripper. */
-	state.servoPowerOn();
-	state.goToPosition(RobotArmState::NamedPosition::Rest);
-	memberClaw.slow(memberClaw.getMaxAngle()+15);
-	state.servoPowerOff();
-	AutoMove::shutdown();
+	//state.servoPowerOn();
+	//memberClaw.getServo()->write(150);
+	//DEBUG2(F("Claw angle set to "), memberClaw.getServo()->read());
+	//delay(1000);
+	//AutoMove::shutdown();
 }
 
 #ifdef SERIAL_CONTROL_MODE			// arm controlled by USB serial commands
@@ -352,7 +351,7 @@ void loop()
 	if (AutoMove::scanForObject(30000))
 	{
 		DEBUG1(F("Object found, moving it off the platform..."));
-		AutoMove::gripObjectAt(PLATFORM_HEIGHT + 5, 250, 63);
+		AutoMove::gripObjectAt(PLATFORM_HEIGHT + 5, 260, 55);
 		delay(500);
 		state.goToPosition(RobotArmState::NamedPosition::Cup);
 		AutoMove::releaseObject();
@@ -361,7 +360,7 @@ void loop()
 	else
 	{
 		DEBUG1(F("Did not detect object. Continuing to scan..."));
-		delay(500);
+		//delay(500);
 	}
 }
 #endif // AUTONOMOUS_OPERATION
@@ -370,11 +369,12 @@ namespace AutoMove
 {
 	void shutdown()
 	{
-		state.goToPosition(RAS::NamedPosition::Rest);
+		//state.goToPosition(RAS::NamedPosition::Rest);
 		state.servoPowerOff();
 
-		for (uint8_t i = 0; i < FILES_COUNT; i++)
-			files[i]->close();
+		if (sdCardIsWorking)
+			for (uint8_t i = 0; i < FILES_COUNT; i++)
+				files[i]->close();
 
 		Serial.println(F("\n*.*.*.*.* { I'm sleepy. Goodnight! Shutting down... } *.*.*.*.* \n"));
 		Serial.flush();
@@ -428,12 +428,13 @@ namespace AutoMove
 				DEBUG2(F("scanForObj(): new baseline set to "), baseline);
 			}
 
+			DEBUG2(F("scanForObj(): baseline ---------------> "), baseline);
 			DEBUG2(F("scanForObj(): sonarData.getAvg() -----> "), sonarData.getAverage());
 			DEBUG2(F("scanForObj(): sonarData.getStdDev() --> "), sonarData.getStdDev());
 			DEBUG2(F("scanForObj(): SCAN_OBJ_HYST ----------> "), SCAN_OBJECT_HYSTERISIS);
 
-			if (sonarData.getAverage() + SCAN_OBJECT_HYSTERISIS < baseline
-				|| sonarData.getStdDev() > SCAN_OBJECT_HYSTERISIS)
+			if ((sonarData.getAverage() < baseline && sonarData.getStdDev() > SCAN_OBJECT_HYSTERISIS)
+				|| (sonarData.getAverage() + 2 * SCAN_OBJECT_HYSTERISIS < baseline))
 				return true;
 
 			timeout = timeEnd - millis();
@@ -449,30 +450,34 @@ namespace AutoMove
 
 		state.goToPosition(
 			state.getPositionVector()->getHeight(), 
-			r - memberClaw.getPositionVector()->getRadius(), 
+			//r - memberClaw.getPositionVector()->getRadius(), 
+			r - 100,
 			th
 		);
 
 		state.goToPosition(
 			h,
-			r - memberClaw.getPositionVector()->getRadius(),
+			//r - memberClaw.getPositionVector()->getRadius(),
+			r - 100,
 			th
 		);
 
-		state.goToPosition(
-			h, 
-			r - memberClaw.getPositionVector()->getRadius(memberClaw.toPhysicalAngle(memberClaw.getMaxAngle())) * 2 / 3,
-			th
-		);
-
-		memberClaw.change(20);
-
-		state.goToPosition(
-			h,
-			r - memberClaw.getPositionVector()->getRadius(memberClaw.toPhysicalAngle(memberClaw.getMaxAngle())) * 1 / 3,
-			th
-		);
-
+		//state.goToPosition(
+		//	h, 
+		//	//r - memberClaw.getPositionVector()->getRadius(memberClaw.toPhysicalAngle(memberClaw.getMaxAngle())) * 2 / 3,
+		//	r - 50,
+		//	th
+		//);
+		//
+		//memberClaw.change(20);
+		//
+		//state.goToPosition(
+		//	h,
+		//	//r - memberClaw.getPositionVector()->getRadius(memberClaw.toPhysicalAngle(memberClaw.getMaxAngle())) * 1 / 3,
+		//	r - 25,
+		//	th
+		//);
+		//
 		//memberClaw.change(20);
 
 		while (sensorL.read() + sensorR.read() < 2 * GRIP_FORCE_MAX 

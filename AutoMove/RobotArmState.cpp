@@ -329,7 +329,17 @@ void RobotArmState::attachSafe()
 
 void RobotArmState::init()
 {
-	//determineExtents();
+	/* Ensure servos are within working ranges. */
+	for (uint8_t i = 0; i < 4; i++)
+	{
+		int readAngle = memberList[i]->getServo()->read();
+		if (readAngle < memberList[i]->getMinAngle())
+			memberList[i]->getServo()->write(memberList[i]->getMinAngle());
+		if (readAngle > memberList[i]->getMaxAngle())
+			memberList[i]->getServo()->write(memberList[i]->getMaxAngle());
+	}
+
+	//determineExtents();	// currently takes too long, not important enough
 }
 
 /* This currently takes about 14 minutes!! */
